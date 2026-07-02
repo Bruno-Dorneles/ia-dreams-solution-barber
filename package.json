@@ -1,0 +1,19 @@
+{
+  "name": "solution-barber",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SaaS simples para barbearias registrarem atendimentos, comissoes e fechamentos.",
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter solution-barber-backend dev\" \"pnpm --filter solution-barber-frontend dev\"",
+    "dev:backend": "pnpm --filter solution-barber-backend dev",
+    "dev:frontend": "pnpm --filter solution-barber-frontend dev",
+    "build:frontend": "pnpm --filter solution-barber-frontend build"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
