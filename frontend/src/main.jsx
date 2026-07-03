@@ -224,7 +224,7 @@ function RegisterScreen({ onAuthenticated, onBack }) {
     contact: '',
     password: '',
     confirmPassword: '',
-    partnerCode: 'BRAGA',
+    partnerCode: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -347,7 +347,7 @@ function RegisterScreen({ onAuthenticated, onBack }) {
           <input
             value={form.partnerCode}
             onChange={(event) =>
-              setForm({ ...form, partnerCode: event.target.value.toUpperCase() })
+              setForm({ ...form, partnerCode: event.target.value })
             }
           />
         </label>
@@ -436,12 +436,30 @@ function AdminWorkspace({ onLogout }) {
         <MetricPanel title="Atendimentos" value={summary?.appointmentsCount || 0} />
       </section>
 
+      {summary?.couponSummary?.length > 0 && (
+        <section className="admin-metrics coupon-metrics">
+          {summary.couponSummary.map((coupon) => (
+            <MetricPanel
+              key={coupon.code}
+              title={coupon.code}
+              value={`${coupon.count} barbearia${coupon.count === 1 ? '' : 's'}`}
+              hint={
+                coupon.partnerCommissionCents
+                  ? `${money(coupon.partnerCommissionCents)} por cliente ativo`
+                  : coupon.label
+              }
+            />
+          ))}
+        </section>
+      )}
+
       <section className="panel">
         <SectionTitle eyebrow="Clientes" title="Barbearias usando o app" compact />
         <div className="admin-table">
           <div className="admin-row admin-head-row">
             <span>Barbearia</span>
             <span>Dono</span>
+            <span>Cupom</span>
             <span>Status</span>
             <span>Mensalidade</span>
             <span>Atendimentos</span>
@@ -451,6 +469,7 @@ function AdminWorkspace({ onLogout }) {
             <div className="admin-row" key={item.id}>
               <strong>{item.name}</strong>
               <span>{item.ownerName}</span>
+              <span>{item.partnerCode || 'Sem cupom'}</span>
               <select
                 value={item.status}
                 onChange={(event) => updateClient(item, { status: event.target.value })}
@@ -580,7 +599,7 @@ function Workspace({ session, onLogout }) {
             />
           </div>
           <div className="logged-user compact-user">
-            <strong>{user.name}</strong>
+            <strong>{barbershop?.ownerName || user.name}</strong>
             <button type="button" onClick={onLogout} title="Sair">
               <LogOut size={18} />
               <span>Sair</span>
@@ -1373,11 +1392,12 @@ function ClosingScreen({ appointments, professionals, costs, onBack }) {
   );
 }
 
-function MetricPanel({ title, value }) {
+function MetricPanel({ title, value, hint }) {
   return (
     <div className="panel metric-panel">
       <span>{title}</span>
       <strong>{value}</strong>
+      {hint && <small>{hint}</small>}
     </div>
   );
 }
