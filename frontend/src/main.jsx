@@ -429,11 +429,12 @@ function AdminWorkspace({ onLogout }) {
       <section className="admin-metrics">
         <MetricPanel title="Clientes" value={summary?.clientsCount || 0} />
         <MetricPanel title="Ativos" value={summary?.activeClients || 0} />
+        <MetricPanel title="Em dia" value={summary?.paidClients || 0} />
+        <MetricPanel title="Vencidos" value={summary?.overdueClients || 0} />
         <MetricPanel
           title="Receita mensal"
           value={money(summary?.monthlyRecurringRevenueCents || 0)}
         />
-        <MetricPanel title="Atendimentos" value={summary?.appointmentsCount || 0} />
       </section>
 
       {summary?.couponSummary?.length > 0 && (
@@ -460,7 +461,9 @@ function AdminWorkspace({ onLogout }) {
             <span>Barbearia</span>
             <span>Dono</span>
             <span>Cupom</span>
-            <span>Status</span>
+            <span>Situação</span>
+            <span>Pagamento</span>
+            <span>Vencimento</span>
             <span>Mensalidade</span>
             <span>Atendimentos</span>
             <span>Observações</span>
@@ -479,6 +482,16 @@ function AdminWorkspace({ onLogout }) {
                 <option value="blocked">Bloqueado</option>
                 <option value="canceled">Cancelado</option>
               </select>
+              <span className={`payment-dot ${item.paymentStatus}`}>
+                {paymentStatusLabel(item.paymentStatus)}
+              </span>
+              <input
+                type="date"
+                defaultValue={item.paymentDueDate || ''}
+                onBlur={(event) =>
+                  updateClient(item, { paymentDueDate: event.target.value })
+                }
+              />
               <input
                 type="number"
                 min="0"
@@ -2196,6 +2209,15 @@ function localMonthKey(value) {
 
 function appointmentDateKey(appointment) {
   return appointment.businessDate || localDateKey(appointment.createdAt);
+}
+
+function paymentStatusLabel(status) {
+  return {
+    ok: 'Ok',
+    near_due: 'Quase vencendo',
+    overdue: 'Vencido',
+    non_paying: 'Não pagante',
+  }[status] || 'Ok';
 }
 
 function scheduleDateTimeKey(value) {

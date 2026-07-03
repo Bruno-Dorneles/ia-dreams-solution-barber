@@ -157,6 +157,8 @@ class BarberShopService {
   getAdminSummary() {
     const barbershops = this.listAdminBarbershops();
     const activeClients = barbershops.filter((item) => item.status === 'active').length;
+    const paidClients = barbershops.filter((item) => item.paymentStatus === 'ok').length;
+    const overdueClients = barbershops.filter((item) => item.paymentStatus === 'overdue').length;
     const monthlyRecurringRevenueCents = barbershops.reduce(
       (sum, item) => sum + item.monthlyPriceCents,
       0,
@@ -169,6 +171,8 @@ class BarberShopService {
       trialClients: barbershops.filter((item) => item.status === 'trial').length,
       canceledClients: barbershops.filter((item) => item.status === 'canceled').length,
       blockedClients: barbershops.filter((item) => item.status === 'blocked').length,
+      paidClients,
+      overdueClients,
       monthlyRecurringRevenueCents,
       appointmentsCount: state.appointments.length,
       professionalsCount: state.professionals.length,
@@ -208,6 +212,9 @@ class BarberShopService {
         contact: barbershop.contact,
         email: owner?.email || '',
         status: barbershop.status || 'active',
+        accountStage: barbershop.status || 'trial',
+        paymentDueDate: ensurePaymentDueDate(barbershop),
+        paymentStatus: getPaymentStatus(barbershop),
         plan: barbershop.monthlyPriceCents === 0
           ? validPartnerCodes[barbershop.partnerCode]?.label || 'Gratuito'
           : 'R$ 29,90',
@@ -241,6 +248,10 @@ class BarberShopService {
 
     if (body.monthlyPriceCents !== undefined) {
       barbershop.monthlyPriceCents = Number(body.monthlyPriceCents || 0);
+    }
+
+    if (body.paymentDueDate !== undefined) {
+      barbershop.paymentDueDate = normalizeBusinessDate(body.paymentDueDate);
     }
 
     if (body.partnerCode !== undefined) {
@@ -295,6 +306,7 @@ class BarberShopService {
       scheduleEndHour: 18,
       scheduleSlotMinutes: 60,
       status: 'trial',
+      paymentDueDate: nextBillingDate(new Date()),
       adminNotes: '',
       monthlyPriceCents: partner?.monthlyPriceCents ?? 2990,
     };
@@ -941,6 +953,47 @@ function buildCouponSummary(barbershops) {
   }
 
   return Object.values(summary).sort((a, b) => b.count - a.count);
+}
+
+function ensurePaymentDueDate(barbershop) {
+  if (!barbershop.paymentDueDate) {
+    barbershop.paymentDueDate = nextBillingDate(new Date());
+    schedulePersist();
+  }
+
+  return barbershop.paymentDueDate;
+}
+
+function getPaymentStatus(barbershop) {
+  if (Number(barbershop.monthlyPriceCents || 0) <= 0) {
+    return 'non_paying';
+  }
+
+  const dueDate = ensurePaymentDueDate(barbershop);
+  const daysLeft = daysUntil(dueDate);
+
+  if (daysLeft < 0) {
+    return 'overdue';
+  }
+
+  if (daysLeft <= 7) {
+    return 'near_due';
+  }
+
+  return 'ok';
+}
+
+function nextBillingDate(date) {
+  const current = date instanceof Date ? date : new Date(date);
+  const next = new Date(current.getFullYear(), current.getMonth() + 1, current.getDate());
+  return localDateKey(next);
+}
+
+function daysUntil(date) {
+  const today = new Date();
+  const current = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const target = new Date(`${date}T00:00:00`);
+  return Math.ceil((target - current) / 86400000);
 }
 
 function normalizeBusinessDate(date) {
