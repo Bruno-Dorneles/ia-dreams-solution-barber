@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import axios from 'axios';
+import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   Banknote,
@@ -9,6 +10,9 @@ import {
   CalendarPlus,
   Check,
   CreditCard,
+  Eye,
+  EyeOff,
+  Mail,
   Home,
   Lock,
   Pencil,
@@ -22,6 +26,7 @@ import {
   UserPlus,
   WalletCards,
 } from 'lucide-react';
+import barberproLoginHero from './assets/barberpro-login-hero.png';
 import './styles.css';
 
 const defaultLogo =
@@ -97,6 +102,15 @@ function App() {
 function AuthGateway({ onAuthenticated }) {
   const [mode, setMode] = useState('login');
 
+  if (mode === 'login') {
+    return (
+      <LoginScreenV3
+        onAuthenticated={onAuthenticated}
+        onCreateAccount={() => setMode('register')}
+      />
+    );
+  }
+
   return (
     <main className="auth-shell">
       <section className="auth-brand">
@@ -130,9 +144,394 @@ function AuthGateway({ onAuthenticated }) {
   );
 }
 
+function LoginScreenV3({ onAuthenticated, onCreateAccount }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await api.post('/auth/login', { email, password });
+
+      if (response.data.error) {
+        setError('E-mail ou senha invalidos. Tente novamente.');
+        return;
+      }
+
+      onAuthenticated(response.data, remember);
+    } catch {
+      setError('Nao foi possivel entrar agora. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-[#050506] px-4 py-4 text-ia-text antialiased sm:px-6 lg:p-8">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: 'easeOut' }}
+        className="mx-auto grid min-h-[calc(100vh-32px)] w-full max-w-[1560px] overflow-hidden rounded-[18px] border border-white/15 bg-black shadow-ia lg:min-h-[calc(100vh-64px)] lg:grid-cols-[1.72fr_0.88fr]"
+      >
+        <div className="relative hidden min-h-full overflow-hidden lg:block">
+          <img
+            src={barberproLoginHero}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.08)_0%,rgba(0,0,0,.10)_52%,rgba(0,0,0,.70)_86%,rgba(0,0,0,.92)_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_59%_40%,rgba(255,255,255,.12),transparent_16%)]" />
+          <div className="absolute right-[13%] top-[22%] flex flex-col items-center text-center">
+            <BarberProLogoMark size="large" />
+            <h1 className="m-0 mt-4 text-[36px] font-semibold leading-none tracking-[-0.03em] text-white">
+              BarberPro
+            </h1>
+            <p className="m-0 mt-4 max-w-[180px] text-[12px] font-normal uppercase leading-[1.55] tracking-[0.18em] text-white/65">
+              Gestão completa para barbearias
+            </p>
+          </div>
+        </div>
+
+        <div className="flex min-h-[calc(100vh-32px)] items-center justify-center px-5 py-10 lg:min-h-0 lg:px-8">
+          <div className="w-full max-w-[380px] rounded-[20px] border border-white/10 bg-[#08090A]/90 px-6 py-7 shadow-ia backdrop-blur lg:px-7 lg:py-8">
+            <div className="mb-7 flex flex-col items-center text-center">
+              <BarberProLogoMark />
+              <h1 className="m-0 mt-3 text-[34px] font-semibold leading-none tracking-[-0.03em] text-white">
+                BarberPro
+              </h1>
+              <p className="m-0 mt-3 text-[14px] font-normal text-ia-muted">
+                Faça login para continuar
+              </p>
+            </div>
+
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <label className="relative block">
+                <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-ia-muted">
+                  <Mail size={18} strokeWidth={1.8} />
+                </span>
+                <input
+                  className="h-12 w-full rounded-[8px] border border-white/10 bg-[#0D0E10] pl-12 pr-4 text-[14px] font-normal text-white outline-none transition duration-ia placeholder:text-ia-placeholder focus:border-white/70"
+                  type="email"
+                  placeholder="E-mail"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="relative block">
+                <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-ia-muted">
+                  <Lock size={18} strokeWidth={1.8} />
+                </span>
+                <input
+                  className="h-12 w-full rounded-[8px] border border-white/10 bg-[#0D0E10] pl-12 pr-12 text-[14px] font-normal text-white outline-none transition duration-ia placeholder:text-ia-placeholder focus:border-white/70"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Senha"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2 flex h-8 w-8 appearance-none items-center justify-center rounded-full border-0 bg-transparent p-0 text-ia-muted shadow-none transition duration-ia hover:bg-white/5 hover:text-white"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                >
+                  {showPassword ? (
+                    <EyeOff size={17} strokeWidth={1.8} />
+                  ) : (
+                    <Eye size={17} strokeWidth={1.8} />
+                  )}
+                </button>
+              </label>
+
+              <div className="flex items-center justify-between gap-4 pt-1">
+                <label className="flex cursor-pointer items-center gap-2 text-[13px] font-normal text-ia-muted">
+                  <input
+                    className="peer sr-only"
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(event) => setRemember(event.target.checked)}
+                  />
+                  <span className="flex h-4 w-4 items-center justify-center rounded-[4px] border border-white/10 bg-[#0D0E10] text-transparent transition duration-ia peer-checked:border-white peer-checked:bg-white peer-checked:text-black">
+                    <Check size={12} strokeWidth={3} />
+                  </span>
+                  Lembrar de mim
+                </label>
+                <button
+                  type="button"
+                  className="appearance-none border-0 bg-transparent p-0 text-[13px] font-normal text-white/80 shadow-none transition duration-ia hover:text-white"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+
+              {error && (
+                <div className="rounded-[8px] border border-ia-error/30 bg-ia-error/10 px-4 py-3 text-[13px] text-white">
+                  {error}
+                </div>
+              )}
+
+              <button
+                className="h-[48px] w-full appearance-none rounded-[8px] border-0 bg-white text-[14px] font-medium text-black shadow-none transition duration-ia hover:scale-[1.01] hover:bg-[#F2F2F2] disabled:cursor-not-allowed disabled:opacity-70"
+                disabled={loading}
+              >
+                {loading ? 'Entrando...' : 'Entrar'}
+              </button>
+            </form>
+
+            <div className="my-5 flex items-center gap-4 text-center text-[13px] font-normal text-ia-muted">
+              <div className="h-px flex-1 bg-white/5" />
+              <span>ou continue com</span>
+              <div className="h-px flex-1 bg-white/5" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                aria-label="Continuar com Google"
+                className="flex h-[46px] appearance-none items-center justify-center gap-2 rounded-[8px] border border-white/10 bg-transparent p-0 text-[13px] font-normal text-white/85 shadow-none transition duration-ia hover:bg-white/5"
+              >
+                <GoogleMark />
+                Google
+              </button>
+              <button
+                type="button"
+                aria-label="Continuar com Apple"
+                className="flex h-[46px] appearance-none items-center justify-center gap-2 rounded-[8px] border border-white/10 bg-transparent p-0 text-[13px] font-normal text-white/85 shadow-none transition duration-ia hover:bg-white/5"
+              >
+                <AppleMark />
+                Apple
+              </button>
+            </div>
+
+            <div className="mt-9 text-center text-[14px] font-normal text-ia-muted">
+              Não tem uma conta?{' '}
+              <button
+                type="button"
+                onClick={onCreateAccount}
+                className="appearance-none border-0 bg-transparent p-0 text-white shadow-none transition duration-ia hover:text-ia-muted"
+              >
+                Criar conta
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.section>
+    </main>
+  );
+}
+
+function BarberProLogoMark({ size = 'default' }) {
+  const boxClass = size === 'large' ? 'h-14 w-14 rounded-[12px]' : 'h-12 w-12 rounded-[10px]';
+  const textClass = size === 'large' ? 'text-[38px]' : 'text-[32px]';
+
+  return (
+    <div
+      className={`${boxClass} flex items-center justify-center border border-white/10 bg-white/10 shadow-[0_0_24px_rgba(255,255,255,.14)] backdrop-blur`}
+    >
+      <span className={`${textClass} font-semibold leading-none tracking-[-0.08em] text-white`}>
+        B
+      </span>
+    </div>
+  );
+}
+
+function LoginScreenV2({ onAuthenticated, onCreateAccount }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await api.post('/auth/login', { email, password });
+
+      if (response.data.error) {
+        setError('E-mail ou senha invalidos. Tente novamente.');
+        return;
+      }
+
+      onAuthenticated(response.data, remember);
+    } catch {
+      setError('Nao foi possivel entrar agora. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-ia-bg px-5 py-8 text-ia-text antialiased md:px-8">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: 'easeOut' }}
+        className="mx-auto grid min-h-[calc(100vh-64px)] w-full max-w-ia items-center gap-16 lg:grid-cols-[minmax(320px,480px)_minmax(380px,440px)] lg:justify-center"
+      >
+        <div className="hidden lg:block">
+          <div className="relative mb-8 inline-block pb-4">
+            <h1 className="m-0 text-[64px] font-semibold leading-[0.78] tracking-[-0.03em] text-white">
+              BarberPro
+            </h1>
+            <p className="absolute right-0 top-[62px] m-0 text-right text-[16px] font-normal uppercase leading-none tracking-[0.18em] text-ia-muted">
+              IA Dreams
+            </p>
+          </div>
+          <p className="max-w-[410px] text-[18px] font-normal leading-8 text-ia-muted">
+            Controle atendimentos, comissões e fechamento da barbearia sem depender de caderno.
+          </p>
+        </div>
+
+        <div className="mx-auto w-full max-w-[430px] lg:rounded-iaCard lg:border lg:border-ia-border lg:bg-ia-surface lg:p-8 lg:shadow-ia">
+          <div className="mb-14 lg:mb-10">
+            <div className="relative mb-8 inline-block pb-4 lg:hidden">
+              <h1 className="m-0 text-[48px] font-semibold leading-[0.78] tracking-[-0.03em] text-white">
+                BarberPro
+              </h1>
+              <p className="absolute right-0 top-[45px] m-0 text-right text-[12px] font-normal uppercase leading-none tracking-[0.18em] text-ia-muted">
+                IA Dreams
+              </p>
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-[28px] font-semibold leading-tight tracking-[-0.03em] text-white lg:text-[36px]">
+                Bem-vindo de volta!
+              </h2>
+              <p className="text-[16px] font-normal text-ia-muted">
+                Faça login para continuar
+              </p>
+            </div>
+          </div>
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <label className="block">
+              <span className="mb-3 block text-[14px] font-normal text-white">E-mail</span>
+              <input
+                className="h-14 w-full rounded-iaInput border border-ia-border bg-ia-card px-4 text-[16px] font-normal text-white outline-none transition duration-ia placeholder:text-ia-placeholder focus:border-white"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-3 block text-[14px] font-normal text-white">Senha</span>
+              <div className="relative">
+                <input
+                  className="h-14 w-full rounded-iaInput border border-ia-border bg-ia-card px-4 pr-12 text-[16px] font-normal text-white outline-none transition duration-ia placeholder:text-ia-placeholder focus:border-white"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Sua senha"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2 flex h-10 w-10 appearance-none items-center justify-center rounded-full border-0 bg-transparent p-0 text-ia-muted shadow-none transition duration-ia hover:bg-white/5 hover:text-white [&_svg]:block"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} strokeWidth={2} />
+                  ) : (
+                    <Eye size={20} strokeWidth={2} />
+                  )}
+                </button>
+              </div>
+            </label>
+
+            <div className="flex items-center justify-between gap-4">
+              <label className="flex cursor-pointer items-center gap-2 text-[14px] font-normal text-ia-muted">
+                <input
+                  className="peer sr-only"
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(event) => setRemember(event.target.checked)}
+                />
+                <span className="flex h-4 w-4 items-center justify-center rounded-[4px] border border-ia-border bg-ia-card text-transparent transition duration-ia peer-checked:border-white peer-checked:bg-white peer-checked:text-black">
+                  <Check size={12} strokeWidth={3} />
+                </span>
+                Manter conectado
+              </label>
+              <button
+                type="button"
+                className="appearance-none border-0 bg-transparent p-0 text-[14px] font-normal text-white shadow-none transition duration-ia hover:text-ia-muted"
+              >
+                Esqueceu a senha?
+              </button>
+            </div>
+
+            {error && (
+              <div className="rounded-iaInput border border-ia-error/30 bg-ia-error/10 px-4 py-3 text-[14px] text-white">
+                {error}
+              </div>
+            )}
+
+            <button
+              className="h-[52px] w-full rounded-iaButton bg-white text-[16px] font-medium text-black transition duration-ia hover:scale-[1.02] hover:bg-[#F2F2F2] disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={loading}
+            >
+              {loading ? 'Entrando...' : 'Entrar'}
+            </button>
+          </form>
+
+          <div className="my-10 text-center text-[14px] font-normal text-ia-muted lg:my-8">
+            ou continuar com
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              type="button"
+              aria-label="Continuar com Google"
+              className="flex h-[56px] items-center justify-center rounded-iaButton border border-ia-border bg-transparent transition duration-ia hover:bg-white/5"
+            >
+              <GoogleMark />
+            </button>
+            <button
+              type="button"
+              aria-label="Continuar com Apple"
+              className="flex h-[56px] items-center justify-center rounded-iaButton border border-ia-border bg-transparent text-white transition duration-ia hover:bg-white/5"
+            >
+              <AppleMark />
+            </button>
+          </div>
+
+          <div className="mt-12 text-center text-[16px] font-normal text-ia-muted lg:mt-8">
+            <div className="mb-8 h-px w-full bg-white/10" />
+            Não tem uma conta?{' '}
+            <button
+              type="button"
+              onClick={onCreateAccount}
+              className="appearance-none border-0 bg-transparent p-0 text-white shadow-none transition duration-ia hover:text-ia-muted"
+            >
+              Criar conta
+            </button>
+          </div>
+        </div>
+      </motion.section>
+    </main>
+  );
+}
+
 function LoginScreen({ onAuthenticated, onCreateAccount }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -213,6 +612,25 @@ function LoginScreen({ onAuthenticated, onCreateAccount }) {
         <span>Recuperação de senha em breve</span>
       </div>
     </>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.3-.2-1.9H12v3.7h5.4c-.2 1.2-.9 2.2-1.9 2.9v2.4h3.1c1.8-1.7 3-4.1 3-7.1Z" />
+      <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.5l-3.1-2.4c-.9.6-2 .9-3.5.9-2.7 0-4.9-1.8-5.7-4.2H3.1v2.5C4.8 19.7 8.2 22 12 22Z" />
+      <path fill="#FBBC05" d="M6.3 13.8c-.2-.6-.3-1.2-.3-1.8s.1-1.2.3-1.8V7.7H3.1C2.4 9 2 10.5 2 12s.4 3 1.1 4.3l3.2-2.5Z" />
+      <path fill="#EA4335" d="M12 6c1.5 0 2.8.5 3.8 1.5l2.8-2.8C16.9 3 14.7 2 12 2 8.2 2 4.8 4.3 3.1 7.7l3.2 2.5C7.1 7.8 9.3 6 12 6Z" />
+    </svg>
+  );
+}
+
+function AppleMark() {
+  return (
+    <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M17.2 13.1c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.6-1.7-3.1-1.7-1.3-.1-2.6.8-3.2.8-.7 0-1.7-.8-2.8-.8-1.4 0-2.8.8-3.5 2.1-1.5 2.6-.4 6.5 1.1 8.6.7 1 1.6 2.2 2.7 2.1 1.1 0 1.5-.7 2.8-.7s1.7.7 2.8.7c1.2 0 2-1 2.7-2.1.8-1.2 1.1-2.3 1.1-2.4-.1-.1-2.4-1-2.4-3.4ZM15 6.8c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.7-1 1.7-.9 2.6 1 .1 1.9-.5 2.5-1.2Z" />
+    </svg>
   );
 }
 
