@@ -103,24 +103,29 @@ async function initializePersistentState() {
     return;
   }
 
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
-  });
+  try {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    });
 
-  await pool.query(`
-    create table if not exists app_state (
-      key varchar(80) primary key,
-      data jsonb not null,
-      updated_at timestamptz not null default now()
-    )
-  `);
+    await pool.query(`
+      create table if not exists app_state (
+        key varchar(80) primary key,
+        data jsonb not null,
+        updated_at timestamptz not null default now()
+      )
+    `);
 
-  const result = await pool.query('select data from app_state where key = $1', [persistenceKey]);
-  if (result.rows[0]?.data) {
-    Object.assign(state, result.rows[0].data);
-  } else {
-    await persistState();
+    const result = await pool.query('select data from app_state where key = $1', [persistenceKey]);
+    if (result.rows[0]?.data) {
+      Object.assign(state, result.rows[0].data);
+    } else {
+      await persistState();
+    }
+  } catch (error) {
+    console.error('PostgreSQL indisponivel. Rodando com dados temporarios:', error.message);
+    pool = null;
   }
 
   persistenceReady = true;
