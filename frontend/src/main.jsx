@@ -703,6 +703,7 @@ function PaymentsScreen({ user, professionals, services, onSaved }) {
       serviceName: isOther ? customServiceName || 'Outro' : undefined,
       totalCents: amountCents,
       paymentMethod,
+      businessDate: today(),
     });
 
     if (response.data.error) {
@@ -827,7 +828,9 @@ function ScheduleScreen({ professionals, schedules, barbershop, onSaved }) {
     for (const slot of businessSlots(barbershop)) {
       const startsAt = `${selectedDate}T${slot}`;
       const schedule = schedules.find(
-        (item) => item.professionalId === professionalId && item.startsAt === startsAt,
+        (item) =>
+          item.professionalId === professionalId &&
+          scheduleDateTimeKey(item.startsAt) === startsAt,
       );
       nextDrafts[startsAt] = {
         clientName: schedule?.clientName || '',
@@ -973,10 +976,10 @@ function ManagementScreen({
   }, [appointments, scopeProfessionalId, user]);
 
   const dayAppointments = scopedAppointments
-    .filter((appointment) => appointment.createdAt.slice(0, 10) === selectedDate)
+    .filter((appointment) => appointmentDateKey(appointment) === selectedDate)
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   const periodAppointments = scopedAppointments.filter((appointment) =>
-    isDateInRange(appointment.createdAt.slice(0, 10), startDate, endDate),
+    isDateInRange(appointmentDateKey(appointment), startDate, endDate),
   );
   const chartItems = buildChartItems(scopedAppointments, chartMode, professionals);
   const dayReport = buildReport(dayAppointments);
@@ -1301,9 +1304,9 @@ function CostsAccordion({ costs, onSaved }) {
 }
 
 function ClosingScreen({ appointments, professionals, costs, onBack }) {
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = localMonthKey(new Date());
   const monthAppointments = appointments.filter((appointment) =>
-    appointment.createdAt.startsWith(currentMonth),
+    appointmentDateKey(appointment).slice(0, 7) === currentMonth,
   );
   const report = buildReport(monthAppointments);
   const costsTotal = costs.reduce((sum, cost) => sum + cost.amountCents, 0);
@@ -2049,7 +2052,7 @@ function buildChartItems(appointments, mode, professionals) {
 
   return dates.map((date) => {
     const items = appointments.filter((appointment) =>
-      appointment.createdAt.startsWith(date),
+      appointmentDateKey(appointment) === date,
     );
     const report = buildReport(items);
     const segments = professionals
@@ -2155,7 +2158,40 @@ function monthStart() {
 }
 
 function toInputDate(date) {
-  return date.toISOString().slice(0, 10);
+  return localDateKey(date);
+}
+
+function localDateKey(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function localMonthKey(value) {
+  return localDateKey(value).slice(0, 7);
+}
+
+function appointmentDateKey(appointment) {
+  return appointment.businessDate || localDateKey(appointment.createdAt);
+}
+
+function scheduleDateTimeKey(value) {
+  const text = String(value || '');
+  if (!text.includes('Z') && text.length >= 16) {
+    return text.slice(0, 16);
+  }
+
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) {
+    return text.slice(0, 16);
+  }
+
+  return `${localDateKey(date)}T${String(date.getHours()).padStart(2, '0')}:${String(
+    date.getMinutes(),
+  ).padStart(2, '0')}`;
 }
 
 function weekdayLabel(date) {

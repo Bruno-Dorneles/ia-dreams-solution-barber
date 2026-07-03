@@ -123,6 +123,9 @@ async function initializePersistentState() {
     } else {
       await persistState();
     }
+
+    ensureBragaTestAccounts();
+    await persistState();
   } catch (error) {
     console.error('PostgreSQL indisponivel. Rodando com dados temporarios:', error.message);
     pool = null;
@@ -706,6 +709,7 @@ class BarberShopService {
       totalCents,
       commissionCents,
       netForShopCents: totalCents - commissionCents,
+      businessDate: normalizeBusinessDate(body.businessDate) || localDateKey(new Date()),
       createdAt: body.createdAt || new Date().toISOString(),
     };
 
@@ -854,11 +858,11 @@ class BarberShopService {
     const filtered = state.appointments.filter((appointment) => {
       if (period === 'daily') {
         const targetDate = date || new Date().toISOString().slice(0, 10);
-        return appointment.createdAt.slice(0, 10) === targetDate;
+        return appointmentDateKey(appointment) === targetDate;
       }
 
       const targetMonth = month || new Date().toISOString().slice(0, 7);
-      return appointment.createdAt.slice(0, 7) === targetMonth;
+      return appointmentDateKey(appointment).slice(0, 7) === targetMonth;
     });
 
     return buildReport(filtered);
@@ -869,7 +873,7 @@ class BarberShopService {
     const appointments = state.appointments.filter(
       (appointment) =>
         appointment.professionalId === professionalId &&
-        appointment.createdAt.slice(0, 7) === targetMonth,
+        appointmentDateKey(appointment).slice(0, 7) === targetMonth,
     );
 
     return {
@@ -942,6 +946,28 @@ function normalizePartnerCode(code) {
   return String(code || '').trim().toUpperCase();
 }
 
+function normalizeBusinessDate(date) {
+  const value = String(date || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+}
+
+function appointmentDateKey(appointment) {
+  return appointment.businessDate || localDateKey(appointment.createdAt);
+}
+
+function localDateKey(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 function supportResponse() {
   return {
     error: `Por seguranca, nao foi possivel continuar. Fale com ${supportEmail} ou ${supportPhone}.`,
@@ -953,6 +979,89 @@ function supportResponse() {
 function nextProfessionalColor() {
   const used = new Set(state.professionals.map((item) => item.color));
   return professionalColors.find((color) => !used.has(color)) || professionalColors[state.professionals.length % professionalColors.length];
+}
+
+function ensureBragaTestAccounts() {
+  const bragaEmail = 'braga@gmail.com';
+  const testEmail = 'teste@gmail.com';
+  const bragaUser = state.users.find((user) => normalizeEmail(user.email) === bragaEmail);
+  const testUser = state.users.find((user) => normalizeEmail(user.email) === testEmail);
+
+  if (bragaUser && !testUser) {
+    bragaUser.email = testEmail;
+    const bragaProfessional = state.professionals.find(
+      (professional) => professional.id === bragaUser.professionalId,
+    );
+    if (bragaProfessional) {
+      bragaProfessional.email = testEmail;
+    }
+  }
+
+  if (state.users.some((user) => normalizeEmail(user.email) === bragaEmail)) {
+    return;
+  }
+
+  const timestamp = Date.now();
+  const barbershopId = `shop-braga-clean-${timestamp}`;
+  const userId = `user-braga-clean-${timestamp}`;
+  const professionalId = `pro-braga-clean-${timestamp}`;
+
+  const barbershop = {
+    id: barbershopId,
+    name: 'Braga Barber',
+    ownerName: 'Braga',
+    contact: '9999-9999',
+    partnerCode: 'BRAGA',
+    logoUrl: '',
+    panelColor: '#ffffff',
+    textColor: '#111827',
+    accentColor: '#111827',
+    scheduleStartHour: 8,
+    scheduleEndHour: 18,
+    scheduleSlotMinutes: 60,
+    status: 'active',
+    adminNotes: '',
+    monthlyPriceCents: 0,
+  };
+
+  state.barbershops.push(barbershop);
+  state.users.push({
+    id: userId,
+    name: 'Braga',
+    email: bragaEmail,
+    password: 'Acesso@123',
+    role: 'owner',
+    professionalId,
+    barbershopId,
+  });
+  state.professionals.push({
+    id: professionalId,
+    barbershopId,
+    name: 'Braga',
+    email: bragaEmail,
+    contact: '9999-9999',
+    color: '#111827',
+    commissionType: 'percentage',
+    commissionValue: 0,
+    ownerUserId: userId,
+    active: true,
+  });
+  state.services.push(
+    {
+      id: `svc-braga-clean-${timestamp}-1`,
+      barbershopId,
+      name: 'Corte',
+      priceCents: 3500,
+      active: true,
+    },
+    {
+      id: `svc-braga-clean-${timestamp}-2`,
+      barbershopId,
+      name: 'Barba',
+      priceCents: 2500,
+      active: true,
+    },
+  );
 }
 
 function findBarbershop(barbershopId) {
