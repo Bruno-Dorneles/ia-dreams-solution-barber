@@ -76,10 +76,6 @@ async function initializePersistentState() {
       await persistState();
     }
 
-    if (process.env.RESET_APP_STATE === 'admin-only') {
-      resetStateToAdminOnly();
-      await persistState();
-    }
   } catch (error) {
     console.error('PostgreSQL indisponivel. Rodando com dados temporarios:', error.message);
     pool = null;
@@ -980,28 +976,6 @@ function supportResponse() {
 function nextProfessionalColor() {
   const used = new Set(state.professionals.map((item) => item.color));
   return professionalColors.find((color) => !used.has(color)) || professionalColors[state.professionals.length % professionalColors.length];
-}
-
-function resetStateToAdminOnly() {
-  state.barbershop = null;
-  state.barbershops = [];
-  state.users = [
-    {
-      id: 'user-admin',
-      name: 'IA Dreams Admin',
-      email: 'admin@iadreams.com',
-      password: 'Admin@123',
-      role: 'admin',
-      professionalId: null,
-      barbershopId: null,
-    },
-  ];
-  state.professionals = [];
-  state.services = [];
-  state.appointments = [];
-  state.schedules = [];
-  state.costs = [];
-  state.passwordRecoveries = {};
 }
 
 function findBarbershop(barbershopId) {
