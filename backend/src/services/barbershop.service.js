@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { Pool } = require('pg');
 const { Injectable } = require('@nestjs/common');
 
 const paymentMethods = ['cash', 'pix', 'credit_card', 'debit_card'];
@@ -90,6 +91,69 @@ const state = {
 };
 
 state.barbershops = [state.barbershop];
+
+const persistenceKey = 'solution-barber-state';
+let pool = null;
+let persistenceReady = false;
+let persistenceTimer = null;
+
+async function initializePersistentState() {
+  if (!process.env.DATABASE_URL || persistenceReady) {
+    persistenceReady = true;
+    return;
+  }
+
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  });
+
+  await pool.query(`
+    create table if not exists app_state (
+      key varchar(80) primary key,
+      data jsonb not null,
+      updated_at timestamptz not null default now()
+    )
+  `);
+
+  const result = await pool.query('select data from app_state where key = $1', [persistenceKey]);
+  if (result.rows[0]?.data) {
+    Object.assign(state, result.rows[0].data);
+  } else {
+    await persistState();
+  }
+
+  persistenceReady = true;
+}
+
+async function persistState() {
+  if (!pool) {
+    return;
+  }
+
+  await pool.query(
+    `
+      insert into app_state (key, data, updated_at)
+      values ($1, $2, now())
+      on conflict (key)
+      do update set data = excluded.data, updated_at = now()
+    `,
+    [persistenceKey, JSON.stringify(state)],
+  );
+}
+
+function schedulePersist() {
+  if (!pool || !persistenceReady) {
+    return;
+  }
+
+  clearTimeout(persistenceTimer);
+  persistenceTimer = setTimeout(() => {
+    persistState().catch((error) => {
+      console.error('Nao foi possivel salvar no PostgreSQL:', error.message);
+    });
+  }, 100);
+}
 
 class BarberShopService {
   login({ email, password }) {
@@ -222,6 +286,7 @@ class BarberShopService {
       barbershop.adminNotes = body.adminNotes;
     }
 
+    schedulePersist();
     return barbershop;
   }
 
@@ -313,6 +378,7 @@ class BarberShopService {
       },
     );
 
+    schedulePersist();
     return {
       message: 'Conta criada com sucesso.',
       barbershop,
@@ -345,6 +411,7 @@ class BarberShopService {
       verified: false,
     };
 
+    schedulePersist();
     return {
       message: 'Codigo de verificacao enviado.',
       // Apenas para o MVP local. Depois isso sai e entra envio real por e-mail.
@@ -380,6 +447,7 @@ class BarberShopService {
     }
 
     recovery.verified = true;
+    schedulePersist();
     return { message: 'Codigo confirmado.' };
   }
 
@@ -408,6 +476,7 @@ class BarberShopService {
     user.password = password;
     delete state.passwordRecoveries[normalizedEmail];
 
+    schedulePersist();
     return { message: 'Senha alterada com sucesso.' };
   }
 
@@ -425,6 +494,7 @@ class BarberShopService {
       state.barbershop = barbershop;
     }
 
+    schedulePersist();
     return barbershop;
   }
 
@@ -471,6 +541,7 @@ class BarberShopService {
       });
     }
 
+    schedulePersist();
     return professional;
   }
 
@@ -502,6 +573,7 @@ class BarberShopService {
       }
     }
 
+    schedulePersist();
     return professional;
   }
 
@@ -519,6 +591,7 @@ class BarberShopService {
     state.professionals = state.professionals.filter((item) => item.id !== professionalId);
     state.users = state.users.filter((item) => item.professionalId !== professionalId);
 
+    schedulePersist();
     return { message: 'Funcionario removido.' };
   }
 
@@ -559,6 +632,7 @@ class BarberShopService {
       professional.contact = body.contact || professional.contact;
     }
 
+    schedulePersist();
     return {
       id: user.id,
       name: user.name,
@@ -584,6 +658,7 @@ class BarberShopService {
     };
 
     state.services.push(service);
+    schedulePersist();
     return service;
   }
 
@@ -630,6 +705,7 @@ class BarberShopService {
     };
 
     state.appointments.push(appointment);
+    schedulePersist();
     return appointment;
   }
 
@@ -670,6 +746,7 @@ class BarberShopService {
     if (existing) {
       if (isOpen) {
         state.schedules = state.schedules.filter((item) => item.id !== existing.id);
+        schedulePersist();
         return { message: 'Horario aberto.', status: 'open' };
       }
 
@@ -680,6 +757,7 @@ class BarberShopService {
         notes: body.notes || '',
         status: 'closed',
       });
+      schedulePersist();
       return existing;
     }
 
@@ -702,11 +780,13 @@ class BarberShopService {
     };
 
     state.schedules.push(schedule);
+    schedulePersist();
     return schedule;
   }
 
   deleteSchedule(scheduleId) {
     state.schedules = state.schedules.filter((item) => item.id !== scheduleId);
+    schedulePersist();
     return { message: 'Agendamento removido.' };
   }
 
@@ -736,6 +816,7 @@ class BarberShopService {
     };
 
     state.costs.push(cost);
+    schedulePersist();
     return cost;
   }
 
@@ -754,11 +835,13 @@ class BarberShopService {
       type: body.type === 'fixed' ? 'fixed' : 'variable',
     });
 
+    schedulePersist();
     return cost;
   }
 
   deleteCost(costId) {
     state.costs = state.costs.filter((item) => item.id !== costId);
+    schedulePersist();
     return { message: 'Custo removido.' };
   }
 
@@ -844,7 +927,7 @@ function buildReport(appointments) {
   return summary;
 }
 
-module.exports = { BarberShopService };
+module.exports = { BarberShopService, initializePersistentState };
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();

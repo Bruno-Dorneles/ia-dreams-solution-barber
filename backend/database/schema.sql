@@ -17,6 +17,12 @@ create table barbershops (
   created_at timestamptz not null default now()
 );
 
+create table if not exists app_state (
+  key varchar(80) primary key,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
 create table users (
   id uuid primary key default gen_random_uuid(),
   barbershop_id uuid not null references barbershops(id),

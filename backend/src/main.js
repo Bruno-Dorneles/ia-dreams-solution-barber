@@ -3,8 +3,11 @@ require('dotenv').config();
 
 const { NestFactory } = require('@nestjs/core');
 const { AppModule } = require('./modules/app.module');
+const { initializePersistentState } = require('./services/barbershop.service');
 
 async function bootstrap() {
+  await initializePersistentState();
+
   const app = await NestFactory.create(AppModule);
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
