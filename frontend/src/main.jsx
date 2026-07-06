@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -6,27 +6,38 @@ import {
   ArrowLeft,
   Banknote,
   BarChart3,
+  Bell,
   CalendarClock,
   CalendarPlus,
   Check,
+  ChevronRight,
+  CircleDollarSign,
   CreditCard,
   Eye,
   EyeOff,
+  Filter,
   Mail,
   Home,
   Lock,
   Pencil,
+  Phone,
+  Plus,
   ReceiptText,
   Scissors,
   Settings as SettingsIcon,
   SlidersHorizontal,
+  Store,
+  Tag,
   Trash2,
+  UserRound,
+  Users,
   Wallet,
   LogOut,
   UserPlus,
   WalletCards,
 } from 'lucide-react';
 import barberproLoginHero from './assets/barberpro-login-hero.png';
+import barberproRegisterHero from './assets/barberpro-register-hero.png';
 import './styles.css';
 
 const defaultLogo =
@@ -111,6 +122,15 @@ function AuthGateway({ onAuthenticated }) {
     );
   }
 
+  if (mode === 'register') {
+    return (
+      <RegisterScreenV2
+        onAuthenticated={onAuthenticated}
+        onBack={() => setMode('login')}
+      />
+    );
+  }
+
   return (
     <main className="auth-shell">
       <section className="auth-brand">
@@ -134,7 +154,7 @@ function AuthGateway({ onAuthenticated }) {
         )}
 
         {mode === 'register' && (
-          <RegisterScreen
+          <RegisterScreenV2
             onAuthenticated={onAuthenticated}
             onBack={() => setMode('login')}
           />
@@ -174,7 +194,7 @@ function LoginScreenV3({ onAuthenticated, onCreateAccount }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#050506] px-4 py-4 text-ia-text antialiased sm:px-6 lg:p-8">
+    <main className="min-h-screen bg-[#050506] px-4 py-4 text-ia-text antialiased sm:px-6 lg:p-5">
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -338,7 +358,7 @@ function BarberProLogoMark({ size = 'default' }) {
     <div
       className={`${boxClass} flex items-center justify-center border border-white/10 bg-white/10 shadow-[0_0_24px_rgba(255,255,255,.14)] backdrop-blur`}
     >
-      <span className={`${textClass} font-semibold leading-none tracking-[-0.08em] text-white`}>
+      <span className={`${textClass} translate-x-[1px] font-semibold leading-none tracking-normal text-white`}>
         B
       </span>
     </div>
@@ -804,8 +824,520 @@ function Message({ tone, children }) {
   return <div className={`message ${tone}`}>{children}</div>;
 }
 
+function RegisterScreenV2({ onAuthenticated, onBack }) {
+  const [form, setForm] = useState({
+    name: '',
+    barbershopName: '',
+    email: '',
+    contact: '',
+    password: '',
+    confirmPassword: '',
+    partnerCode: '',
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const passwordIssues = getPasswordIssues(form.password);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError('');
+
+    if (passwordIssues.length > 0) {
+      setError('Complete os requisitos da senha antes de criar a conta.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await api.post('/auth/register', {
+        ...form,
+        partnerCode: form.partnerCode.trim(),
+      });
+
+      if (response.data.error) {
+        setError(response.data.error);
+        return;
+      }
+
+      onAuthenticated(response.data, false);
+    } catch {
+      setError('Não foi possível criar sua conta agora.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-[#050506] px-4 py-4 text-ia-text antialiased sm:px-6 lg:p-5">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, ease: 'easeOut' }}
+        className="mx-auto grid min-h-[calc(100vh-32px)] w-full max-w-[1560px] overflow-hidden rounded-[18px] border border-white/15 bg-black shadow-ia lg:min-h-[calc(100vh-64px)] lg:grid-cols-[0.72fr_1fr]"
+      >
+        <aside className="relative hidden min-h-full overflow-hidden lg:block">
+          <img
+            src={barberproRegisterHero}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.88)_0%,rgba(0,0,0,.68)_48%,rgba(0,0,0,.20)_100%)]" />
+          <div className="absolute inset-0 bg-black/20" />
+
+          <div className="relative z-10 flex min-h-[calc(100vh-64px)] flex-col px-14 py-6">
+            <BarberProWordmark />
+
+            <div className="mt-9 max-w-[430px]">
+              <span className="hidden">
+                Sua barbearia, no próximo nível.
+              </span>
+              <h1 className="m-0 text-[36px] font-semibold leading-[1.08] tracking-[-0.03em] text-white">
+                Gestão completa para barbearias modernas.
+              </h1>
+              <p className="m-0 mt-4 max-w-[350px] text-[16px] font-normal leading-7 text-white/72">
+                Controle atendimentos, profissionais, financeiro e clientes em um só lugar.
+              </p>
+
+              <div className="mt-7 space-y-4">
+                <RegisterBenefit icon={<BarChart3 size={24} />} title="Mais controle" text="Tenha visão total do seu negócio." />
+                <RegisterBenefit icon={<Users size={24} />} title="Mais clientes" text="Organize e fidelize seus clientes." />
+                <RegisterBenefit icon={<CircleDollarSign size={24} />} title="Mais resultados" text="Relatórios inteligentes para crescer." />
+              </div>
+            </div>
+
+            <p className="m-0 mt-auto text-[13px] text-white/70">
+              © 2025 IA Dreams. Todos os direitos reservados.
+            </p>
+          </div>
+        </aside>
+
+        <section className="flex min-h-[calc(100vh-32px)] items-start justify-center px-5 py-8 lg:min-h-0 lg:items-center lg:px-8 lg:py-4">
+          <div className="w-full max-w-[860px]">
+            <button
+              type="button"
+              onClick={onBack}
+              className="mb-6 flex h-10 w-10 appearance-none items-center justify-center rounded-full border-0 bg-transparent p-0 text-[34px] font-normal leading-none text-white shadow-none transition duration-ia hover:bg-white/5 lg:hidden"
+              aria-label="Voltar"
+            >
+              ‹
+            </button>
+
+            <div className="mb-2 hidden items-center justify-end gap-5 text-[13px] text-white/80 lg:flex">
+              <span>Já tem uma conta?</span>
+              <button
+                type="button"
+                onClick={onBack}
+                className="inline-flex h-9 appearance-none items-center gap-3 rounded-[10px] border border-white/12 bg-transparent px-4 text-[13px] font-medium text-white shadow-none transition duration-ia hover:bg-white/5"
+              >
+                Fazer login
+                <ChevronRight size={17} />
+              </button>
+            </div>
+
+            <div className="mb-10 flex flex-col items-center text-center lg:hidden">
+              <BarberProLogoMark size="large" />
+              <h1 className="m-0 mt-5 text-[40px] font-semibold leading-none tracking-[-0.03em] text-white">
+                BarberPro
+              </h1>
+              <p className="m-0 mt-2 text-[14px] font-normal uppercase tracking-[0.28em] text-white/60">
+                IA Dreams
+              </p>
+            </div>
+
+            <div className="rounded-none border-0 bg-transparent lg:rounded-[20px] lg:border lg:border-white/10 lg:bg-[#111216]/82 lg:px-6 lg:py-4 lg:shadow-ia lg:backdrop-blur">
+              <div className="mb-8 lg:mb-3 lg:text-center">
+                <div className="mx-auto mb-2 hidden h-10 w-10 items-center justify-center rounded-full bg-white/8 text-white lg:flex">
+                  <UserPlus size={20} strokeWidth={1.8} />
+                </div>
+                <p className="m-0 mb-3 text-[14px] font-medium uppercase tracking-[0.12em] text-white/60 lg:hidden">
+                  Criar conta
+                </p>
+                <h2 className="m-0 text-[36px] font-semibold leading-tight tracking-[-0.03em] text-white lg:text-[28px]">
+                  <span className="lg:hidden">Vamos criar sua conta</span>
+                  <span className="hidden lg:inline">Criar conta</span>
+                </h2>
+                <p className="m-0 mt-3 max-w-[360px] text-[18px] leading-8 text-ia-muted lg:mx-auto lg:mt-1 lg:text-[13px] lg:leading-5">
+                  <span className="lg:hidden">Preencha os dados abaixo para começar a usar o BarberPro.</span>
+                  <span className="hidden lg:inline">Preencha os dados abaixo para começar.</span>
+                </p>
+              </div>
+
+              <form className="space-y-4 lg:space-y-3" onSubmit={handleSubmit}>
+                <div className="grid gap-4 lg:grid-cols-2 lg:gap-3">
+                  <RegisterField
+                    icon={<UserRound size={24} />}
+                    label="Nome do responsável"
+                    placeholder="Digite o nome do responsável"
+                    value={form.name}
+                    onChange={(value) => setForm({ ...form, name: value })}
+                    required
+                  />
+                  <RegisterField
+                    icon={<Store size={24} />}
+                    label="Nome da barbearia"
+                    placeholder="Digite o nome da barbearia"
+                    value={form.barbershopName}
+                    onChange={(value) => setForm({ ...form, barbershopName: value })}
+                    required
+                  />
+                  <RegisterField
+                    icon={<Mail size={24} />}
+                    label="E-mail"
+                    type="email"
+                    placeholder="seu@email.com.br"
+                    value={form.email}
+                    onChange={(value) => setForm({ ...form, email: value })}
+                    required
+                  />
+                  <RegisterField
+                    icon={<Phone size={24} />}
+                    label="Contato (WhatsApp)"
+                    placeholder="(00) 00000-0000"
+                    value={form.contact}
+                    onChange={(value) => setForm({ ...form, contact: value })}
+                    required
+                  />
+                  <RegisterPasswordField
+                    label="Senha"
+                    placeholder="Digite sua senha"
+                    value={form.password}
+                    visible={showPassword}
+                    onToggle={() => setShowPassword(!showPassword)}
+                    onChange={(value) => setForm({ ...form, password: value })}
+                  />
+                  <RegisterPasswordField
+                    label="Confirmar senha"
+                    placeholder="Digite novamente sua senha"
+                    value={form.confirmPassword}
+                    visible={showConfirmPassword}
+                    onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
+                    onChange={(value) => setForm({ ...form, confirmPassword: value })}
+                  />
+                </div>
+
+                {passwordIssues.length > 0 && (
+                  <div className="rounded-[14px] border border-ia-warning/25 bg-ia-warning/10 px-4 py-3 text-[13px] leading-6 text-white/80">
+                    Falta: {passwordIssues.join(', ')}.
+                  </div>
+                )}
+
+                <RegisterField
+                  icon={<Tag size={24} />}
+                  label="Código do parceiro"
+                  optionalLabel="opcional"
+                  placeholder="Digite o código do parceiro"
+                  value={form.partnerCode}
+                  onChange={(value) => setForm({ ...form, partnerCode: value })}
+                  fullWidth
+                />
+
+                {error && (
+                  <div className="rounded-[14px] border border-ia-error/30 bg-ia-error/10 px-4 py-3 text-[14px] text-white">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  className="mt-6 flex h-[84px] w-full appearance-none items-center justify-center gap-4 rounded-[12px] border-0 bg-white text-[24px] font-semibold text-black shadow-none transition duration-ia hover:scale-[1.01] hover:bg-[#F2F2F2] disabled:cursor-not-allowed disabled:opacity-70 lg:mt-3 lg:h-11 lg:text-[15px]"
+                  disabled={loading}
+                >
+                  <UserPlus size={30} strokeWidth={2} className="lg:h-[22px] lg:w-[22px]" />
+                  {loading ? 'Criando...' : 'Criar conta'}
+                </button>
+              </form>
+
+              <div className="my-8 flex items-center gap-5 text-center text-[16px] uppercase text-ia-muted lg:my-3 lg:text-[12px]">
+                <div className="h-px flex-1 bg-white/8" />
+                <span>ou</span>
+                <div className="h-px flex-1 bg-white/8" />
+              </div>
+
+              <button
+                type="button"
+                className="flex h-[82px] w-full appearance-none items-center justify-center gap-4 rounded-[12px] border border-white/12 bg-transparent p-0 text-[23px] font-semibold text-white shadow-none transition duration-ia hover:bg-white/5 lg:h-11 lg:text-[15px]"
+              >
+                <GoogleMark />
+                Continuar com Google
+              </button>
+
+              <p className="m-0 mt-8 text-center text-[17px] text-ia-muted lg:hidden">
+                Já tem uma conta?{' '}
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="appearance-none border-0 bg-transparent p-0 text-white shadow-none"
+                >
+                  Fazer login
+                </button>
+              </p>
+
+              <p className="m-0 mt-3 hidden text-center text-[12px] text-white/55 lg:block [@media(max-height:760px)]:lg:hidden">
+                Ao criar uma conta, você concorda com nossos{' '}
+                <span className="text-white underline">Termos de Uso</span> e{' '}
+                <span className="text-white underline">Política de Privacidade</span>.
+              </p>
+            </div>
+          </div>
+        </section>
+      </motion.section>
+    </main>
+  );
+}
+
+function BarberProWordmark() {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <BarberProLogoMark />
+      <p className="m-0 mt-3 text-[30px] font-semibold leading-none tracking-[-0.03em] text-white">
+        BarberPro
+      </p>
+      <p className="m-0 mt-1 text-[12px] uppercase tracking-[0.28em] text-white/70">
+        IA Dreams
+      </p>
+    </div>
+  );
+}
+
+function RegisterBenefit({ icon, title, text }) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-white/8 text-white">
+        {icon}
+      </div>
+      <div>
+        <p className="m-0 text-[16px] font-semibold text-white">{title}</p>
+        <p className="m-0 mt-1 text-[13px] text-white/70">{text}</p>
+      </div>
+    </div>
+  );
+}
+
+function RegisterField({
+  icon,
+  label,
+  optionalLabel,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+  required = false,
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 hidden text-[13px] font-semibold text-white lg:block">
+        {label}
+        {optionalLabel && <span className="font-normal text-ia-muted"> ({optionalLabel})</span>}
+      </span>
+      <div className="relative flex min-h-[88px] items-center rounded-[12px] border border-white/12 bg-black/25 transition duration-ia focus-within:border-white/65 lg:min-h-[42px] lg:rounded-[8px]">
+        <span className="pointer-events-none absolute left-7 flex text-ia-muted lg:left-4 [&_svg]:h-7 [&_svg]:w-7 lg:[&_svg]:h-[16px] lg:[&_svg]:w-[16px]">
+          {icon}
+        </span>
+        <div className="w-full pl-[86px] pr-5 lg:pl-10">
+          <span className="block text-[18px] font-semibold text-white lg:hidden">
+            {label}
+            {optionalLabel && <span className="font-normal text-ia-muted"> ({optionalLabel})</span>}
+          </span>
+          <input
+            className="mt-2 w-full appearance-none border-0 bg-transparent p-0 text-[20px] font-normal text-white outline-none placeholder:text-ia-placeholder lg:mt-0 lg:text-[13px]"
+            type={type}
+            placeholder={placeholder}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            required={required}
+          />
+        </div>
+      </div>
+    </label>
+  );
+}
+
+function RegisterPasswordField({ label, placeholder, value, visible, onToggle, onChange }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 hidden text-[13px] font-semibold text-white lg:block">
+        {label}
+      </span>
+      <div className="relative flex min-h-[88px] items-center rounded-[12px] border border-white/12 bg-black/25 transition duration-ia focus-within:border-white/65 lg:min-h-[42px] lg:rounded-[8px]">
+        <span className="pointer-events-none absolute left-7 flex text-ia-muted lg:left-4">
+          <Lock size={28} className="lg:h-[16px] lg:w-[16px]" />
+        </span>
+        <div className="w-full pl-[86px] pr-16 lg:pl-10 lg:pr-10">
+          <span className="block text-[18px] font-semibold text-white lg:hidden">{label}</span>
+          <input
+            className="mt-2 w-full appearance-none border-0 bg-transparent p-0 text-[20px] font-normal text-white outline-none placeholder:text-ia-placeholder lg:mt-0 lg:text-[13px]"
+            type={visible ? 'text' : 'password'}
+            placeholder={placeholder}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            required
+          />
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute right-6 top-1/2 flex h-10 w-10 -translate-y-1/2 appearance-none items-center justify-center rounded-full border-0 bg-transparent p-0 text-ia-muted shadow-none transition duration-ia hover:bg-white/5 hover:text-white lg:right-3 lg:h-7 lg:w-7"
+          aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
+        >
+          {visible ? <EyeOff size={28} className="lg:h-[16px] lg:w-[16px]" /> : <Eye size={28} className="lg:h-[16px] lg:w-[16px]" />}
+        </button>
+      </div>
+    </label>
+  );
+}
+
 function PageTitle({ title }) {
   return <h1 className="page-title">{title}</h1>;
+}
+
+function ManagementGreeting({ user }) {
+  const firstName = String(user?.name || 'Joao').trim().split(' ')[0] || 'Joao';
+
+  return (
+    <section className="management-greeting">
+      <h1>Olá, {firstName}! <span aria-hidden="true">{'\uD83D\uDC4B'}</span></h1>
+      <p>Aqui está um resumo da sua barbearia.</p>
+    </section>
+  );
+}
+
+function AppHeader({ onBack, onLogout }) {
+  return (
+    <header className="barberpro-app-header">
+      {onBack ? (
+        <button type="button" className="app-header-action" onClick={onBack} aria-label="Voltar">
+          <ArrowLeft size={21} />
+        </button>
+      ) : (
+        <span className="app-header-spacer" aria-hidden="true" />
+      )}
+
+      <div className="app-header-brand">
+        <BarberProLogoMark />
+        <div>
+          <strong>BarberPro</strong>
+          <span>IA Dreams</span>
+        </div>
+      </div>
+
+      <div className="app-header-actions">
+        <button type="button" className="app-header-action" aria-label="Avisos">
+          <Bell size={21} />
+        </button>
+        <button type="button" className="app-header-action" onClick={onLogout} aria-label="Sair">
+          <LogOut size={21} />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+const APP_NAV_ITEMS = [
+  { id: 'management', label: 'Financeiro', icon: <Home size={23} /> },
+  { id: 'schedule', label: 'Agendamentos', icon: <CalendarClock size={23} /> },
+  { id: 'payments', label: 'Pagamentos', icon: <Plus size={31} />, featured: true },
+  { id: 'inventory', label: 'Estoque', icon: <Store size={23} /> },
+  { id: 'settings', label: 'Configurações', icon: <SettingsIcon size={23} /> },
+];
+
+function AppNavigation({ currentScreen, onNavigate }) {
+  return (
+    <nav className="app-nav" aria-label="Navegação principal">
+      <div className="nav-brand">
+        <Scissors size={22} />
+      </div>
+
+      {APP_NAV_ITEMS.map((item) => (
+        <button
+          key={item.id}
+          className={`${currentScreen === item.id ? 'active' : ''} ${
+            item.featured ? 'featured' : ''
+          }`}
+          onClick={() => onNavigate(item.id)}
+          title={item.label}
+          aria-label={item.label}
+          aria-current={currentScreen === item.id ? 'page' : undefined}
+          type="button"
+        >
+          {item.icon}
+          <span className="nav-label">{item.label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function DropdownSelect({ value, options, onChange, ariaLabel, className = '' }) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const selectedOption =
+    options.find((option) => String(option.value) === String(value)) || options[0];
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function closeOnOutsideClick(event) {
+      if (!dropdownRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
+
+  function selectOption(nextValue) {
+    onChange(nextValue);
+    setOpen(false);
+  }
+
+  return (
+    <div className={`dropdown-select ${open ? 'open' : ''} ${className}`} ref={dropdownRef}>
+      <button
+        type="button"
+        className="dropdown-select-button"
+        onClick={() => setOpen(!open)}
+        aria-label={ariaLabel}
+        aria-expanded={open}
+      >
+        {selectedOption?.color && (
+          <span className="color-dot" style={{ background: selectedOption.color }} />
+        )}
+        <span>{selectedOption?.label || 'Selecionar'}</span>
+      </button>
+      {open && (
+        <div className="dropdown-select-menu">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              className={String(option.value) === String(value) ? 'active' : ''}
+              onClick={() => selectOption(option.value)}
+            >
+              {option.color && (
+                <span className="color-dot" style={{ background: option.color }} />
+              )}
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function AdminWorkspace({ onLogout }) {
@@ -890,7 +1422,7 @@ function AdminWorkspace({ onLogout }) {
             <div className="admin-row" key={item.id}>
               <strong>{item.name}</strong>
               <span>{item.ownerName}</span>
-              <span>{item.partnerCode || 'Sem cupom'}</span>
+              <span>{item.partnerCode || 'Cliente próprio'}</span>
               <select
                 value={item.status}
                 onChange={(event) => updateClient(item, { status: event.target.value })}
@@ -987,13 +1519,6 @@ function Workspace({ session, onLogout }) {
     [appointments, user],
   );
 
-  const menu = [
-    { id: 'payments', label: 'Pagamentos', icon: <WalletCards size={23} /> },
-    { id: 'schedule', label: 'Agendamentos', icon: <CalendarClock size={23} /> },
-    { id: 'management', label: 'Gestão', icon: <BarChart3 size={23} /> },
-    { id: 'settings', label: 'Configurações', icon: <SettingsIcon size={23} /> },
-  ];
-
   return (
     <main
       className="app-shell"
@@ -1003,43 +1528,20 @@ function Workspace({ session, onLogout }) {
         '--accent-color': barbershop?.accentColor || '#111827',
       }}
     >
-      <nav className="app-nav">
-        <div className="nav-brand">
-          <Scissors size={22} />
-        </div>
-        {menu.map((item) => (
-          <button
-            key={item.id}
-            className={screen === item.id ? 'active' : ''}
-            onClick={() => setScreen(item.id)}
-            title={item.label}
-            aria-label={item.label}
-          >
-            {item.icon}
-          </button>
-        ))}
-      </nav>
+      <AppNavigation currentScreen={screen} onNavigate={setScreen} />
 
       <section className="app-content">
-        <header className="mobile-header">
-          <div className="brand-header">
-            <p className="eyebrow">IA Dreams</p>
-            <img
-              src={barbershop?.logoUrl || defaultLogo}
-              alt={barbershop?.name || 'IA Dreams'}
-            />
-          </div>
-          <div className="logged-user compact-user">
-            <strong>{barbershop?.ownerName || user.name}</strong>
-            <button type="button" onClick={onLogout} title="Sair">
-              <LogOut size={18} />
-              <span>Sair</span>
-            </button>
-          </div>
-        </header>
+        <AppHeader
+          onBack={
+            screen === 'payments'
+              ? null
+              : () => setScreen(screen === 'closing' ? 'management' : 'payments')
+          }
+          onLogout={onLogout}
+        />
 
         {screen === 'payments' && (
-          <PaymentsScreen
+          <PaymentsScreenV2
             user={user}
             professionals={professionals}
             services={services}
@@ -1048,25 +1550,22 @@ function Workspace({ session, onLogout }) {
         )}
 
         {screen === 'schedule' && (
-          <>
-            <PageTitle title="Agendamentos" />
-            <ScheduleScreen
-              professionals={professionals}
-              schedules={schedules}
-              barbershop={barbershop}
-              onSaved={loadData}
-            />
-          </>
+          <ScheduleScreenV2
+            professionals={professionals}
+            schedules={schedules}
+            barbershop={barbershop}
+            onSaved={loadData}
+          />
         )}
 
         {screen === 'management' && (
           <>
-            <PageTitle title="Gestão" />
             <ManagementScreen
               user={user}
               barbershop={barbershop}
               professionals={professionals}
               appointments={appointments}
+              schedules={schedules}
               costs={costs}
               onSaved={loadData}
               onOpenClosing={() => setScreen('closing')}
@@ -1083,8 +1582,10 @@ function Workspace({ session, onLogout }) {
           />
         )}
 
+        {screen === 'inventory' && <ComingSoonScreen title="Estoque" />}
+
         {screen === 'settings' && (
-          <>
+          <div className="settings-screen-shell">
             <PageTitle title="Configurações" />
             <SettingsScreen
               user={user}
@@ -1095,7 +1596,7 @@ function Workspace({ session, onLogout }) {
               costs={costs}
               onSaved={loadData}
             />
-          </>
+          </div>
         )}
       </section>
     </main>
@@ -1170,7 +1671,7 @@ function PaymentsScreen({ user, professionals, services, onSaved }) {
   }
 
   return (
-    <div className="screen-column">
+    <div className="screen-column closing-screen">
       <SectionTitle
         eyebrow="Pagamentos"
         title="Registrar atendimento"
@@ -1258,6 +1759,528 @@ function PaymentsScreen({ user, professionals, services, onSaved }) {
           Cobrar {amountCents ? money(amountCents) : ''}
         </button>
       </form>
+    </div>
+  );
+}
+
+function PaymentsScreenV2({ user, professionals, services, onSaved }) {
+  const canOwnerChoose = user.role === 'owner' && professionals.length > 1;
+  const firstProfessionalId = professionals[0]?.id || '';
+  const userProfessionalExists = professionals.some((professional) => professional.id === user.professionalId);
+  const defaultProfessionalId =
+    user.role === 'barber'
+      ? user.professionalId
+      : userProfessionalExists
+        ? user.professionalId
+        : firstProfessionalId;
+  const [professionalId, setProfessionalId] = useState(defaultProfessionalId);
+  const [serviceId, setServiceId] = useState('');
+  const [customServiceName, setCustomServiceName] = useState('');
+  const [customPrice, setCustomPrice] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('pix');
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const currentExists = professionals.some((professional) => professional.id === professionalId);
+    if ((!professionalId || !currentExists) && defaultProfessionalId) {
+      setProfessionalId(defaultProfessionalId);
+    }
+  }, [defaultProfessionalId, professionalId, professionals]);
+
+  const selectedService = services.find((service) => service.id === serviceId);
+  const selectedProfessional = professionals.find((professional) => professional.id === professionalId);
+  const isOther = serviceId === 'other';
+  const amountCents = isOther
+    ? Math.round(Number(customPrice || 0) * 100)
+    : selectedService?.priceCents || 0;
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError('');
+
+    if (!professionalId) {
+      setError('Selecione ou cadastre um profissional antes de cobrar.');
+      return;
+    }
+
+    if (!serviceId) {
+      setError('Selecione um serviço.');
+      return;
+    }
+
+    if (amountCents <= 0) {
+      setError('Informe um valor válido.');
+      return;
+    }
+
+    const response = await api.post('/appointments', {
+      professionalId,
+      serviceId,
+      serviceName: isOther ? customServiceName || 'Outro' : undefined,
+      totalCents: amountCents,
+      paymentMethod,
+      businessDate: today(),
+    });
+
+    if (response.data.error) {
+      setError(response.data.error);
+      return;
+    }
+
+    setServiceId('');
+    setCustomServiceName('');
+    setCustomPrice('');
+    setSaved(true);
+    await onSaved();
+    window.setTimeout(() => setSaved(false), 1800);
+  }
+
+  const methods = [
+    { value: 'pix', title: 'Pix', description: 'Pagamento instantâneo', icon: <WalletCards size={34} /> },
+    { value: 'cash', title: 'Dinheiro', description: 'Pagamento em espécie', icon: <Banknote size={34} /> },
+    { value: 'credit_card', title: 'Crédito', description: 'Cartão de crédito', icon: <CreditCard size={34} /> },
+    { value: 'debit_card', title: 'Débito', description: 'Cartão de débito', icon: <CreditCard size={34} /> },
+  ];
+
+  return (
+    <div className="barberpro-payments">
+      <section className="payments-heading">
+        <h1>Registrar atendimento</h1>
+        <p>Selecione o serviço e a forma de pagamento.</p>
+      </section>
+
+      <form className="payments-form" onSubmit={handleSubmit}>
+        <section className="payments-card">
+          {canOwnerChoose && (
+            <label className="payments-select-field">
+              <span>Profissional</span>
+              <div>
+                <UserRound size={22} />
+                <select
+                  value={professionalId}
+                  onChange={(event) => setProfessionalId(event.target.value)}
+                  required
+                >
+                  <option value="">Selecione o profissional</option>
+                  {professionals.map((professional) => (
+                    <option key={professional.id} value={professional.id}>
+                      {professional.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </label>
+          )}
+
+          <label className="payments-select-field">
+            <span>Serviço</span>
+            <div>
+              <Scissors size={22} />
+              <select
+                value={serviceId}
+                onChange={(event) => setServiceId(event.target.value)}
+                required
+              >
+                <option value="">Selecione o serviço</option>
+                {services.map((service) => (
+                  <option key={service.id} value={service.id}>
+                    {service.name} - {money(service.priceCents)}
+                  </option>
+                ))}
+                <option value="other">Outro</option>
+              </select>
+            </div>
+          </label>
+
+          {isOther && (
+            <div className="payments-custom-grid">
+              <input
+                value={customServiceName}
+                placeholder="Descrição"
+                onChange={(event) => setCustomServiceName(event.target.value)}
+              />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={customPrice}
+                placeholder="Valor livre"
+                onChange={(event) => setCustomPrice(event.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          <div className="payments-section-title">Forma de pagamento</div>
+          <div className="payments-method-grid">
+            {methods.map((method) => (
+              <button
+                key={method.value}
+                type="button"
+                className={paymentMethod === method.value ? 'active' : ''}
+                onClick={() => setPaymentMethod(method.value)}
+              >
+                {paymentMethod === method.value && (
+                  <span className="method-check"><Check size={18} /></span>
+                )}
+                {method.icon}
+                <strong>{method.title}</strong>
+                <small>{method.description}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="payments-summary-card">
+          <h2>Resumo do atendimento</h2>
+          <div>
+            <span>Serviço</span>
+            <strong>{isOther ? customServiceName || 'Outro' : selectedService?.name || '-'}</strong>
+          </div>
+          <div>
+            <span>Profissional</span>
+            <strong>{selectedProfessional?.name || user.name || '-'}</strong>
+          </div>
+          <div className="payments-total">
+            <span>Total</span>
+            <strong>{amountCents ? money(amountCents) : 'R$ 0,00'}</strong>
+          </div>
+
+          {error && <div className="payments-error">{error}</div>}
+          {saved && <div className="payments-success">Atendimento salvo</div>}
+
+          <button className="payments-charge-button" disabled={!amountCents}>
+            <Check size={22} />
+            Cobrar atendimento
+          </button>
+        </section>
+      </form>
+    </div>
+  );
+}
+
+function ComingSoonScreen({ title }) {
+  return (
+    <div className="coming-soon-screen">
+      <section className="coming-soon-card">
+        <div>
+          <Lock size={32} />
+        </div>
+        <h1>{title}</h1>
+        <p>Em breve</p>
+      </section>
+    </div>
+  );
+}
+
+function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
+  const [selectedDate, setSelectedDate] = useState(today());
+  const [professionalId, setProfessionalId] = useState(professionals[0]?.id || '');
+  const [viewMode, setViewMode] = useState('day');
+  const [drafts, setDrafts] = useState({});
+  const selectedDateObj = new Date(`${selectedDate}T12:00:00`);
+  const weekDays = scheduleWeekDays(selectedDate);
+  const selectedProfessional = professionals.find((item) => item.id === professionalId);
+
+  useEffect(() => {
+    const currentExists = professionals.some((professional) => professional.id === professionalId);
+    if ((!professionalId || !currentExists) && professionals[0]?.id) {
+      setProfessionalId(professionals[0].id);
+    }
+  }, [professionalId, professionals]);
+
+  useEffect(() => {
+    const nextDrafts = {};
+    for (const slot of businessSlots(barbershop)) {
+      const startsAt = `${selectedDate}T${slot}`;
+      const schedule = schedules.find(
+        (item) =>
+          item.professionalId === professionalId &&
+          scheduleDateTimeKey(item.startsAt) === startsAt,
+      );
+      nextDrafts[startsAt] = {
+        clientName: schedule?.clientName || '',
+        clientContact: schedule?.clientContact || '',
+        serviceName: schedule?.serviceName || '',
+      };
+    }
+    setDrafts(nextDrafts);
+  }, [barbershop, professionalId, schedules, selectedDate]);
+
+  function updateDraft(startsAt, field, value) {
+    setDrafts((current) => ({
+      ...current,
+      [startsAt]: {
+        ...current[startsAt],
+        [field]: value,
+      },
+    }));
+  }
+
+  async function saveLine(startsAt, draftOverride) {
+    if (!professionalId) return;
+
+    const draft = draftOverride || drafts[startsAt] || {};
+    await api.post('/schedules', {
+      professionalId,
+      startsAt,
+      clientName: draft.clientName || '',
+      clientContact: draft.clientContact || '',
+      serviceName: draft.serviceName || '',
+    });
+    await onSaved();
+  }
+
+  function moveDate(days) {
+    const next = new Date(`${selectedDate}T12:00:00`);
+    next.setDate(next.getDate() + days);
+    setSelectedDate(toInputDate(next));
+  }
+
+  function schedulesForDate(date) {
+    return schedules
+      .filter((item) => item.professionalId === professionalId)
+      .filter((item) => scheduleDateTimeKey(item.startsAt).startsWith(date))
+      .sort((a, b) => scheduleDateTimeKey(a.startsAt).localeCompare(scheduleDateTimeKey(b.startsAt)));
+  }
+
+  const listSchedules = schedules
+    .filter((item) => item.professionalId === professionalId)
+    .filter((item) => scheduleDateTimeKey(item.startsAt).slice(0, 10) >= selectedDate)
+    .sort((a, b) => scheduleDateTimeKey(a.startsAt).localeCompare(scheduleDateTimeKey(b.startsAt)))
+    .slice(0, 12);
+
+  return (
+    <div className="barberpro-schedule">
+      <header className="schedule-hero">
+        <div className="schedule-brand-line">
+          <button type="button" className="schedule-icon-button" aria-label="Menu">
+            <Filter size={23} />
+          </button>
+          <div className="schedule-wordmark">
+            <BarberProLogoMark size="large" />
+            <div>
+              <h1>BarberPro</h1>
+              <span>IA Dreams</span>
+            </div>
+          </div>
+          <button type="button" className="schedule-icon-button" aria-label="Notificações">
+            <Bell size={24} />
+          </button>
+        </div>
+
+        <div className="schedule-title-row">
+          <div>
+            <h2>Agendamentos</h2>
+            <p>Gerencie os agendamentos da sua barbearia.</p>
+          </div>
+          <button type="button" className="new-schedule-button">
+            <CalendarPlus size={22} />
+            Novo
+          </button>
+        </div>
+      </header>
+
+      <div className="schedule-tabs">
+        <button className={viewMode === 'day' ? 'active' : ''} type="button" onClick={() => setViewMode('day')}>
+          <CalendarClock size={19} />
+          Dia
+        </button>
+        <button className={viewMode === 'week' ? 'active' : ''} type="button" onClick={() => setViewMode('week')}>
+          <CalendarClock size={19} />
+          Semana
+        </button>
+        <button className={viewMode === 'month' ? 'active' : ''} type="button" onClick={() => setViewMode('month')}>
+          <CalendarClock size={19} />
+          Mês
+        </button>
+        <button className={viewMode === 'list' ? 'active' : ''} type="button" onClick={() => setViewMode('list')}>
+          <SlidersHorizontal size={19} />
+          Lista
+        </button>
+      </div>
+
+      <div className="schedule-date-nav">
+        <button type="button" onClick={() => moveDate(-1)} aria-label="Dia anterior">
+          ‹
+        </button>
+        <label className="schedule-date-picker" aria-label="Selecionar data">
+          <CalendarClock size={19} />
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(event) => setSelectedDate(event.target.value)}
+          />
+        </label>
+        <div>
+          <strong>{formatLongDate(selectedDateObj)}</strong>
+          <span>{capitalize(weekdayFullLabel(selectedDateObj))}</span>
+        </div>
+        <DropdownSelect
+          className="schedule-professional-picker icon-only-dropdown"
+          value={professionalId}
+          options={professionals.map((professional) => ({
+            value: professional.id,
+            label: professional.name,
+            color: professional.color || '#111827',
+          }))}
+          onChange={setProfessionalId}
+          ariaLabel="Selecionar profissional"
+        />
+        <button type="button" onClick={() => moveDate(1)} aria-label="Próximo dia">
+          ›
+        </button>
+      </div>
+
+      <div className="schedule-week-strip">
+        {weekDays.map((day) => (
+          <button
+            key={day.date}
+            type="button"
+            className={day.date === selectedDate ? 'active' : ''}
+            onClick={() => setSelectedDate(day.date)}
+          >
+            <span>{day.weekday}</span>
+            <strong>{day.day}</strong>
+          </button>
+        ))}
+      </div>
+
+      {viewMode === 'day' && <section className="schedule-timeline">
+        {businessSlots(barbershop).map((slot, index) => {
+          const startsAt = `${selectedDate}T${slot}`;
+          const draft = drafts[startsAt] || {};
+          const isClosed = Boolean(
+            draft.clientName || draft.clientContact || draft.serviceName,
+          );
+          const statusClass = isClosed
+            ? index % 3 === 0
+              ? 'scheduled'
+              : 'confirmed'
+            : 'open';
+
+          return (
+            <div className="schedule-time-row" key={startsAt}>
+              <time>{slot}</time>
+              <article className={`schedule-appointment-card ${statusClass}`}>
+                <div className="schedule-avatar">
+                  {initials(draft.clientName || selectedProfessional?.name || 'BP')}
+                </div>
+                <div className="schedule-card-fields">
+                  <input
+                    value={draft.clientName || ''}
+                    onChange={(event) => updateDraft(startsAt, 'clientName', event.target.value)}
+                    onBlur={(event) =>
+                      saveLine(startsAt, { ...drafts[startsAt], clientName: event.target.value })
+                    }
+                    placeholder="Nome do cliente"
+                    aria-label={`Cliente ${slot}`}
+                  />
+                  <div>
+                    <input
+                      value={draft.serviceName || ''}
+                      onChange={(event) => updateDraft(startsAt, 'serviceName', event.target.value)}
+                      onBlur={(event) =>
+                        saveLine(startsAt, { ...drafts[startsAt], serviceName: event.target.value })
+                      }
+                      placeholder="Serviço"
+                      aria-label={`Serviço ${slot}`}
+                    />
+                    <input
+                      value={draft.clientContact || ''}
+                      onChange={(event) => updateDraft(startsAt, 'clientContact', event.target.value)}
+                      onBlur={(event) =>
+                        saveLine(startsAt, { ...drafts[startsAt], clientContact: event.target.value })
+                      }
+                      placeholder="Contato"
+                      aria-label={`Contato ${slot}`}
+                    />
+                  </div>
+                </div>
+                <span
+                  className={`schedule-status-dot ${statusClass}`}
+                  title={isClosed ? 'Agendado' : 'Aberto'}
+                />
+                <button type="button" className="schedule-more" aria-label="Mais opções">
+                  ⋮
+                </button>
+              </article>
+            </div>
+          );
+        })}
+      </section>}
+
+      {viewMode === 'week' && (
+        <section className="schedule-week-view">
+          {weekDays.map((day) => {
+            const daySchedules = schedulesForDate(day.date);
+            return (
+              <button
+                type="button"
+                key={day.date}
+                className={day.date === selectedDate ? 'active' : ''}
+                onClick={() => {
+                  setSelectedDate(day.date);
+                  setViewMode('day');
+                }}
+              >
+                <span>{day.weekday}</span>
+                <strong>{day.day}</strong>
+                <small>{daySchedules.length} agenda{daySchedules.length === 1 ? '' : 's'}</small>
+                <div>
+                  {daySchedules.slice(0, 3).map((item) => (
+                    <i key={item.id || item.startsAt}>{item.clientName || 'Reservado'}</i>
+                  ))}
+                </div>
+              </button>
+            );
+          })}
+        </section>
+      )}
+
+      {viewMode === 'month' && (
+        <section className="schedule-month-view">
+          {monthCalendarDays(selectedDate).map((day) => {
+            const daySchedules = schedulesForDate(day.date);
+            return (
+              <button
+                type="button"
+                key={day.date}
+                className={`${day.currentMonth ? '' : 'muted'} ${day.date === selectedDate ? 'active' : ''}`}
+                onClick={() => {
+                  setSelectedDate(day.date);
+                  setViewMode('day');
+                }}
+              >
+                <span>{day.day}</span>
+                {daySchedules.length > 0 && <em>{daySchedules.length}</em>}
+              </button>
+            );
+          })}
+        </section>
+      )}
+
+      {viewMode === 'list' && (
+        <section className="schedule-list-view">
+          {listSchedules.length === 0 && <p>Nenhum agendamento encontrado.</p>}
+          {listSchedules.map((item) => {
+            const key = scheduleDateTimeKey(item.startsAt);
+            return (
+              <article key={item.id || key}>
+                <time>{formatDate(key.slice(0, 10))} às {key.slice(11, 16)}</time>
+                <strong>{item.clientName || 'Cliente sem nome'}</strong>
+                <span>{item.serviceName || 'Serviço não informado'}</span>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      <button type="button" className="schedule-filter">
+        <Filter size={26} />
+        Filtros
+      </button>
     </div>
   );
 }
@@ -1400,6 +2423,7 @@ function ManagementScreen({
   barbershop,
   professionals,
   appointments,
+  schedules,
   costs,
   onSaved,
   onOpenClosing,
@@ -1410,8 +2434,8 @@ function ManagementScreen({
   const [endDate, setEndDate] = useState(today());
   const [showDayPicker, setShowDayPicker] = useState(false);
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
-  const [showScopePicker, setShowScopePicker] = useState(false);
   const [scopeProfessionalId, setScopeProfessionalId] = useState('all');
+  const [summaryMonth, setSummaryMonth] = useState(localMonthKey(new Date()));
 
   const scopedAppointments = useMemo(() => {
     if (user.role !== 'owner') {
@@ -1434,44 +2458,139 @@ function ManagementScreen({
   const chartItems = buildChartItems(scopedAppointments, chartMode, professionals);
   const dayReport = buildReport(dayAppointments);
   const periodReport = buildReport(periodAppointments);
-  const scopeName =
-    scopeProfessionalId === 'all'
-      ? barbershop?.name || 'Barbearia'
-      : professionals.find((item) => item.id === scopeProfessionalId)?.name || 'Profissional';
+  const scopeOptions = [
+    { value: 'all', label: barbershop?.name || 'Barbearia' },
+    ...professionals.map((professional) => ({
+      value: professional.id,
+      label: professional.name,
+      color: professional.color || '#111827',
+    })),
+  ];
+  const summaryMonthOptions = Array.from(
+    new Set([
+      localMonthKey(new Date()),
+      ...scopedAppointments.map((appointment) => localMonthKey(appointmentDateKey(appointment))),
+      ...schedules.map((schedule) => scheduleDateTimeKey(schedule.startsAt).slice(0, 7)),
+    ]),
+  )
+    .filter(Boolean)
+    .sort((a, b) => b.localeCompare(a));
+  const currentMonth = summaryMonth;
+  const previousMonth = previousMonthKey(currentMonth);
+  const scopedSchedules = schedules.filter((schedule) => {
+    if (user.role !== 'owner') {
+      return schedule.professionalId === user.professionalId;
+    }
+
+    if (scopeProfessionalId === 'all') {
+      return true;
+    }
+
+    return schedule.professionalId === scopeProfessionalId;
+  });
+  const currentMonthAppointments = scopedAppointments.filter(
+    (appointment) => localMonthKey(appointmentDateKey(appointment)) === currentMonth,
+  );
+  const previousMonthAppointments = scopedAppointments.filter(
+    (appointment) => localMonthKey(appointmentDateKey(appointment)) === previousMonth,
+  );
+  const currentMonthSchedules = scopedSchedules.filter(
+    (schedule) => scheduleDateTimeKey(schedule.startsAt).slice(0, 7) === currentMonth,
+  );
+  const previousMonthSchedules = scopedSchedules.filter(
+    (schedule) => scheduleDateTimeKey(schedule.startsAt).slice(0, 7) === previousMonth,
+  );
+  const currentRevenueCents = currentMonthAppointments.reduce(
+    (sum, appointment) => sum + appointment.totalCents,
+    0,
+  );
+  const previousRevenueCents = previousMonthAppointments.reduce(
+    (sum, appointment) => sum + appointment.totalCents,
+    0,
+  );
+  const currentTicketCents = currentMonthAppointments.length
+    ? Math.round(currentRevenueCents / currentMonthAppointments.length)
+    : 0;
+  const previousTicketCents = previousMonthAppointments.length
+    ? Math.round(previousRevenueCents / previousMonthAppointments.length)
+    : 0;
+  const summaryItems = [
+    {
+      label: 'Agendamentos',
+      value: currentMonthSchedules.length,
+      trend: percentageTrend(currentMonthSchedules.length, previousMonthSchedules.length),
+      icon: <CalendarClock size={24} />,
+    },
+    {
+      label: 'Atendimentos',
+      value: currentMonthAppointments.length,
+      trend: percentageTrend(currentMonthAppointments.length, previousMonthAppointments.length),
+      icon: <Users size={24} />,
+    },
+    {
+      label: 'Faturamento',
+      value: money(currentRevenueCents),
+      trend: percentageTrend(currentRevenueCents, previousRevenueCents),
+      icon: <CircleDollarSign size={24} />,
+    },
+    {
+      label: 'Ticket Médio',
+      value: money(currentTicketCents),
+      trend: percentageTrend(currentTicketCents, previousTicketCents),
+      icon: <BarChart3 size={24} />,
+    },
+  ];
 
   return (
-    <div className="screen-column">
-      {user.role === 'owner' && (
-        <div className="scope-control">
-          <button onClick={() => setShowScopePicker(!showScopePicker)}>
-            {scopeName}
-          </button>
-          {showScopePicker && (
-            <div className="scope-menu">
-              <button onClick={() => { setScopeProfessionalId('all'); setShowScopePicker(false); }}>
-                Toda barbearia
-              </button>
-              {professionals.map((professional) => (
-                <button
-                  key={professional.id}
-                  onClick={() => {
-                    setScopeProfessionalId(professional.id);
-                    setShowScopePicker(false);
-                  }}
-                >
-                  <span
-                    className="color-dot"
-                    style={{ background: professional.color || '#111827' }}
-                  />
-                  {professional.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+    <div className="screen-column management-screen">
+      <div className="management-top-row">
+        <ManagementGreeting user={user} />
 
-      <section className="panel chart-panel">
+        {user.role === 'owner' && (
+          <DropdownSelect
+            className="scope-control"
+            value={scopeProfessionalId}
+            options={scopeOptions}
+            onChange={setScopeProfessionalId}
+            ariaLabel="Selecionar barbearia ou funcionário"
+          />
+        )}
+      </div>
+
+      <section className="management-summary-section">
+        <div className="management-summary-header">
+          <h2>Resumo geral</h2>
+          <DropdownSelect
+            className="period-dropdown"
+            value={summaryMonth}
+            options={summaryMonthOptions.map((month) => ({
+              value: month,
+              label: month === localMonthKey(new Date()) ? 'Este mês' : formatMonthLabel(month),
+            }))}
+            onChange={setSummaryMonth}
+            ariaLabel="Selecionar mês"
+          />
+        </div>
+        <div className="management-summary-card">
+          {summaryItems.map((item) => (
+            <article key={item.label}>
+              <div className="summary-icon">{item.icon}</div>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <small className={item.trend.direction}>
+                {item.trend.direction === 'flat' ? '•' : item.trend.direction === 'down' ? '▼' : '▲'} {Math.abs(item.trend.value)}%
+              </small>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="performance-section">
+        <h2>Desempenho</h2>
+        <RevenueChart items={chartItems} mode={chartMode} onModeChange={setChartMode} />
+      </section>
+
+      <section className="panel chart-panel legacy-chart-panel">
         <div className="panel-title">
           <div>
             <p className="eyebrow">Faturamento</p>
@@ -1573,51 +2692,98 @@ function ManagementScreen({
   );
 }
 
-function RevenueChart({ items }) {
+function RevenueChart({ items, mode, onModeChange }) {
   const maxValue = Math.max(...items.map((item) => item.revenueCents), 1);
+  const totalCents = items.reduce((sum, item) => sum + item.revenueCents, 0);
+  const width = 640;
+  const height = 230;
+  const chartTop = 26;
+  const chartBottom = 174;
+  const chartLeft = 58;
+  const chartRight = 594;
+  const chartHeight = chartBottom - chartTop;
+  const xStep = items.length > 1 ? (chartRight - chartLeft) / (items.length - 1) : 0;
+  const points = items.map((item, index) => {
+    const x = items.length > 1 ? chartLeft + index * xStep : (chartLeft + chartRight) / 2;
+    const y = chartBottom - (item.revenueCents / maxValue) * chartHeight;
+    return { ...item, x, y };
+  });
+  const linePath = points
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+    .join(' ');
+  const areaPath = points.length
+    ? `${linePath} L ${points[points.length - 1].x} ${chartBottom} L ${points[0].x} ${chartBottom} Z`
+    : '';
+  const lastPoint = points[points.length - 1];
 
   return (
-    <div className="chart">
-      {items.map((item) => {
-        const height = Math.max(8, Math.round((item.revenueCents / maxValue) * 150));
-        const totalCommission = item.segments.reduce(
-          (sum, segment) => sum + segment.commissionCents,
-          0,
-        );
-        let topOffset = 0;
+    <div className="revenue-line-card">
+      <div className="revenue-line-header">
+        <div>
+          <span>Faturamento</span>
+          <strong>{money(totalCents)}</strong>
+        </div>
+        <DropdownSelect
+          className="period-dropdown"
+          value={mode}
+          options={[
+            { value: 'week', label: 'Semanal' },
+            { value: 'month', label: 'Mensal' },
+          ]}
+          onChange={onModeChange}
+          ariaLabel="Selecionar período do gráfico"
+        />
+      </div>
 
-        return (
-          <div className="chart-item" key={item.key}>
-            <div className="bar-track" title={`${item.label}: ${money(item.revenueCents)}`}>
-              <div className="bar" style={{ height }}>
-                {item.segments.map((segment) => {
-                  const segmentHeight =
-                    totalCommission > 0
-                      ? Math.max(
-                          4,
-                          Math.round((segment.commissionCents / item.revenueCents) * height),
-                        )
-                      : 0;
-                  const style = {
-                    background: segment.color,
-                    height: segmentHeight,
-                    top: topOffset,
-                  };
-                  topOffset += segmentHeight;
-                  return (
-                    <span
-                      key={segment.professionalId}
-                      className="bar-commission"
-                      style={style}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-            <span>{item.label}</span>
-          </div>
-        );
-      })}
+      <svg className="revenue-line-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Gráfico de faturamento">
+        <defs>
+          <linearGradient id="revenueArea" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.42" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+          </linearGradient>
+          <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {[0, 0.33, 0.66, 1].map((ratio) => {
+          const y = chartBottom - ratio * chartHeight;
+          return <line key={ratio} x1={chartLeft} x2={chartRight} y1={y} y2={y} />;
+        })}
+
+        {[0, 0.5, 1].map((ratio) => {
+          const value = Math.round((maxValue * ratio) / 1000);
+          const y = chartBottom - ratio * chartHeight;
+          return (
+            <text key={ratio} className="revenue-y-label" x="16" y={y + 4}>
+              {value}k
+            </text>
+          );
+        })}
+
+        {areaPath && <path className="revenue-area" d={areaPath} />}
+        {linePath && <path className="revenue-line" d={linePath} filter="url(#lineGlow)" />}
+
+        {lastPoint && (
+          <>
+            <text className="revenue-value-badge" x={Math.max(chartLeft, lastPoint.x - 44)} y={lastPoint.y - 18}>
+              {money(lastPoint.revenueCents).replace('R$ ', 'R$ ')}
+            </text>
+            <circle className="revenue-dot-outer" cx={lastPoint.x} cy={lastPoint.y} r="11" />
+            <circle className="revenue-dot" cx={lastPoint.x} cy={lastPoint.y} r="6" />
+          </>
+        )}
+
+        {points.map((point) => (
+          <text key={point.key} className="revenue-x-label" x={point.x} y="210">
+            {point.label}
+          </text>
+        ))}
+      </svg>
     </div>
   );
 }
@@ -1679,7 +2845,7 @@ function CostsAccordion({ costs, onSaved }) {
       {open && (
         <div className="costs-panel">
           <form className="cost-form" onSubmit={submit}>
-            <div className="icon-picker single-picker">
+            <div className="icon-picker single-picker cost-icon-field">
               <button
                 type="button"
                 onClick={() => setIconMenuOpen(!iconMenuOpen)}
@@ -1706,12 +2872,14 @@ function CostsAccordion({ costs, onSaved }) {
               )}
             </div>
             <input
+              className="cost-description-field"
               placeholder="Descrição"
               value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })}
               required
             />
             <input
+              className="cost-amount-field"
               type="number"
               min="0"
               step="0.01"
@@ -1720,14 +2888,17 @@ function CostsAccordion({ costs, onSaved }) {
               onChange={(event) => setForm({ ...form, amount: event.target.value })}
               required
             />
-            <select
+            <DropdownSelect
+              className="cost-type-field"
               value={form.type}
-              onChange={(event) => setForm({ ...form, type: event.target.value })}
-            >
-              <option value="variable">Variável</option>
-              <option value="fixed">Fixo mensal</option>
-            </select>
-            <button>{editingId ? 'Atualizar' : 'Adicionar'}</button>
+              options={[
+                { value: 'variable', label: 'Variável' },
+                { value: 'fixed', label: 'Fixo mensal' },
+              ]}
+              onChange={(type) => setForm({ ...form, type })}
+              ariaLabel="Selecionar tipo de custo"
+            />
+            <button className="cost-submit-button">{editingId ? 'Atualizar' : 'Adicionar'}</button>
           </form>
 
           <div className="cost-list">
@@ -1776,16 +2947,9 @@ function ClosingScreen({ appointments, professionals, costs, onBack }) {
     .filter((row) => row.commissionCents > 0);
 
   return (
-    <div className="screen-column">
+    <div className="screen-column closing-screen">
       <SectionTitle
-        eyebrow="Financeiro"
-        title="Fechamento de caixa"
-        action={
-          <button className="back-inline" onClick={onBack}>
-            <ArrowLeft size={18} />
-            Voltar
-          </button>
-        }
+        title="Fechamento de Caixa"
       />
       <div className="reports-grid">
         <MetricPanel title="Lucro total" value={money(profitCents)} />
@@ -1851,7 +3015,7 @@ function ReportCard({ title, report, action, children }) {
         <Metric label="Faturamento" value={money(report.revenueCents)} />
         <Metric label="Comissões" value={money(report.commissionCents)} />
         <Metric label="Atendimentos" value={report.appointmentsCount} />
-        <Metric label="Liquido loja" value={money(report.netForShopCents)} />
+        <Metric label="Líquido loja" value={money(report.netForShopCents)} />
       </div>
     </div>
   );
@@ -2135,48 +3299,45 @@ function ScheduleSettings({ barbershop, onSaved }) {
         <div className="three-columns">
           <label>
             Inicio
-            <select
+            <DropdownSelect
               value={form.scheduleStartHour}
-              onChange={(event) =>
-                setForm({ ...form, scheduleStartHour: event.target.value })
+              options={Array.from({ length: 24 }, (_, hour) => ({
+                value: hour,
+                label: `${String(hour).padStart(2, '0')}:00`,
+              }))}
+              onChange={(scheduleStartHour) =>
+                setForm({ ...form, scheduleStartHour })
               }
-            >
-              {Array.from({ length: 24 }, (_, hour) => (
-                <option key={hour} value={hour}>
-                  {String(hour).padStart(2, '0')}:00
-                </option>
-              ))}
-            </select>
+              ariaLabel="Selecionar horário inicial"
+            />
           </label>
           <label>
             Final
-            <select
+            <DropdownSelect
               value={form.scheduleEndHour}
-              onChange={(event) =>
-                setForm({ ...form, scheduleEndHour: event.target.value })
+              options={Array.from({ length: 24 }, (_, hour) => ({
+                value: hour,
+                label: `${String(hour).padStart(2, '0')}:00`,
+              }))}
+              onChange={(scheduleEndHour) =>
+                setForm({ ...form, scheduleEndHour })
               }
-            >
-              {Array.from({ length: 24 }, (_, hour) => (
-                <option key={hour} value={hour}>
-                  {String(hour).padStart(2, '0')}:00
-                </option>
-              ))}
-            </select>
+              ariaLabel="Selecionar horário final"
+            />
           </label>
           <label>
             Intervalo
-            <select
+            <DropdownSelect
               value={form.scheduleSlotMinutes}
-              onChange={(event) =>
-                setForm({ ...form, scheduleSlotMinutes: event.target.value })
+              options={[15, 30, 45, 60].map((minutes) => ({
+                value: minutes,
+                label: `${minutes} min`,
+              }))}
+              onChange={(scheduleSlotMinutes) =>
+                setForm({ ...form, scheduleSlotMinutes })
               }
-            >
-              {[15, 30, 45, 60].map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {minutes} min
-                </option>
-              ))}
-            </select>
+              ariaLabel="Selecionar intervalo"
+            />
           </label>
         </div>
         <button>Salvar agenda</button>
@@ -2420,7 +3581,7 @@ function SectionTitle({ eyebrow, title, action, compact }) {
   return (
     <div className={compact ? 'section-title compact-title' : 'section-title'}>
       <div>
-        <p className="eyebrow">{eyebrow}</p>
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <h2>{title}</h2>
       </div>
       {action}
@@ -2445,7 +3606,7 @@ function getPasswordIssues(password) {
   if (value.length < 8) issues.push('Use pelo menos 8 caracteres.');
   if (!/[A-Za-z]/.test(value)) issues.push('Adicione pelo menos uma letra.');
   if (!/[0-9]/.test(value)) issues.push('Adicione pelo menos um numero.');
-  if (!/[^A-Za-z0-9]/.test(value)) issues.push('Adicione pelo menos um simbolo.');
+  if (!/[^A-Za-z0-9]/.test(value)) issues.push('Adicione pelo menos um símbolo.');
 
   return issues;
 }
@@ -2625,6 +3786,37 @@ function localMonthKey(value) {
   return localDateKey(value).slice(0, 7);
 }
 
+function previousMonthKey(monthKey) {
+  const [year, month] = String(monthKey).split('-').map(Number);
+  return localMonthKey(new Date(year, month - 2, 1));
+}
+
+function formatMonthLabel(monthKey) {
+  const [year, month] = String(monthKey).split('-').map(Number);
+  if (!year || !month) return monthKey;
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, 1));
+}
+
+function percentageTrend(current, previous) {
+  if (!previous && !current) {
+    return { value: 0, direction: 'flat' };
+  }
+
+  if (!previous) {
+    return { value: 0, direction: 'flat' };
+  }
+
+  const change = Math.round(((current - previous) / previous) * 100);
+  return {
+    value: change,
+    direction: change === 0 ? 'flat' : change < 0 ? 'down' : 'up',
+  };
+}
+
 function appointmentDateKey(appointment) {
   return appointment.businessDate || localDateKey(appointment.createdAt);
 }
@@ -2658,6 +3850,66 @@ function weekdayLabel(date) {
   return new Intl.DateTimeFormat('pt-BR', { weekday: 'short' })
     .format(new Date(`${date}T12:00:00`))
     .replace('.', '');
+}
+
+function weekdayFullLabel(date) {
+  return new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(date);
+}
+
+function formatLongDate(date) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
+function scheduleWeekDays(centerDate) {
+  const center = new Date(`${centerDate}T12:00:00`);
+  const start = new Date(center);
+  start.setDate(center.getDate() - 2);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return {
+      date: toInputDate(date),
+      day: String(date.getDate()).padStart(2, '0'),
+      weekday: weekdayLabel(toInputDate(date)).slice(0, 3).toUpperCase(),
+    };
+  });
+}
+
+function monthCalendarDays(selectedDate) {
+  const selected = new Date(`${selectedDate}T12:00:00`);
+  const monthStartDate = new Date(selected.getFullYear(), selected.getMonth(), 1, 12);
+  const gridStart = new Date(monthStartDate);
+  gridStart.setDate(monthStartDate.getDate() - monthStartDate.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return {
+      date: toInputDate(date),
+      day: date.getDate(),
+      currentMonth: date.getMonth() === selected.getMonth(),
+    };
+  });
+}
+
+function capitalize(value) {
+  const text = String(value || '');
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+}
+
+function initials(value) {
+  const parts = String(value || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (parts.length === 0) return 'BP';
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
 }
 
 function formatDate(date) {
@@ -2698,3 +3950,6 @@ function money(cents) {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
+
+
+

@@ -219,7 +219,7 @@ class BarberShopService {
           ? validPartnerCodes[barbershop.partnerCode]?.label || 'Gratuito'
           : 'R$ 29,90',
         partnerCode: barbershop.partnerCode,
-        partnerLabel: validPartnerCodes[barbershop.partnerCode]?.label || '',
+        partnerLabel: validPartnerCodes[barbershop.partnerCode]?.label || 'Cliente próprio',
         partnerCommissionCents:
           validPartnerCodes[barbershop.partnerCode]?.partnerCommissionCents || 0,
         monthlyPriceCents: barbershop.monthlyPriceCents,
@@ -498,6 +498,7 @@ class BarberShopService {
 
   listProfessionals(barbershopId) {
     const targetBarbershopId = getTargetBarbershopId(barbershopId);
+    ensureOwnerProfessional(targetBarbershopId);
     return state.professionals.filter((item) => item.barbershopId === targetBarbershopId);
   }
 
@@ -643,6 +644,7 @@ class BarberShopService {
 
   listServices(barbershopId) {
     const targetBarbershopId = getTargetBarbershopId(barbershopId);
+    ensureDefaultServices(targetBarbershopId);
     return state.services.filter((item) => item.barbershopId === targetBarbershopId);
   }
 
@@ -661,15 +663,27 @@ class BarberShopService {
   }
 
   createAppointment(body) {
-    const professional = state.professionals.find(
-      (item) => item.id === body.professionalId,
-    );
     const isOtherService = body.serviceId === 'other';
-    const service = isOtherService
+    let service = isOtherService
       ? null
       : state.services.find((item) => item.id === body.serviceId);
+    let targetBarbershopId = getTargetBarbershopId(body.barbershopId) || service?.barbershopId || '';
+    ensureDefaultServices(targetBarbershopId);
 
-    if (!professional || (!service && !isOtherService)) {
+    if (!service && !isOtherService) {
+      service = state.services.find(
+        (item) => item.id === body.serviceId && item.barbershopId === targetBarbershopId,
+      );
+    }
+
+    const professional =
+      state.professionals.find((item) => item.id === body.professionalId) ||
+      ensureOwnerProfessional(targetBarbershopId) ||
+      state.professionals.find((item) => item.barbershopId === targetBarbershopId);
+
+    const hasFallbackServiceValue = Number(body.totalCents || 0) > 0;
+
+    if (!professional || (!service && !isOtherService && !hasFallbackServiceValue)) {
       return { error: 'Profissional ou servico nao encontrado.' };
     }
 
@@ -690,7 +704,7 @@ class BarberShopService {
 
     const appointment = {
       id: `att-${Date.now()}`,
-      barbershopId: professional.barbershopId || getTargetBarbershopId(body.barbershopId),
+      barbershopId: professional.barbershopId || targetBarbershopId,
       professionalId: professional.id,
       professionalName: professional.name,
       serviceId: service?.id || 'other',
@@ -725,7 +739,10 @@ class BarberShopService {
   }
 
   createSchedule(body) {
-    const professional = state.professionals.find((item) => item.id === body.professionalId);
+    const targetBarbershopId = getTargetBarbershopId(body.barbershopId);
+    const professional =
+      state.professionals.find((item) => item.id === body.professionalId) ||
+      ensureOwnerProfessional(targetBarbershopId);
 
     if (!professional) {
       return { error: 'Profissional nao encontrado.' };
@@ -766,7 +783,7 @@ class BarberShopService {
 
     const schedule = {
       id: `sch-${Date.now()}`,
-      barbershopId: professional.barbershopId || getTargetBarbershopId(body.barbershopId),
+      barbershopId: professional.barbershopId || targetBarbershopId,
       clientName: body.clientName || '',
       clientContact: body.clientContact || '',
       serviceName: body.serviceName || '',
@@ -940,11 +957,11 @@ function buildCouponSummary(barbershops) {
   const summary = {};
 
   for (const barbershop of barbershops) {
-    const code = normalizePartnerCode(barbershop.partnerCode) || 'SEM CUPOM';
+    const code = normalizePartnerCode(barbershop.partnerCode) || 'CLIENTE PROPRIO';
     const partner = validPartnerCodes[code];
     const item = summary[code] || {
       code,
-      label: partner?.label || 'Sem cupom',
+      label: partner?.label || 'Cliente próprio',
       count: 0,
       partnerCommissionCents: partner?.partnerCommissionCents || 0,
     };
@@ -1037,6 +1054,76 @@ function findBarbershop(barbershopId) {
 
 function getTargetBarbershopId(barbershopId) {
   return barbershopId || state.barbershop?.id || '';
+}
+
+function ensureOwnerProfessional(barbershopId) {
+  const targetBarbershopId = getTargetBarbershopId(barbershopId);
+  if (!targetBarbershopId) {
+    return null;
+  }
+
+  const owner = state.users.find(
+    (user) => user.role === 'owner' && user.barbershopId === targetBarbershopId,
+  );
+  if (!owner) {
+    return null;
+  }
+
+  const existing =
+    state.professionals.find((professional) => professional.id === owner.professionalId) ||
+    state.professionals.find((professional) => professional.ownerUserId === owner.id);
+  if (existing) {
+    owner.professionalId = existing.id;
+    return existing;
+  }
+
+  const professional = {
+    id: `pro-owner-${Date.now()}`,
+    barbershopId: targetBarbershopId,
+    name: owner.name,
+    email: owner.email,
+    contact: '',
+    color: '#f97316',
+    commissionType: 'percentage',
+    commissionValue: 0,
+    ownerUserId: owner.id,
+    active: true,
+  };
+
+  owner.professionalId = professional.id;
+  state.professionals.push(professional);
+  schedulePersist();
+  return professional;
+}
+
+function ensureDefaultServices(barbershopId) {
+  const targetBarbershopId = getTargetBarbershopId(barbershopId);
+  if (!targetBarbershopId) {
+    return;
+  }
+
+  const hasServices = state.services.some((service) => service.barbershopId === targetBarbershopId);
+  if (hasServices) {
+    return;
+  }
+
+  state.services.push(
+    {
+      id: `svc-${Date.now()}-1`,
+      barbershopId: targetBarbershopId,
+      name: 'Corte',
+      priceCents: 3500,
+      active: true,
+    },
+    {
+      id: `svc-${Date.now()}-2`,
+      barbershopId: targetBarbershopId,
+      name: 'Barba',
+      priceCents: 2500,
+      active: true,
+    },
+  );
+  schedulePersist();
 }
 
 function validateStrongPassword(password) {
