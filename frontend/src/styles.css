@@ -2226,27 +2226,6 @@ select option {
   top: 26px;
 }
 
-.schedule-filter {
-  align-items: center;
-  background: #111214;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  bottom: 98px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  color: #ffffff;
-  display: inline-flex;
-  flex-direction: column;
-  font-size: 14px;
-  font-weight: 700;
-  gap: 7px;
-  height: 104px;
-  justify-content: center;
-  position: fixed;
-  right: 34px;
-  width: 104px;
-  z-index: 4;
-}
-
 .schedule-week-view {
   display: grid;
   gap: 12px;

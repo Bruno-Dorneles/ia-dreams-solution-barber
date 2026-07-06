@@ -2276,11 +2276,6 @@ function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
           })}
         </section>
       )}
-
-      <button type="button" className="schedule-filter">
-        <Filter size={26} />
-        Filtros
-      </button>
     </div>
   );
 }
