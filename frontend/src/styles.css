@@ -4033,3 +4033,439 @@ select option {
     margin-top: 2px;
   }
 }
+
+@media (max-width: 430px) {
+  .barberpro-app-header {
+    grid-template-columns: 44px 1fr 86px;
+    height: 64px;
+    padding: 0 12px;
+  }
+
+  .app-header-brand {
+    gap: 7px;
+  }
+
+  .app-header-brand .h-12 {
+    height: 34px;
+    width: 34px;
+  }
+
+  .app-header-brand .text-\[32px\] {
+    font-size: 23px;
+  }
+
+  .app-header-brand strong {
+    font-size: 18px;
+  }
+
+  .app-header-brand span {
+    font-size: 8px;
+    letter-spacing: 0.18em;
+  }
+
+  .app-header-action {
+    border-radius: 11px;
+    height: 36px;
+    width: 36px;
+  }
+
+  .app-header-action svg {
+    height: 19px;
+    width: 19px;
+  }
+
+  .app-header-actions {
+    gap: 6px;
+  }
+
+  .app-nav {
+    border-radius: 20px 20px 0 0;
+    height: 76px;
+    padding: 6px 7px 12px;
+  }
+
+  .app-nav button {
+    font-size: 10px;
+    gap: 5px;
+    height: 56px;
+  }
+
+  .app-nav button svg {
+    height: 21px;
+    width: 21px;
+  }
+
+  .app-nav .nav-label {
+    font-size: 10px;
+  }
+
+  .app-nav button.featured {
+    height: 52px;
+    width: 52px;
+  }
+
+  .app-nav button.featured svg {
+    height: 28px;
+    width: 28px;
+  }
+
+  .management-screen,
+  .barberpro-schedule,
+  .settings-screen-shell,
+  .closing-screen,
+  .coming-soon-screen {
+    padding: 12px 14px 82px;
+  }
+
+  .barberpro-payments {
+    height: calc(100dvh - 64px);
+    padding: 10px 14px 82px;
+  }
+
+  .management-screen .management-greeting h1,
+  .barberpro-payments .payments-heading h1,
+  .settings-screen-shell .page-title,
+  .closing-screen .section-title h2,
+  .coming-soon-screen h1 {
+    font-size: 26px;
+  }
+
+  .management-greeting p,
+  .payments-heading p,
+  .schedule-title-row p {
+    font-size: 13px;
+  }
+
+  .payments-heading {
+    margin-bottom: 8px;
+  }
+
+  .payments-card,
+  .payments-summary-card {
+    border-radius: 14px;
+    padding: 10px;
+  }
+
+  .payments-select-field,
+  .payments-section-title {
+    font-size: 11px;
+    margin-bottom: 7px;
+  }
+
+  .payments-select-field div {
+    min-height: 40px;
+    padding: 0 12px;
+  }
+
+  .payments-select-field select {
+    font-size: 14px;
+  }
+
+  .payments-method-grid {
+    gap: 6px;
+  }
+
+  .payments-method-grid button {
+    border-radius: 12px;
+    min-height: 58px;
+    padding: 7px;
+  }
+
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 20px;
+    width: 20px;
+  }
+
+  .payments-method-grid strong {
+    font-size: 14px;
+  }
+
+  .method-check {
+    height: 20px;
+    right: 8px;
+    top: 8px;
+    width: 20px;
+  }
+
+  .method-check svg {
+    height: 14px;
+    width: 14px;
+  }
+
+  .payments-summary-card h2 {
+    font-size: 13px;
+  }
+
+  .payments-summary-card > div {
+    font-size: 13px;
+  }
+
+  .payments-total span,
+  .payments-total strong {
+    font-size: 16px;
+  }
+
+  .payments-charge-button {
+    font-size: 14px;
+    min-height: 42px;
+  }
+
+  .management-top-row {
+    gap: 8px;
+    margin-top: 2px;
+  }
+
+  .management-top-row .scope-control {
+    max-width: 44%;
+  }
+
+  .dropdown-select-button {
+    border-radius: 12px;
+    font-size: 13px;
+    min-height: 38px;
+    min-width: 100px;
+    padding: 0 28px 0 10px;
+  }
+
+  .dropdown-select-button::after {
+    height: 6px;
+    right: 12px;
+    top: 14px;
+    width: 6px;
+  }
+
+  .dropdown-select-menu {
+    border-radius: 12px;
+    max-height: 210px;
+    min-width: 168px;
+  }
+
+  .dropdown-select-menu button {
+    font-size: 13px;
+    min-height: 36px;
+  }
+
+  .management-summary-section,
+  .performance-section {
+    gap: 10px;
+  }
+
+  .management-summary-header h2,
+  .performance-section h2 {
+    font-size: 18px;
+  }
+
+  .management-summary-card {
+    gap: 6px;
+  }
+
+  .management-summary-card article {
+    padding: 9px 6px;
+  }
+
+  .summary-icon {
+    height: 28px;
+    width: 28px;
+  }
+
+  .summary-icon svg {
+    height: 16px;
+    width: 16px;
+  }
+
+  .revenue-line-card {
+    border-radius: 14px;
+    padding: 12px 10px 6px;
+  }
+
+  .revenue-line-header strong {
+    font-size: 22px;
+  }
+
+  .schedule-title-row h2 {
+    font-size: 26px;
+  }
+
+  .new-schedule-button {
+    border-radius: 12px;
+    font-size: 13px;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 12px;
+  }
+
+  .schedule-tabs {
+    margin-top: 18px;
+  }
+
+  .schedule-tabs button {
+    font-size: 12px;
+    gap: 5px;
+    min-height: 46px;
+  }
+
+  .schedule-tabs button svg {
+    height: 16px;
+    width: 16px;
+  }
+
+  .schedule-date-nav {
+    gap: 8px;
+    grid-template-columns: 44px 44px 1fr 44px 44px;
+    margin-top: 18px;
+  }
+
+  .schedule-date-nav button,
+  .schedule-date-picker,
+  .schedule-professional-picker,
+  .schedule-professional-picker .dropdown-select-button {
+    height: 44px;
+    min-width: 44px;
+  }
+
+  .schedule-date-nav button {
+    font-size: 28px;
+    padding-bottom: 3px;
+  }
+
+  .schedule-date-nav strong {
+    font-size: 18px;
+  }
+
+  .schedule-date-nav span {
+    font-size: 12px;
+    margin-top: 3px;
+  }
+
+  .schedule-professional-picker.icon-only-dropdown .dropdown-select-button {
+    height: 44px;
+    width: 44px;
+  }
+
+  .schedule-professional-picker .dropdown-select-button::before {
+    height: 17px;
+    width: 17px;
+  }
+
+  .schedule-week-strip {
+    margin-top: 14px;
+    padding: 10px 6px;
+  }
+
+  .schedule-week-strip button {
+    min-height: 58px;
+  }
+
+  .schedule-week-strip span {
+    font-size: 10px;
+  }
+
+  .schedule-week-strip strong {
+    font-size: 19px;
+    height: 34px;
+    width: 34px;
+  }
+
+  .schedule-time-row {
+    gap: 8px;
+    grid-template-columns: 58px 1fr;
+  }
+
+  .schedule-time-row time,
+  .schedule-appointment-card {
+    min-height: 70px;
+  }
+
+  .schedule-time-row time {
+    font-size: 16px;
+  }
+
+  .schedule-appointment-card {
+    border-radius: 11px;
+    padding: 9px 34px 9px 10px;
+  }
+
+  .schedule-avatar {
+    height: 36px;
+    width: 36px;
+  }
+
+  .schedule-card-fields input {
+    font-size: 13px;
+    min-height: 24px;
+  }
+
+  .settings-screen-shell .settings-tabs button {
+    font-size: 11px;
+    min-height: 36px;
+  }
+
+  .settings-screen-shell .panel {
+    padding: 14px;
+  }
+
+  .settings-screen-shell .section-title h2,
+  .settings-screen-shell .panel h2 {
+    font-size: 19px;
+  }
+
+  .settings-screen-shell .stack-form input,
+  .settings-screen-shell .stack-form select,
+  .settings-screen-shell .editable-row input,
+  .settings-screen-shell .editable-row select,
+  .settings-screen-shell .percent-field input,
+  .settings-screen-shell .dropdown-select-button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 370px) {
+  .barberpro-app-header {
+    grid-template-columns: 40px 1fr 78px;
+    padding: 0 10px;
+  }
+
+  .app-header-brand strong {
+    font-size: 16px;
+  }
+
+  .app-header-action {
+    height: 34px;
+    width: 34px;
+  }
+
+  .app-nav .nav-label {
+    font-size: 9px;
+  }
+
+  .app-nav button.featured {
+    height: 48px;
+    width: 48px;
+  }
+
+  .management-screen,
+  .barberpro-schedule,
+  .settings-screen-shell,
+  .closing-screen,
+  .coming-soon-screen {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .barberpro-payments {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .schedule-date-nav {
+    grid-template-columns: 40px 40px 1fr 40px 40px;
+  }
+
+  .schedule-date-nav strong {
+    font-size: 16px;
+  }
+
+  .schedule-date-nav span {
+    font-size: 11px;
+  }
+}
