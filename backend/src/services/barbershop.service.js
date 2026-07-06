@@ -884,35 +884,6 @@ class BarberShopService {
     return { message: 'Custo removido.' };
   }
 
-  pruneAppointmentsUntil(body = {}) {
-    const cutoffDate = normalizeBusinessDate(body.cutoffDate);
-    if (!cutoffDate) {
-      return { error: 'Informe uma data valida no formato YYYY-MM-DD.' };
-    }
-
-    if (body.confirmation !== 'APAGAR_VENDAS') {
-      return { error: 'Confirmacao invalida.' };
-    }
-
-    const beforeCount = state.appointments.length;
-    const removedAppointments = state.appointments.filter(
-      (appointment) => appointmentDateKey(appointment) <= cutoffDate,
-    );
-    state.appointments = state.appointments.filter(
-      (appointment) => appointmentDateKey(appointment) > cutoffDate,
-    );
-
-    schedulePersist();
-
-    return {
-      message: 'Vendas removidas.',
-      cutoffDate,
-      removedCount: removedAppointments.length,
-      remainingCount: state.appointments.length,
-      beforeCount,
-    };
-  }
-
   getReport({ period, date, month }) {
     const filtered = state.appointments.filter((appointment) => {
       if (period === 'daily') {
