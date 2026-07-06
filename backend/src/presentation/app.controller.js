@@ -86,6 +86,10 @@ class AppController {
     return this.barberShopService.createService(body);
   }
 
+  deleteService(serviceId) {
+    return this.barberShopService.deleteService(serviceId);
+  }
+
   createAppointment(body) {
     return this.barberShopService.createAppointment(body);
   }
@@ -187,6 +191,8 @@ Get('services')(AppController.prototype, 'listServices', Object.getOwnPropertyDe
 Query('barbershopId')(AppController.prototype, 'listServices', 0);
 Post('services')(AppController.prototype, 'createService', Object.getOwnPropertyDescriptor(AppController.prototype, 'createService'));
 Body()(AppController.prototype, 'createService', 0);
+Post('services/:serviceId/delete')(AppController.prototype, 'deleteService', Object.getOwnPropertyDescriptor(AppController.prototype, 'deleteService'));
+Param('serviceId')(AppController.prototype, 'deleteService', 0);
 
 Get('appointments')(AppController.prototype, 'listAppointments', Object.getOwnPropertyDescriptor(AppController.prototype, 'listAppointments'));
 Query('barbershopId')(AppController.prototype, 'listAppointments', 0);

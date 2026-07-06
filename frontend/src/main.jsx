@@ -15,7 +15,6 @@ import {
   CreditCard,
   Eye,
   EyeOff,
-  Filter,
   Mail,
   Home,
   Lock,
@@ -39,9 +38,6 @@ import {
 import barberproLoginHero from './assets/barberpro-login-hero.png';
 import barberproRegisterHero from './assets/barberpro-register-hero.png';
 import './styles.css';
-
-const defaultLogo =
-  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="230" height="56" viewBox="0 0 230 56"><rect width="230" height="56" rx="12" fill="none"/><text x="12" y="36" font-family="Arial Black,Arial" font-size="23" font-weight="900" fill="white" stroke="%23111827" stroke-width="4" paint-order="stroke">BRAGA</text><text x="104" y="36" font-family="Arial Black,Arial" font-size="23" font-weight="900" fill="white" stroke="%232563eb" stroke-width="4" paint-order="stroke">BARBER</text></svg>';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
@@ -98,6 +94,14 @@ function App() {
     sessionStorage.removeItem(temporarySessionKey);
     setSession(null);
   }
+
+  useEffect(() => {
+    if (session?.user && session.user.role !== 'admin' && !session.user.barbershopId) {
+      localStorage.removeItem(savedSessionKey);
+      sessionStorage.removeItem(temporarySessionKey);
+      setSession(null);
+    }
+  }, [session]);
 
   if (!session?.user) {
     return <AuthGateway onAuthenticated={handleAuthenticated} />;
@@ -1514,11 +1518,6 @@ function Workspace({ session, onLogout }) {
     };
   }, [user.barbershopId]);
 
-  const visibleAppointments = useMemo(
-    () => scopeAppointmentsByUser(appointments, user),
-    [appointments, user],
-  );
-
   return (
     <main
       className="app-shell"
@@ -1603,166 +1602,6 @@ function Workspace({ session, onLogout }) {
   );
 }
 
-function PaymentsScreen({ user, professionals, services, onSaved }) {
-  const canOwnerChoose = user.role === 'owner' && professionals.length > 1;
-  const defaultProfessionalId =
-    user.role === 'barber'
-      ? user.professionalId
-      : user.professionalId || professionals[0]?.id || '';
-  const [professionalId, setProfessionalId] = useState(defaultProfessionalId);
-  const [serviceId, setServiceId] = useState('');
-  const [customServiceName, setCustomServiceName] = useState('');
-  const [customPrice, setCustomPrice] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('pix');
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!professionalId && defaultProfessionalId) {
-      setProfessionalId(defaultProfessionalId);
-    }
-  }, [defaultProfessionalId, professionalId]);
-
-  const selectedService = services.find((service) => service.id === serviceId);
-  const isOther = serviceId === 'other';
-  const amountCents = isOther
-    ? Math.round(Number(customPrice || 0) * 100)
-    : selectedService?.priceCents || 0;
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setError('');
-
-    if (!professionalId) {
-      setError('Selecione ou cadastre um profissional antes de cobrar.');
-      return;
-    }
-
-    if (!serviceId) {
-      setError('Selecione um serviço.');
-      return;
-    }
-
-    if (amountCents <= 0) {
-      setError('Informe um valor valido.');
-      return;
-    }
-
-    const response = await api.post('/appointments', {
-      professionalId,
-      serviceId,
-      serviceName: isOther ? customServiceName || 'Outro' : undefined,
-      totalCents: amountCents,
-      paymentMethod,
-      businessDate: today(),
-    });
-
-    if (response.data.error) {
-      setError(response.data.error);
-      return;
-    }
-
-    setServiceId('');
-    setCustomServiceName('');
-    setCustomPrice('');
-    setSaved(true);
-    await onSaved();
-    window.setTimeout(() => setSaved(false), 1800);
-  }
-
-  return (
-    <div className="screen-column closing-screen">
-      <SectionTitle
-        eyebrow="Pagamentos"
-        title="Registrar atendimento"
-        action={saved ? <span className="success-pill">Salvo</span> : null}
-      />
-
-      <form className="panel quick-form" onSubmit={handleSubmit}>
-        {canOwnerChoose && (
-          <label>
-            Profissional
-            <select
-              value={professionalId}
-              onChange={(event) => setProfessionalId(event.target.value)}
-              required
-            >
-              <option value="">Selecione</option>
-              {professionals.map((professional) => (
-                <option key={professional.id} value={professional.id}>
-                  {professional.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-
-        <label>
-          Serviço
-          <select
-            value={serviceId}
-            onChange={(event) => setServiceId(event.target.value)}
-            required
-          >
-            <option value="">Selecione</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name} - {money(service.priceCents)}
-              </option>
-            ))}
-            <option value="other">Outro</option>
-          </select>
-        </label>
-
-        {isOther && (
-          <div className="two-columns">
-            <label>
-              Descrição
-              <input
-                value={customServiceName}
-                placeholder="Ex.: Produto, ajuste, pacote"
-                onChange={(event) => setCustomServiceName(event.target.value)}
-              />
-            </label>
-            <label>
-              Valor livre
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={customPrice}
-                onChange={(event) => setCustomPrice(event.target.value)}
-                required
-              />
-            </label>
-          </div>
-        )}
-
-        <div className="payment-grid">
-          {Object.entries(paymentLabels).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              className={paymentMethod === value ? 'active' : ''}
-              onClick={() => setPaymentMethod(value)}
-            >
-              {value.includes('card') ? <CreditCard size={18} /> : <Banknote size={18} />}
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {error && <Message tone="error">{error}</Message>}
-
-        <button className="primary-action" disabled={!amountCents}>
-          <Check size={20} />
-          Cobrar {amountCents ? money(amountCents) : ''}
-        </button>
-      </form>
-    </div>
-  );
-}
-
 function PaymentsScreenV2({ user, professionals, services, onSaved }) {
   const canOwnerChoose = user.role === 'owner' && professionals.length > 1;
   const firstProfessionalId = professionals[0]?.id || '';
@@ -1794,15 +1633,11 @@ function PaymentsScreenV2({ user, professionals, services, onSaved }) {
   const amountCents = isOther
     ? Math.round(Number(customPrice || 0) * 100)
     : selectedService?.priceCents || 0;
+  const chargeProfessionalId = professionalId || user.professionalId || firstProfessionalId || '';
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
-
-    if (!professionalId) {
-      setError('Selecione ou cadastre um profissional antes de cobrar.');
-      return;
-    }
 
     if (!serviceId) {
       setError('Selecione um serviço.');
@@ -1815,7 +1650,8 @@ function PaymentsScreenV2({ user, professionals, services, onSaved }) {
     }
 
     const response = await api.post('/appointments', {
-      professionalId,
+      barbershopId: user.barbershopId,
+      professionalId: chargeProfessionalId,
       serviceId,
       serviceName: isOther ? customServiceName || 'Outro' : undefined,
       totalCents: amountCents,
@@ -2054,22 +1890,6 @@ function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
   return (
     <div className="barberpro-schedule">
       <header className="schedule-hero">
-        <div className="schedule-brand-line">
-          <button type="button" className="schedule-icon-button" aria-label="Menu">
-            <Filter size={23} />
-          </button>
-          <div className="schedule-wordmark">
-            <BarberProLogoMark size="large" />
-            <div>
-              <h1>BarberPro</h1>
-              <span>IA Dreams</span>
-            </div>
-          </div>
-          <button type="button" className="schedule-icon-button" aria-label="Notificações">
-            <Bell size={24} />
-          </button>
-        </div>
-
         <div className="schedule-title-row">
           <div>
             <h2>Agendamentos</h2>
@@ -2280,139 +2100,6 @@ function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
   );
 }
 
-function ScheduleScreen({ professionals, schedules, barbershop, onSaved }) {
-  const [selectedDate, setSelectedDate] = useState(today());
-  const [professionalId, setProfessionalId] = useState(professionals[0]?.id || '');
-  const [drafts, setDrafts] = useState({});
-
-  useEffect(() => {
-    if (!professionalId && professionals[0]?.id) {
-      setProfessionalId(professionals[0].id);
-    }
-  }, [professionalId, professionals]);
-
-  useEffect(() => {
-    const nextDrafts = {};
-    for (const slot of businessSlots(barbershop)) {
-      const startsAt = `${selectedDate}T${slot}`;
-      const schedule = schedules.find(
-        (item) =>
-          item.professionalId === professionalId &&
-          scheduleDateTimeKey(item.startsAt) === startsAt,
-      );
-      nextDrafts[startsAt] = {
-        clientName: schedule?.clientName || '',
-        clientContact: schedule?.clientContact || '',
-        serviceName: schedule?.serviceName || '',
-      };
-    }
-    setDrafts(nextDrafts);
-  }, [barbershop, professionalId, schedules, selectedDate]);
-
-  function updateDraft(startsAt, field, value) {
-    setDrafts((current) => ({
-      ...current,
-      [startsAt]: {
-        ...current[startsAt],
-        [field]: value,
-      },
-    }));
-  }
-
-  async function saveLine(startsAt) {
-    if (!professionalId) return;
-
-    const draft = drafts[startsAt] || {};
-    await api.post('/schedules', {
-      professionalId,
-      startsAt,
-      clientName: draft.clientName || '',
-      clientContact: draft.clientContact || '',
-      serviceName: draft.serviceName || '',
-    });
-    onSaved();
-  }
-
-  return (
-    <div className="screen-column">
-      <div className="agenda-toolbar">
-        <button
-          className={selectedDate === today() ? 'active' : ''}
-          onClick={() => setSelectedDate(today())}
-        >
-          Hoje
-        </button>
-        <button
-          className={selectedDate === tomorrow() ? 'active' : ''}
-          onClick={() => setSelectedDate(tomorrow())}
-        >
-          Amanhã
-        </button>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(event) => setSelectedDate(event.target.value)}
-        />
-        <select
-          value={professionalId}
-          onChange={(event) => setProfessionalId(event.target.value)}
-        >
-          {professionals.map((professional) => (
-            <option key={professional.id} value={professional.id}>
-              {professional.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <section className="panel agenda-panel">
-        <div className="agenda-grid agenda-head">
-          <span>Horário</span>
-          <span>Nome</span>
-          <span>Contato</span>
-          <span>Serviço</span>
-          <span>Status</span>
-        </div>
-        {businessSlots(barbershop).map((slot) => {
-          const startsAt = `${selectedDate}T${slot}`;
-          const draft = drafts[startsAt] || {};
-          const isClosed = Boolean(
-            draft.clientName || draft.clientContact || draft.serviceName,
-          );
-
-          return (
-            <div className="agenda-grid agenda-line" key={startsAt}>
-              <strong>{slot}</strong>
-              <input
-                value={draft.clientName || ''}
-                onChange={(event) => updateDraft(startsAt, 'clientName', event.target.value)}
-                onBlur={() => saveLine(startsAt)}
-                placeholder="Nome"
-              />
-              <input
-                value={draft.clientContact || ''}
-                onChange={(event) => updateDraft(startsAt, 'clientContact', event.target.value)}
-                onBlur={() => saveLine(startsAt)}
-                placeholder="Contato"
-              />
-              <input
-                value={draft.serviceName || ''}
-                onChange={(event) => updateDraft(startsAt, 'serviceName', event.target.value)}
-                onBlur={() => saveLine(startsAt)}
-                placeholder="Serviço"
-              />
-              <span
-                className={isClosed ? 'status closed' : 'status open'}
-                title={isClosed ? 'Agendado' : 'Aberto'}
-              />
-            </div>
-          );
-        })}
-      </section>
-    </div>
-  );
-}
-
 function ManagementScreen({
   user,
   barbershop,
@@ -2585,30 +2272,6 @@ function ManagementScreen({
         <RevenueChart items={chartItems} mode={chartMode} onModeChange={setChartMode} />
       </section>
 
-      <section className="panel chart-panel legacy-chart-panel">
-        <div className="panel-title">
-          <div>
-            <p className="eyebrow">Faturamento</p>
-            <h2>{chartMode === 'week' ? 'Semana' : 'Mês todo'}</h2>
-          </div>
-          <div className="segmented">
-            <button
-              className={chartMode === 'week' ? 'active' : ''}
-              onClick={() => setChartMode('week')}
-            >
-              Semana
-            </button>
-            <button
-              className={chartMode === 'month' ? 'active' : ''}
-              onClick={() => setChartMode('month')}
-            >
-              Mês
-            </button>
-          </div>
-        </div>
-        <RevenueChart items={chartItems} />
-      </section>
-
       {user.role === 'owner' && (
         <div className="finance-actions">
           <CostsAccordion costs={costs} onSaved={onSaved} />
@@ -2688,7 +2351,8 @@ function ManagementScreen({
 }
 
 function RevenueChart({ items, mode, onModeChange }) {
-  const maxValue = Math.max(...items.map((item) => item.revenueCents), 1);
+  const maxRevenueCents = Math.max(...items.map((item) => item.revenueCents), 0);
+  const maxValue = getRevenueChartMaxCents(maxRevenueCents);
   const totalCents = items.reduce((sum, item) => sum + item.revenueCents, 0);
   const width = 640;
   const height = 230;
@@ -2745,17 +2409,17 @@ function RevenueChart({ items, mode, onModeChange }) {
           </filter>
         </defs>
 
-        {[0, 0.33, 0.66, 1].map((ratio) => {
+        {[0, 1 / 3, 2 / 3, 1].map((ratio) => {
           const y = chartBottom - ratio * chartHeight;
           return <line key={ratio} x1={chartLeft} x2={chartRight} y1={y} y2={y} />;
         })}
 
-        {[0, 0.5, 1].map((ratio) => {
-          const value = Math.round((maxValue * ratio) / 1000);
+        {[0, 1 / 3, 2 / 3, 1].map((ratio) => {
+          const value = Math.round(maxValue * ratio);
           const y = chartBottom - ratio * chartHeight;
           return (
             <text key={ratio} className="revenue-y-label" x="16" y={y + 4}>
-              {value}k
+              {formatCompactMoney(value)}
             </text>
           );
         })}
@@ -3541,6 +3205,11 @@ function ServicesEditor({ services, onSaved }) {
     onSaved();
   }
 
+  async function removeService(serviceId) {
+    await api.post(`/services/${serviceId}/delete`);
+    onSaved();
+  }
+
   return (
     <div className="panel">
       <SectionTitle eyebrow="Serviços" title="Tabela" compact />
@@ -3561,11 +3230,22 @@ function ServicesEditor({ services, onSaved }) {
         />
         <button>Adicionar serviço</button>
       </form>
-      <div className="compact-list">
+      <div className="services-list">
         {services.map((item) => (
-          <span key={item.id}>
-            {item.name} <strong>{money(item.priceCents)}</strong>
-          </span>
+          <div className="service-row" key={item.id}>
+            <span className="service-info">
+              <span>{item.name}</span>
+              <strong>{money(item.priceCents)}</strong>
+            </span>
+            <button
+              className="service-remove-button"
+              onClick={() => removeService(item.id)}
+              title="Remover serviço"
+              type="button"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         ))}
       </div>
     </div>
@@ -3632,11 +3312,6 @@ function saveSession(session, remember) {
   sessionStorage.setItem(temporarySessionKey, value);
 }
 
-function scopeAppointmentsByUser(appointments, user) {
-  if (user.role === 'owner') return appointments;
-  return appointments.filter((item) => item.professionalId === user.professionalId);
-}
-
 function buildReport(appointments) {
   return appointments.reduce(
     (summary, appointment) => ({
@@ -3657,7 +3332,10 @@ function buildReport(appointments) {
 function buildChartItems(appointments, mode, professionals) {
   const dates = mode === 'week' ? lastNDates(7) : daysInCurrentMonth();
 
-  return dates.map((date) => {
+  return dates.map((date, index) => {
+    const day = Number(date.slice(8, 10));
+    const isLastMonthDay = mode === 'month' && index === dates.length - 1;
+    const shouldShowMonthLabel = mode !== 'month' || day % 2 === 1 || isLastMonthDay;
     const items = appointments.filter((appointment) =>
       appointmentDateKey(appointment) === date,
     );
@@ -3677,7 +3355,7 @@ function buildChartItems(appointments, mode, professionals) {
 
     return {
       key: date,
-      label: mode === 'week' ? weekdayLabel(date) : String(Number(date.slice(8, 10))),
+      label: mode === 'week' ? weekdayLabel(date) : shouldShowMonthLabel ? String(day) : '',
       segments,
       ...report,
     };
@@ -3918,30 +3596,31 @@ function timeOnly(date) {
   }).format(new Date(date));
 }
 
-function screenTitle(screen) {
-  return {
-    payments: 'Pagamentos',
-    schedule: 'Agendamentos',
-    management: 'Gestão',
-    settings: 'Configurações',
-    closing: 'Fechamento',
-  }[screen];
-}
-
-function formatDateTime(date) {
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(date));
-}
-
 function money(cents) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   }).format((cents || 0) / 100);
+}
+
+function formatCompactMoney(cents) {
+  const value = (cents || 0) / 100;
+
+  if (value >= 1000) {
+    return `R$ ${new Intl.NumberFormat('pt-BR', {
+      maximumFractionDigits: 1,
+    }).format(value / 1000)} mil`;
+  }
+
+  return `R$ ${new Intl.NumberFormat('pt-BR', {
+    maximumFractionDigits: 0,
+  }).format(value)}`;
+}
+
+function getRevenueChartMaxCents(maxRevenueCents) {
+  const maxRevenue = Math.max(0, maxRevenueCents / 100);
+  const chartMax = Math.max(300, (Math.floor(maxRevenue / 150) + 1) * 150);
+  return chartMax * 100;
 }
 
 createRoot(document.getElementById('root')).render(<App />);

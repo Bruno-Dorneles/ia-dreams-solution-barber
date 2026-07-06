@@ -662,12 +662,31 @@ class BarberShopService {
     return service;
   }
 
+  deleteService(serviceId) {
+    const index = state.services.findIndex((item) => item.id === serviceId);
+    if (index === -1) {
+      return { error: 'Servico nao encontrado.' };
+    }
+
+    state.services.splice(index, 1);
+    schedulePersist();
+    return { ok: true };
+  }
+
   createAppointment(body) {
     const isOtherService = body.serviceId === 'other';
     let service = isOtherService
       ? null
       : state.services.find((item) => item.id === body.serviceId);
-    let targetBarbershopId = getTargetBarbershopId(body.barbershopId) || service?.barbershopId || '';
+    const requestedProfessional = state.professionals.find((item) => item.id === body.professionalId);
+    let targetBarbershopId =
+      getTargetBarbershopId(body.barbershopId) ||
+      requestedProfessional?.barbershopId ||
+      service?.barbershopId ||
+      '';
+    if (!targetBarbershopId && state.barbershops.length === 1) {
+      targetBarbershopId = state.barbershops[0].id;
+    }
     ensureDefaultServices(targetBarbershopId);
 
     if (!service && !isOtherService) {
@@ -677,14 +696,18 @@ class BarberShopService {
     }
 
     const professional =
-      state.professionals.find((item) => item.id === body.professionalId) ||
+      requestedProfessional ||
       ensureOwnerProfessional(targetBarbershopId) ||
       state.professionals.find((item) => item.barbershopId === targetBarbershopId);
 
     const hasFallbackServiceValue = Number(body.totalCents || 0) > 0;
 
-    if (!professional || (!service && !isOtherService && !hasFallbackServiceValue)) {
-      return { error: 'Profissional ou servico nao encontrado.' };
+    if (!professional) {
+      return { error: 'Profissional da barbearia nao encontrado. Abra Configuracoes e confira o perfil do dono.' };
+    }
+
+    if (!service && !isOtherService && !hasFallbackServiceValue) {
+      return { error: 'Servico nao encontrado. Selecione outro servico ou cadastre novamente.' };
     }
 
     if (!paymentMethods.includes(body.paymentMethod)) {
