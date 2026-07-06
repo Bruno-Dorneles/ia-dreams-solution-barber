@@ -46,6 +46,10 @@ class AppController {
     return this.barberShopService.updateAdminBarbershop(barbershopId, body);
   }
 
+  pruneAppointmentsUntil(body) {
+    return this.barberShopService.pruneAppointmentsUntil(body);
+  }
+
   getBarberShop(barbershopId) {
     return this.barberShopService.getBarberShop(barbershopId);
   }
@@ -165,6 +169,8 @@ Get('admin/barbershops')(AppController.prototype, 'listAdminBarbershops', Object
 Post('admin/barbershops/:barbershopId')(AppController.prototype, 'updateAdminBarbershop', Object.getOwnPropertyDescriptor(AppController.prototype, 'updateAdminBarbershop'));
 Param('barbershopId')(AppController.prototype, 'updateAdminBarbershop', 0);
 Body()(AppController.prototype, 'updateAdminBarbershop', 1);
+Post('admin/appointments/prune-until')(AppController.prototype, 'pruneAppointmentsUntil', Object.getOwnPropertyDescriptor(AppController.prototype, 'pruneAppointmentsUntil'));
+Body()(AppController.prototype, 'pruneAppointmentsUntil', 0);
 
 Get('barbershop')(AppController.prototype, 'getBarberShop', Object.getOwnPropertyDescriptor(AppController.prototype, 'getBarberShop'));
 Query('barbershopId')(AppController.prototype, 'getBarberShop', 0);
