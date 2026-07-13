@@ -2582,6 +2582,7 @@ function ManagementScreen({
     },
   ];
   const serviceDistributionItems = buildServiceDistribution(currentMonthAppointments);
+  const paymentDistributionItems = buildPaymentDistribution(currentMonthAppointments);
 
   return (
     <div className="screen-column management-screen">
@@ -2632,7 +2633,11 @@ function ManagementScreen({
           <h2>Desempenho</h2>
           <RevenueChart items={chartItems} mode={chartMode} onModeChange={setChartMode} />
         </section>
-        <ServiceDistributionChart items={serviceDistributionItems} total={currentMonthAppointments.length} />
+        <FinanceDistributionCarousel
+          serviceItems={serviceDistributionItems}
+          serviceTotal={currentMonthAppointments.length}
+          paymentItems={paymentDistributionItems}
+        />
       </section>
 
       {user.role === 'owner' && (
@@ -2714,6 +2719,8 @@ function ManagementScreen({
 }
 
 function RevenueChart({ items, mode, onModeChange }) {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const dragStartX = useRef(null);
   const maxRevenueCents = Math.max(...items.map((item) => item.revenueCents), 0);
   const maxValue = getRevenueChartMaxCents(maxRevenueCents);
   const totalCents = items.reduce((sum, item) => sum + item.revenueCents, 0);
@@ -2738,8 +2745,27 @@ function RevenueChart({ items, mode, onModeChange }) {
     : '';
   const lastPoint = points[points.length - 1];
 
+  function handleDragStart(event) {
+    dragStartX.current = event.clientX ?? event.touches?.[0]?.clientX ?? null;
+  }
+
+  function handleDragEnd(event) {
+    if (dragStartX.current === null) return;
+    const endX = event.clientX ?? event.changedTouches?.[0]?.clientX ?? null;
+    if (endX === null) return;
+
+    const distance = endX - dragStartX.current;
+    dragStartX.current = null;
+    if (Math.abs(distance) < 36) return;
+
+    setActiveSlide((current) => {
+      if (distance < 0) return Math.min(1, current + 1);
+      return Math.max(0, current - 1);
+    });
+  }
+
   return (
-    <div className="revenue-line-card">
+    <div className="revenue-line-card revenue-carousel-card">
       <div className="revenue-line-header">
         <div>
           <span>Faturamento</span>
@@ -2757,68 +2783,268 @@ function RevenueChart({ items, mode, onModeChange }) {
         />
       </div>
 
-      <svg className="revenue-line-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Gráfico de faturamento">
-        <defs>
-          <linearGradient id="revenueArea" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.42" />
-            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
-          </linearGradient>
-          <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
+      <div
+        className="revenue-carousel-viewport"
+        onPointerDown={handleDragStart}
+        onPointerUp={handleDragEnd}
+        onTouchStart={handleDragStart}
+        onTouchEnd={handleDragEnd}
+      >
+        <div
+          className="revenue-carousel-track"
+          style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+        >
+          <div className="revenue-carousel-slide">
+            <svg className="revenue-line-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Gráfico de faturamento em linha">
+              <defs>
+                <linearGradient id="revenueArea" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#2563eb" stopOpacity="0.42" />
+                  <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+                </linearGradient>
+                <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
 
-        {[0, 1 / 3, 2 / 3, 1].map((ratio) => {
-          const y = chartBottom - ratio * chartHeight;
-          return <line key={ratio} x1={chartLeft} x2={chartRight} y1={y} y2={y} />;
-        })}
+              {[0, 1 / 3, 2 / 3, 1].map((ratio) => {
+                const y = chartBottom - ratio * chartHeight;
+                return <line key={ratio} x1={chartLeft} x2={chartRight} y1={y} y2={y} />;
+              })}
 
-        {[0, 1 / 3, 2 / 3, 1].map((ratio) => {
-          const value = Math.round(maxValue * ratio);
-          const y = chartBottom - ratio * chartHeight;
-          return (
-            <text key={ratio} className="revenue-y-label" x="16" y={y + 4}>
-              {formatCompactMoney(value)}
-            </text>
-          );
-        })}
+              {[0, 1 / 3, 2 / 3, 1].map((ratio) => {
+                const value = Math.round(maxValue * ratio);
+                const y = chartBottom - ratio * chartHeight;
+                return (
+                  <text key={ratio} className="revenue-y-label" x="16" y={y + 4}>
+                    {formatCompactMoney(value)}
+                  </text>
+                );
+              })}
 
-        {areaPath && <path className="revenue-area" d={areaPath} />}
-        {linePath && <path className="revenue-line" d={linePath} filter="url(#lineGlow)" />}
+              {areaPath && <path className="revenue-area" d={areaPath} />}
+              {linePath && <path className="revenue-line" d={linePath} filter="url(#lineGlow)" />}
 
-        {lastPoint && (
-          <>
-            <text className="revenue-value-badge" x={Math.max(chartLeft, lastPoint.x - 44)} y={lastPoint.y - 18}>
-              {money(lastPoint.revenueCents).replace('R$ ', 'R$ ')}
-            </text>
-            <circle className="revenue-dot-outer" cx={lastPoint.x} cy={lastPoint.y} r="11" />
-            <circle className="revenue-dot" cx={lastPoint.x} cy={lastPoint.y} r="6" />
-          </>
-        )}
+              {lastPoint && (
+                <>
+                  <text className="revenue-value-badge" x={Math.max(chartLeft, lastPoint.x - 44)} y={lastPoint.y - 18}>
+                    {money(lastPoint.revenueCents).replace('R$ ', 'R$ ')}
+                  </text>
+                  <circle className="revenue-dot-outer" cx={lastPoint.x} cy={lastPoint.y} r="11" />
+                  <circle className="revenue-dot" cx={lastPoint.x} cy={lastPoint.y} r="6" />
+                </>
+              )}
 
-        {points.map((point) => (
-          <text key={point.key} className="revenue-x-label" x={point.x} y="210">
-            {point.label}
-          </text>
+              {points.map((point) => (
+                <text key={point.key} className="revenue-x-label" x={point.x} y="210">
+                  {point.label}
+                </text>
+              ))}
+            </svg>
+          </div>
+
+          <div className="revenue-carousel-slide">
+            <RevenueBarChart items={items} maxValue={maxValue} />
+          </div>
+        </div>
+      </div>
+
+      <div className="revenue-carousel-dots" aria-label="Alternar visualização de faturamento">
+        {[
+          { key: 'line', label: 'Linha' },
+          { key: 'bars', label: 'Barras' },
+        ].map((slide, index) => (
+          <button
+            key={slide.key}
+            type="button"
+            className={activeSlide === index ? 'active' : ''}
+            onClick={() => setActiveSlide(index)}
+            aria-label={`Mostrar gráfico de ${slide.label}`}
+          />
         ))}
-      </svg>
+      </div>
     </div>
   );
 }
 
+function RevenueBarChart({ items, maxValue }) {
+  const width = 640;
+  const height = 230;
+  const chartTop = 26;
+  const chartBottom = 174;
+  const chartLeft = 58;
+  const chartRight = 594;
+  const chartHeight = chartBottom - chartTop;
+  const chartWidth = chartRight - chartLeft;
+  const barGap = items.length > 16 ? 5 : 10;
+  const barWidth = Math.max(8, Math.min(34, (chartWidth - barGap * Math.max(0, items.length - 1)) / Math.max(1, items.length)));
+  const step = items.length > 1 ? chartWidth / items.length : chartWidth;
+
+  return (
+    <svg className="revenue-line-chart revenue-bar-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Gráfico de faturamento em barras">
+      {[0, 1 / 3, 2 / 3, 1].map((ratio) => {
+        const y = chartBottom - ratio * chartHeight;
+        return <line key={ratio} x1={chartLeft} x2={chartRight} y1={y} y2={y} />;
+      })}
+
+      {[0, 1 / 3, 2 / 3, 1].map((ratio) => {
+        const value = Math.round(maxValue * ratio);
+        const y = chartBottom - ratio * chartHeight;
+        return (
+          <text key={ratio} className="revenue-y-label" x="16" y={y + 4}>
+            {formatCompactMoney(value)}
+          </text>
+        );
+      })}
+
+      {items.map((item, index) => {
+        const x = chartLeft + index * step + (step - barWidth) / 2;
+        const barHeight = Math.max(item.revenueCents > 0 ? 4 : 0, (item.revenueCents / maxValue) * chartHeight);
+        const y = chartBottom - barHeight;
+        const segments = item.segments?.length ? item.segments : [
+          { professionalId: 'total', color: '#2563eb', revenueCents: item.revenueCents },
+        ];
+        const segmentTotal = segments.reduce((sum, segment) => sum + (segment.revenueCents || 0), 0) || item.revenueCents || 1;
+        let segmentOffset = chartBottom;
+
+        return (
+          <g key={item.key}>
+            {barHeight > 0 && (
+              <rect
+                className="revenue-bar-bg"
+                x={x}
+                y={y}
+                width={barWidth}
+                height={barHeight}
+                rx="7"
+              />
+            )}
+            {segments.map((segment, segmentIndex) => {
+              const segmentHeight = Math.max(2, ((segment.revenueCents || 0) / segmentTotal) * barHeight);
+              segmentOffset -= segmentHeight;
+              return (
+                <rect
+                  key={segment.professionalId}
+                  className="revenue-bar-segment"
+                  x={x}
+                  y={segmentOffset}
+                  width={barWidth}
+                  height={segmentHeight}
+                  rx={segmentIndex === segments.length - 1 ? 7 : 0}
+                  fill={segment.color || '#2563eb'}
+                />
+              );
+            })}
+            <text className="revenue-x-label" x={x + barWidth / 2} y="210">
+              {item.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 const serviceDistributionColors = ['#2563eb', '#60a5fa', '#8b5cf6', '#7c9ce8', '#9ca3af'];
 
-function ServiceDistributionChart({ items, total }) {
+function FinanceDistributionCarousel({ serviceItems, serviceTotal, paymentItems }) {
+  const [activeSlide, setActiveSlide] = useState(0);
+  const dragStartX = useRef(null);
+  const slides = [
+    {
+      key: 'services',
+      label: 'Serviços',
+      content: <ServiceDistributionChart items={serviceItems} total={serviceTotal} embedded />,
+    },
+    {
+      key: 'payments',
+      label: 'Pagamentos',
+      content: <PaymentDistributionChart items={paymentItems} />,
+    },
+  ];
+
+  function handleDragStart(event) {
+    dragStartX.current = event.clientX ?? event.touches?.[0]?.clientX ?? null;
+  }
+
+  function handleDragEnd(event) {
+    if (dragStartX.current === null) return;
+    const endX = event.clientX ?? event.changedTouches?.[0]?.clientX ?? null;
+    if (endX === null) return;
+
+    const distance = endX - dragStartX.current;
+    dragStartX.current = null;
+    if (Math.abs(distance) < 36) return;
+
+    setActiveSlide((current) => {
+      if (distance < 0) return Math.min(slides.length - 1, current + 1);
+      return Math.max(0, current - 1);
+    });
+  }
+
+  return (
+    <section
+      className="finance-distribution-carousel"
+      aria-label="Indicadores financeiros"
+      onPointerDown={handleDragStart}
+      onPointerUp={handleDragEnd}
+      onTouchStart={handleDragStart}
+      onTouchEnd={handleDragEnd}
+    >
+      <div
+        className="finance-carousel-track"
+        style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+      >
+        {slides.map((slide) => (
+          <div className="finance-carousel-slide" key={slide.key}>
+            {slide.content}
+          </div>
+        ))}
+      </div>
+
+      <div className="finance-carousel-dots" aria-label="Alternar indicador">
+        {slides.map((slide, index) => (
+          <button
+            key={slide.key}
+            type="button"
+            className={activeSlide === index ? 'active' : ''}
+            onClick={() => setActiveSlide(index)}
+            aria-label={`Mostrar ${slide.label}`}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PaymentDistributionChart({ items }) {
+  return (
+    <section className="payment-distribution-card">
+      <h2>Formas de pagamento</h2>
+      <div className="payment-distribution-list">
+        {items.map((item) => (
+          <div key={item.method}>
+            <span className="payment-method-label">
+              <i className={item.method}>{item.icon}</i>
+              {item.label}
+            </span>
+            <strong>{money(item.totalCents)}</strong>
+            <em>{item.percent}%</em>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+function ServiceDistributionChart({ items, total, embedded = false }) {
   const radius = 44;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
 
   return (
-    <section className="service-distribution-card">
+    <section className={`service-distribution-card ${embedded ? 'embedded' : ''}`}>
       <h2>Distribuição de serviços</h2>
       <div className="service-distribution-content">
         <div className="service-donut-wrap">
@@ -3776,6 +4002,27 @@ function buildServiceDistribution(appointments) {
   }));
 }
 
+function buildPaymentDistribution(appointments) {
+  const methods = [
+    { method: 'cash', label: 'Dinheiro', icon: <Banknote size={18} /> },
+    { method: 'credit_card', label: 'Cartão de Crédito', icon: <CreditCard size={18} /> },
+    { method: 'pix', label: 'Pix', icon: <WalletCards size={18} /> },
+    { method: 'debit_card', label: 'Cartão de Débito', icon: <CreditCard size={18} /> },
+  ];
+  const totalCents = appointments.reduce((sum, appointment) => sum + (appointment.totalCents || 0), 0);
+
+  return methods.map((method) => {
+    const methodTotalCents = appointments
+      .filter((appointment) => appointment.paymentMethod === method.method)
+      .reduce((sum, appointment) => sum + (appointment.totalCents || 0), 0);
+
+    return {
+      ...method,
+      totalCents: methodTotalCents,
+      percent: totalCents ? Math.round((methodTotalCents / totalCents) * 100) : 0,
+    };
+  });
+}
 function buildChartItems(appointments, mode, professionals) {
   const dates = mode === 'week' ? lastNDates(7) : daysInCurrentMonth();
 
@@ -3792,13 +4039,15 @@ function buildChartItems(appointments, mode, professionals) {
         const professionalAppointments = items.filter(
           (appointment) => appointment.professionalId === professional.id,
         );
+        const professionalReport = buildReport(professionalAppointments);
         return {
           professionalId: professional.id,
           color: professional.color || '#f97316',
-          commissionCents: buildReport(professionalAppointments).commissionCents,
+          revenueCents: professionalReport.revenueCents,
+          commissionCents: professionalReport.commissionCents,
         };
       })
-      .filter((segment) => segment.commissionCents > 0);
+      .filter((segment) => segment.revenueCents > 0);
 
     return {
       key: date,
@@ -4071,6 +4320,13 @@ function getRevenueChartMaxCents(maxRevenueCents) {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
+
+
+
+
+
+
+
 
 
 
