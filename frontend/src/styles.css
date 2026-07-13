@@ -1,21 +1,64 @@
-@tailwind components;
+﻿@tailwind components;
 @tailwind utilities;
 
 :root {
   color: #111827;
-  background: #f3f4f6;
+  background: #050506;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
+  scrollbar-color: #17181b #050506;
+  scrollbar-width: thin;
+}
+
+html {
+  background: #050506;
+  scrollbar-gutter: stable;
+  scrollbar-color: #17181b #050506;
+  scrollbar-width: thin;
 }
 
 body {
+  background: #050506;
   margin: 0;
   overflow-x: hidden;
+}
+
+body,
+.app-shell,
+.app-content,
+.barberpro-payments,
+.barberpro-schedule,
+.management-screen,
+.closing-screen,
+.settings-screen-shell,
+.dropdown-select-menu {
+  scrollbar-color: #17181b #050506;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #050506;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #17181b;
+  border: 2px solid #050506;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2c31;
 }
 
 button,
@@ -30,6 +73,14 @@ button {
 
 svg {
   flex-shrink: 0;
+}
+
+.barberpro-logo-glyph {
+  color: rgba(255, 255, 255, 0.92);
+  display: block;
+  height: 72%;
+  transform: translateX(-4%);
+  width: 72%;
 }
 
 select {
@@ -133,16 +184,6 @@ select option {
   font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
-}
-
-.status-chip {
-  background: #dcfce7;
-  border-radius: 999px;
-  color: #166534;
-  font-size: 12px;
-  font-weight: 900;
-  padding: 5px 8px;
-  text-align: center;
 }
 
 .payment-dot {
@@ -320,8 +361,7 @@ select option {
 }
 
 .auth-links button,
-.back-button,
-.logged-user button {
+.back-button {
   background: transparent;
   border: 0;
   color: #0f766e;
@@ -477,34 +517,6 @@ select option {
   margin: 6px 0 0;
 }
 
-.logged-user {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  display: flex;
-  gap: 12px;
-  padding: 0;
-}
-
-.logged-user button {
-  align-items: center;
-  background: #111827;
-  border-radius: 8px;
-  color: white;
-  display: inline-flex;
-  gap: 6px;
-  min-height: 38px;
-  padding: 0 10px;
-}
-
-.compact-user strong {
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .screen-column {
   display: grid;
   gap: 18px;
@@ -519,48 +531,6 @@ select option {
 
 .scope-control {
   position: relative;
-}
-
-.scope-control > button {
-  background: var(--accent-color, #111827);
-  border: 0;
-  border-radius: 8px;
-  color: white;
-  font-weight: 900;
-  min-height: 44px;
-  padding: 0 16px;
-}
-
-.scope-menu {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
-  display: grid;
-  gap: 4px;
-  margin-top: 8px;
-  min-width: 230px;
-  padding: 8px;
-  position: absolute;
-  z-index: 4;
-}
-
-.scope-menu button {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: 8px;
-  color: #111827;
-  display: flex;
-  font-weight: 800;
-  gap: 8px;
-  justify-content: flex-start;
-  min-height: 38px;
-  padding: 0 10px;
-}
-
-.scope-menu button:hover {
-  background: #f8fafc;
 }
 
 .color-dot {
@@ -585,15 +555,6 @@ select option {
   gap: 12px;
   justify-content: space-between;
   margin-bottom: 16px;
-}
-
-.success-pill {
-  background: #dcfce7;
-  border-radius: 999px;
-  color: #166534;
-  font-size: 13px;
-  font-weight: 800;
-  padding: 6px 10px;
 }
 
 .primary-action,
@@ -718,14 +679,12 @@ select option {
 }
 
 .cost-list,
-.schedule-list,
 .closing-list {
   display: grid;
   gap: 8px;
 }
 
 .cost-row,
-.schedule-row,
 .closing-row {
   align-items: center;
   background: #f8fafc;
@@ -743,28 +702,13 @@ select option {
   padding: 8px 10px;
 }
 
-.cost-row button,
-.schedule-row button {
+.cost-row button {
   align-items: center;
   background: transparent;
   border: 0;
   color: #475569;
   display: inline-flex;
   justify-content: center;
-}
-
-.schedule-row {
-  grid-template-columns: 1fr 34px;
-}
-
-.schedule-row div {
-  display: grid;
-  gap: 3px;
-}
-
-.schedule-row span,
-.schedule-row small {
-  color: #64748b;
 }
 
 .metric-panel {
@@ -821,19 +765,6 @@ select option {
   color: #111827 !important;
 }
 
-.back-inline {
-  align-items: center;
-  background: #111827;
-  border: 0;
-  border-radius: 8px;
-  color: white;
-  display: inline-flex;
-  font-weight: 900;
-  gap: 7px;
-  min-height: 38px;
-  padding: 0 12px;
-}
-
 .theme-grid {
   display: grid;
   gap: 10px;
@@ -870,8 +801,7 @@ select option {
 }
 
 .metric,
-.table-row,
-.compact-list span {
+.table-row {
   align-items: center;
   background: #f8fafc;
   border: 1px solid #edf2f7;
@@ -921,12 +851,6 @@ select option {
   display: grid;
   gap: 10px;
   grid-template-columns: 70px 1fr 1fr 1fr auto;
-}
-
-.compact-list {
-  display: grid;
-  gap: 8px;
-  margin-top: 16px;
 }
 
 .editable-list {
@@ -1138,10 +1062,6 @@ select option {
     flex-direction: column;
   }
 
-  .compact-user {
-    align-items: flex-end;
-    flex-direction: column;
-  }
 }
 
 .barberpro-schedule {
@@ -1161,7 +1081,6 @@ select option {
   padding: 28px 32px 116px;
 }
 
-.payments-topbar,
 .payments-heading,
 .payments-form,
 .payments-card,
@@ -1171,77 +1090,8 @@ select option {
   margin-right: auto;
 }
 
-.payments-topbar {
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  justify-content: space-between;
-  margin: -28px -32px 32px;
-  max-width: none;
-  padding: 22px 32px;
-}
-
-.payments-menu,
-.payments-logout {
-  align-items: center;
-  background: #111214;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  color: #ffffff;
-  display: inline-flex;
-  height: 58px;
-  justify-content: center;
-  width: 58px;
-}
-
-.payments-menu {
-  background: transparent;
-  border-color: transparent;
-}
-
-.payments-brand {
-  text-align: center;
-}
-
-.payments-brand strong {
-  color: #ffffff;
-  display: block;
-  font-size: 26px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.payments-brand span {
-  color: #9a9ea6;
-  display: block;
-  font-size: 12px;
-  letter-spacing: 0.28em;
-  margin-top: 6px;
-  text-transform: uppercase;
-}
-
 .payments-heading {
   margin-bottom: 26px;
-}
-
-.payments-eyebrow {
-  align-items: center;
-  color: #c9ccd3;
-  display: flex;
-  font-size: 15px;
-  font-weight: 700;
-  gap: 14px;
-  letter-spacing: 0.16em;
-  margin-bottom: 20px;
-  text-transform: uppercase;
-}
-
-.payments-eyebrow svg {
-  background: #111214;
-  border-radius: 999px;
-  box-sizing: content-box;
-  padding: 12px;
 }
 
 .payments-heading h1 {
@@ -1263,12 +1113,21 @@ select option {
   gap: 18px;
 }
 
+.payments-main-column {
+  display: grid;
+  gap: 18px;
+}
+
 .payments-card,
 .payments-summary-card {
   background: #111214;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 24px;
+}
+
+.payments-card-title {
+  display: none;
 }
 
 .payments-select-field,
@@ -1307,7 +1166,7 @@ select option {
 .payments-custom-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: 1fr 150px;
+  grid-template-columns: 150px 1fr;
   margin-bottom: 22px;
 }
 
@@ -1456,14 +1315,6 @@ select option {
     padding-bottom: 38px;
   }
 
-  .payments-topbar {
-    border-bottom: 0;
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 760px;
-    padding-left: 0;
-    padding-right: 0;
-  }
 }
 
 @media (max-width: 520px) {
@@ -1474,10 +1325,6 @@ select option {
   .payments-method-grid button {
     min-height: 132px;
     padding: 14px;
-  }
-
-  .payments-brand strong {
-    font-size: 21px;
   }
 
   .payments-custom-grid {
@@ -1493,7 +1340,6 @@ select option {
 .schedule-title-row,
 .schedule-date-nav,
 .schedule-tabs,
-.schedule-professional-select,
 .schedule-time-row,
 .schedule-appointment-card {
   align-items: center;
@@ -1729,26 +1575,6 @@ select option {
   background: transparent;
   box-shadow: inset 0 0 0 2px #2563eb;
   color: #ffffff;
-}
-
-.schedule-professional-select {
-  gap: 12px;
-  margin-top: 18px;
-}
-
-.schedule-professional-select span {
-  color: #9a9ea6;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.schedule-professional-select select {
-  background: #111214;
-  border: 1px solid #2a2c31;
-  border-radius: 10px;
-  color: #ffffff;
-  min-height: 42px;
-  padding: 0 12px;
 }
 
 .schedule-timeline {
@@ -2013,12 +1839,473 @@ select option {
   font-size: 17px;
 }
 
+.barberpro-schedule {
+  background: #050506;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 28px var(--app-page-inset) 38px;
+}
+
+.schedule-hero {
+  margin: 0;
+}
+
+.schedule-title-row {
+  align-items: center;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.schedule-title-row h2 {
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.schedule-title-row p {
+  color: #9a9ea6;
+  font-size: 15px;
+  margin-top: 8px;
+}
+
+.new-schedule-button {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.24);
+  color: #ffffff;
+  font-size: 14px;
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+.new-schedule-button:hover {
+  background: linear-gradient(135deg, #2f6ff0, #2563eb);
+}
+
+.schedule-workspace {
+  align-items: start;
+  display: grid;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+}
+
+.schedule-card-grid {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.schedule-name-column {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.schedule-card-grid input {
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  display: block;
+  font-size: 14px;
+  min-width: 0;
+  outline: 0;
+  overflow: hidden;
+  padding: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.schedule-name-column input:first-child {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.schedule-name-column input:last-child,
+.schedule-contact-field {
+  color: #c9ccd3;
+}
+
+.schedule-card-grid input::placeholder {
+  color: #6b7280;
+}
+
+.schedule-card-grid .schedule-status-dot {
+  justify-self: start;
+  position: static;
+  transform: none;
+}
+
+.schedule-action-cell {
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.schedule-action-cell .schedule-more {
+  position: static;
+}
+.schedule-side-panel {
+  background: #0b0b0d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.schedule-main-panel {
+  display: block;
+  overflow: hidden;
+}
+
+.schedule-tabs {
+  background: #0b0b0d;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  margin: 0;
+}
+
+.schedule-tabs button {
+  color: #9a9ea6;
+  font-size: 14px;
+  min-height: 50px;
+}
+
+.schedule-tabs button.active {
+  background: rgba(37, 99, 235, 0.08);
+  box-shadow: inset 0 -1px 0 #2563eb;
+  color: #3b82f6;
+}
+
+.schedule-date-nav {
+  background: #0f1013;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 10px;
+  grid-template-columns: 52px 52px minmax(0, 1fr) 52px 52px;
+  margin: 0;
+  padding: 12px;
+}
+
+.schedule-date-nav button,
+.schedule-date-picker,
+.schedule-professional-picker,
+.schedule-professional-picker.icon-only-dropdown .dropdown-select-button {
+  background: #111214;
+  border-color: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  height: 52px;
+  min-width: 52px;
+}
+
+.schedule-date-nav button {
+  color: #ffffff;
+  font-size: 30px;
+  padding: 0 0 3px;
+}
+
+.schedule-date-nav strong {
+  font-size: 20px;
+}
+
+.schedule-date-nav span {
+  font-size: 13px;
+}
+
+.schedule-week-strip {
+  background: #0f1013;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.schedule-week-strip button {
+  border-radius: 12px;
+  min-height: 58px;
+}
+
+.schedule-week-strip span {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+.schedule-week-strip strong {
+  font-size: 20px;
+  height: 34px;
+  width: 34px;
+}
+
+.schedule-week-strip button.active strong {
+  background: #2563eb;
+  box-shadow: 0 0 22px rgba(37, 99, 235, 0.38);
+}
+
+.schedule-timeline {
+  gap: 0;
+  margin: 0;
+  padding: 14px 0 18px;
+}
+
+.schedule-time-row {
+  gap: 8px;
+  grid-template-columns: 82px minmax(0, 1fr);
+  padding: 0 14px;
+}
+
+.schedule-time-row + .schedule-time-row {
+  margin-top: 8px;
+}
+
+.schedule-time-row time {
+  background: #111214;
+  border-color: rgba(255, 255, 255, 0.06);
+  font-size: 16px;
+  height: 70px;
+}
+
+.schedule-appointment-card {
+  background: #111214;
+  border-color: rgba(255, 255, 255, 0.06);
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 56px minmax(0, 1fr);
+  min-height: 70px;
+  padding: 10px 14px 10px 18px;
+}
+
+.schedule-appointment-card::before {
+  border-radius: 999px;
+  width: 4px;
+}
+
+.schedule-appointment-card.open::before {
+  background: #2563eb;
+}
+
+.schedule-avatar {
+  font-size: 15px;
+  height: 48px;
+  margin-right: 0;
+  width: 48px;
+}
+
+.schedule-avatar-open {
+  color: #c9ccd3;
+}
+
+.schedule-card-fields {
+  display: grid;
+  gap: 4px;
+}
+
+.schedule-card-fields > input {
+  font-size: 15px;
+}
+
+.schedule-card-fields > div {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(110px, 1fr) minmax(100px, 0.75fr);
+  margin-top: 0;
+}
+
+.schedule-card-fields > div input {
+  font-size: 14px;
+}
+
+.schedule-status-dot {
+  align-items: center;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #c9ccd3;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 9px;
+  height: auto;
+  right: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+}
+
+.schedule-status-dot i {
+  border-radius: 999px;
+  display: inline-block;
+  height: 9px;
+  width: 9px;
+}
+
+.schedule-status-dot.open i {
+  background: #2563eb;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.56);
+}
+
+.schedule-status-dot.confirmed i,
+.schedule-status-dot.scheduled i {
+  background: #16c784;
+  box-shadow: 0 0 12px rgba(22, 199, 132, 0.56);
+}
+
+.schedule-more {
+  font-size: 24px;
+  right: 14px;
+  top: 19px;
+}
+
+.schedule-inline-action {
+  background: transparent;
+  border: 1px solid rgba(37, 99, 235, 0.45);
+  border-radius: 10px;
+  color: #3b82f6;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 38px;
+  padding: 0 18px;
+}
+
+
+
+
+.schedule-side-panel {
+  display: grid;
+  gap: 20px;
+  padding: 22px 18px;
+}
+
+.schedule-side-panel h3 {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.schedule-summary-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.schedule-summary-grid article {
+  background: #111214;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  display: grid;
+  gap: 5px;
+  min-height: 132px;
+  padding: 18px;
+}
+
+.schedule-summary-grid svg {
+  background: rgba(37, 99, 235, 0.12);
+  border-radius: 12px;
+  color: #2563eb;
+  padding: 8px;
+  height: 40px;
+  width: 40px;
+}
+
+.schedule-summary-grid strong {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  margin-top: 8px;
+}
+
+.schedule-summary-grid span,
+.schedule-summary-grid small {
+  color: #9a9ea6;
+  font-size: 13px;
+}
+
+.schedule-summary-grid small {
+  align-items: center;
+  display: inline-flex;
+  gap: 7px;
+}
+
+.schedule-summary-grid i {
+  border-radius: 999px;
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+}
+
+.schedule-summary-grid i.green {
+  background: #16c784;
+}
+
+.schedule-summary-grid i.blue {
+  background: #2563eb;
+}
+
+.schedule-summary-grid i.red {
+  background: #ff4d4f;
+}
+
+.schedule-quick-filters {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+}
+
+.schedule-quick-filters label {
+  display: grid;
+  gap: 6px;
+}
+
+.schedule-quick-filters label > span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.schedule-quick-filters .dropdown-select,
+.schedule-quick-filters .dropdown-select-button {
+  width: 100%;
+}
+
+.schedule-quick-filters .dropdown-select-button {
+  justify-content: flex-start;
+  min-height: 54px;
+}
+
+.schedule-clear-filters {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #9a9ea6;
+  font-size: 14px;
+  font-weight: 600;
+  min-height: 52px;
+}
+
 @media (min-width: 900px) {
   .barberpro-schedule {
-    border-radius: 24px;
     margin: 0;
-    min-height: calc(100vh - 36px);
-    padding-bottom: 38px;
+    min-height: calc(100vh - 82px);
+  }
+}
+
+@media (max-width: 1180px) {
+  .schedule-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  
+
+
+.schedule-side-panel {
+    order: 2;
   }
 }
 
@@ -2059,6 +2346,196 @@ select option {
 
 .app-shell {
   background: #050506;
+  --app-page-inset: 38px;
+}
+
+@media (min-width: 821px) {
+  .app-shell {
+    grid-template-columns: 250px 1fr;
+  }
+
+  .app-nav {
+    align-items: stretch;
+    background: #050506;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 26px;
+    height: 100vh;
+    padding: 22px 14px;
+  }
+
+  .nav-brand {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    color: #ffffff;
+    display: flex;
+    gap: 10px;
+    height: auto;
+    justify-content: flex-start;
+    margin: 0;
+    overflow: visible;
+    padding-bottom: 18px;
+    padding-left: 14px;
+    position: relative;
+    width: 100%;
+  }
+
+  .nav-brand::after {
+    background: rgba(255, 255, 255, 0.08);
+    bottom: 0;
+    content: '';
+    height: 1px;
+    left: 10px;
+    position: absolute;
+    right: 10px;
+  }
+
+  .nav-brand .h-\[52px\] {
+    background: linear-gradient(180deg, rgba(31, 32, 36, 0.95), rgba(17, 18, 20, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow:
+      0 0 24px rgba(255, 255, 255, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    height: 50px;
+    width: 50px;
+  }
+
+  .nav-brand .barberpro-logo-glyph {
+    height: 37px;
+    width: 37px;
+  }
+
+  .nav-brand strong {
+    color: #ffffff;
+    display: block;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 0.98;
+    text-align: center;
+  }
+
+  .nav-brand span {
+    color: #c9ccd3;
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    line-height: 1;
+    margin-top: 6px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .nav-items {
+    display: grid;
+    gap: 5px;
+  }
+
+  .nav-items-mobile {
+    display: none;
+  }
+
+  .app-nav .nav-items-desktop button {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 12px;
+    color: #c9ccd3;
+    display: flex;
+    flex-direction: row;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 14px;
+    height: 46px;
+    justify-content: flex-start;
+    padding: 0 14px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .app-nav .nav-items-desktop button:hover {
+    background: rgba(255, 255, 255, 0.04);
+    transform: none;
+  }
+
+  .app-nav .nav-items-desktop button:hover::after {
+    display: none;
+  }
+
+  .app-nav .nav-items-desktop button.active {
+    background: #111214;
+    color: #2563eb;
+  }
+
+  .app-nav .nav-items-desktop .nav-label {
+    font-size: 14px;
+    line-height: 1;
+    text-align: left;
+  }
+
+  .nav-user-card {
+    align-items: center;
+    background: #0b0b0d;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    color: #ffffff;
+    display: grid;
+    gap: 11px;
+    grid-template-columns: 42px minmax(0, 1fr);
+    margin-bottom: 16px;
+    margin-top: auto;
+    padding: 14px;
+  }
+
+  .nav-user-avatar {
+    align-items: center;
+    background: #17181b;
+    border-radius: 999px;
+    color: #ffffff;
+    display: inline-flex;
+    font-size: 20px;
+    font-weight: 700;
+    height: 42px;
+    justify-content: center;
+    width: 42px;
+  }
+
+  .nav-user-card strong,
+  .nav-user-card span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .nav-user-card strong {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .nav-user-card span {
+    color: #9a9ea6;
+    font-size: 13px;
+    margin-top: 3px;
+  }
+
+  .nav-user-card small {
+    align-items: center;
+    color: #9a9ea6;
+    display: inline-flex;
+    font-size: 13px;
+    gap: 7px;
+    margin-top: 9px;
+  }
+
+  .nav-user-card i {
+    background: #16c784;
+    border-radius: 999px;
+    display: inline-block;
+    height: 8px;
+    width: 8px;
+  }
 }
 
 .app-content:has(.barberpro-payments),
@@ -2075,21 +2552,21 @@ select option {
 
 .management-screen {
   gap: 18px;
-  padding: 22px 38px 38px;
+  padding: 22px var(--app-page-inset) 38px;
 }
 
 .closing-screen {
   background: #050506;
   gap: 18px;
   min-height: calc(100vh - 82px);
-  padding: 22px 38px 38px;
+  padding: 22px var(--app-page-inset) 38px;
 }
 
 .settings-screen-shell {
   background: #050506;
   color: #ffffff;
   min-height: calc(100vh - 82px);
-  padding: 22px 38px 38px;
+  padding: 22px var(--app-page-inset) 38px;
 }
 
 .settings-screen-shell .page-title {
@@ -2255,31 +2732,6 @@ select option {
 
 .settings-screen-shell .editable-list {
   gap: 12px;
-}
-
-.settings-screen-shell .compact-list {
-  display: flex;
-  gap: 10px;
-  margin-top: 16px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scroll-snap-type: x proximity;
-}
-
-.settings-screen-shell .compact-list span {
-  align-items: center;
-  background: rgba(5, 5, 6, 0.32);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 14px;
-  color: #ffffff;
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 12px;
-  justify-content: space-between;
-  min-height: 50px;
-  min-width: 190px;
-  padding: 0 14px;
-  scroll-snap-align: start;
 }
 
 .settings-screen-shell .services-list {
@@ -2615,6 +3067,154 @@ select option {
   font-weight: 700;
 }
 
+.finance-charts-grid {
+  align-items: stretch;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+}
+
+.performance-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.performance-section .revenue-line-card {
+  flex: 1;
+}
+
+.service-distribution-card {
+  align-self: stretch;
+  background: #111214;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  margin-top: 36px;
+  overflow: hidden;
+  padding: 18px;
+}
+
+.service-distribution-card h2 {
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.service-distribution-content {
+  align-items: center;
+  display: grid;
+  flex: 1;
+  gap: 18px;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.service-donut-wrap {
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.service-donut {
+  height: 182px;
+  transform: rotate(-90deg);
+  width: 182px;
+}
+
+.service-donut-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 18;
+}
+
+.service-donut-segment {
+  fill: none;
+  stroke-linecap: butt;
+  stroke-width: 18;
+  transition: stroke-dasharray 0.2s ease;
+}
+
+.service-donut-center {
+  align-items: center;
+  background: #111214;
+  border-radius: 999px;
+  display: grid;
+  height: 82px;
+  justify-items: center;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 82px;
+}
+
+.service-donut-center strong {
+  color: #ffffff;
+  font-size: 29px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.service-donut-center span {
+  color: #9a9ea6;
+  font-size: 13px;
+  margin-top: -10px;
+}
+
+.service-distribution-list {
+  display: grid;
+  gap: 14px;
+}
+
+.service-distribution-list div {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.service-distribution-list span {
+  align-items: center;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 14px;
+  gap: 9px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-distribution-list i {
+  border-radius: 999px;
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 11px;
+  width: 11px;
+}
+
+.service-distribution-list strong {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  margin-left: 12px;
+}
+
+@media (max-width: 1120px) {
+  .finance-charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .service-distribution-card {
+    margin-top: 0;
+  }
+}
+
 .management-summary-section {
   display: grid;
   gap: 12px;
@@ -2884,20 +3484,6 @@ select option {
   margin: 0;
 }
 
-.closing-screen .back-inline {
-  align-items: center;
-  background: rgba(17, 18, 20, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  color: #ffffff;
-  display: inline-flex;
-  font-size: 15px;
-  font-weight: 700;
-  gap: 8px;
-  min-height: 46px;
-  padding: 0 18px;
-}
-
 .closing-screen .reports-grid {
   gap: 14px;
 }
@@ -2990,18 +3576,45 @@ select option {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #ffffff;
   display: grid;
-  grid-template-columns: 96px 1fr 96px;
+  grid-template-columns: 96px 1fr 112px;
   height: 82px;
-  padding: 0 28px;
+  padding: 0 var(--app-page-inset);
   position: sticky;
   top: 0;
   z-index: 20;
 }
 
+.app-header-fullscreen {
+  background: transparent;
+  border-color: transparent;
+  grid-column: 1;
+  justify-self: start;
+}
+
+@media (min-width: 1025px) {
+  .app-header-fullscreen {
+    height: 46px;
+    justify-content: flex-start;
+    justify-self: start;
+    width: 24px;
+  }
+}
+
+.app-header-fullscreen:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.app-header-back {
+  display: none;
+  grid-column: 1;
+}
+
 .app-header-brand {
   align-items: center;
-  display: inline-flex;
+  display: none;
   gap: 12px;
+  grid-column: 2;
   justify-self: center;
 }
 
@@ -3031,7 +3644,9 @@ select option {
 .app-header-actions {
   display: inline-flex;
   gap: 10px;
+  grid-column: 3;
   justify-content: flex-end;
+  justify-self: end;
 }
 
 .app-header-action {
@@ -3046,6 +3661,30 @@ select option {
   width: 46px;
 }
 
+@media (min-width: 821px) and (max-width: 1024px) {
+  .app-shell {
+    --app-page-inset: 38px;
+  }
+
+  .barberpro-app-header {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+    padding: 0 var(--app-page-inset);
+  }
+
+  .app-header-fullscreen {
+    display: none !important;
+  }
+
+  .app-header-back {
+    display: inline-flex !important;
+    justify-self: start;
+  }
+
+  .app-header-actions {
+    justify-self: end;
+  }
+}
+
 .app-nav {
   background: #050506;
   border-right-color: rgba(255, 255, 255, 0.08);
@@ -3055,6 +3694,22 @@ select option {
 .nav-brand {
   background: #111214;
   border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 821px) {
+  .app-nav > .nav-brand {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .app-nav > .nav-brand .h-\[52px\] {
+    background: linear-gradient(180deg, rgba(31, 32, 36, 0.95), rgba(17, 18, 20, 0.95)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    box-shadow:
+      0 0 24px rgba(255, 255, 255, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  }
 }
 
 .app-nav button {
@@ -3098,7 +3753,7 @@ select option {
 .coming-soon-screen {
   background: #050506;
   min-height: calc(100vh - 82px);
-  padding: 22px 38px 38px;
+  padding: 22px var(--app-page-inset) 38px;
 }
 
 .coming-soon-card {
@@ -3144,7 +3799,7 @@ select option {
   margin: 0;
   min-height: 0;
   overflow: auto;
-  padding: 22px 38px 38px;
+  padding: 22px var(--app-page-inset) 38px;
 }
 
 .payments-heading,
@@ -3158,16 +3813,6 @@ select option {
 .payments-heading {
   margin-bottom: 24px;
   margin-top: 4px;
-}
-
-.payments-eyebrow {
-  font-size: 12px;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.payments-eyebrow svg {
-  padding: 9px;
 }
 
 .payments-heading h1 {
@@ -3186,9 +3831,15 @@ select option {
   align-items: stretch;
   display: grid;
   flex: 1;
-  gap: 16px;
-  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.82fr);
   min-height: 0;
+}
+
+.payments-main-column {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
 }
 
 .payments-card,
@@ -3205,49 +3856,72 @@ select option {
 .payments-card {
   display: flex;
   flex-direction: column;
-  padding: 28px;
+  padding: 24px;
 }
 
-.payments-select-field,
-.payments-section-title {
-  font-size: 12px;
+.payments-card-title {
+  display: block;
   margin-bottom: 18px;
 }
 
+.payments-card-title h2 {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.payments-card-title p {
+  color: #9a9ea6;
+  font-size: 15px;
+  margin: 14px 0 0;
+}
+
+.payments-select-field {
+  margin-bottom: 0;
+}
+
+.payments-select-field > span {
+  display: none;
+}
+
 .payments-select-field div {
-  background: rgba(5, 5, 6, 0.2);
-  margin-top: 14px;
-  min-height: 78px;
-  padding: 0 20px;
+  background: rgba(5, 5, 6, 0.22);
+  margin-top: 0;
+  min-height: 54px;
+  padding: 0 18px;
 }
 
 .payments-select-field select {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .payments-custom-grid {
-  margin-bottom: 14px;
+  margin-bottom: 0;
+  margin-top: 14px;
 }
 
 .payments-method-grid {
   flex: 1;
   gap: 14px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   min-height: 0;
 }
 
 .payments-method-grid button {
-  min-height: 132px;
+  min-height: 142px;
   padding: 18px;
 }
 
 .payments-method-grid strong {
-  font-size: 21px;
-  margin-top: 12px;
+  font-size: 18px;
+  margin-top: 10px;
 }
 
 .payments-method-grid small {
-  font-size: 15px;
+  display: none;
+  font-size: 14px;
   margin-top: 6px;
 }
 
@@ -3262,26 +3936,26 @@ select option {
   align-self: stretch;
   display: flex;
   flex-direction: column;
+  margin-top: 0;
+  min-height: 312px;
   padding: 28px;
 }
 
-@media (max-width: 899px) {
-  .payments-method-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 .payments-summary-card h2 {
-  margin-bottom: 12px;
+  color: #ffffff;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+  margin-bottom: 22px;
+  text-transform: none;
 }
 
 .payments-summary-card > div {
-  margin-top: 10px;
+  margin-top: 18px;
 }
 
 .payments-total {
-  margin-top: 16px !important;
-  padding-top: 16px;
+  margin-top: 24px !important;
+  padding-top: 26px;
 }
 
 .payments-total span,
@@ -3303,7 +3977,6 @@ select option {
 
 .management-screen .management-greeting h1,
 .barberpro-payments .payments-heading h1,
-.barberpro-schedule .schedule-heading h1,
 .settings-screen-shell .page-title,
 .closing-screen .section-title h2,
 .coming-soon-screen h1 {
@@ -3317,6 +3990,7 @@ select option {
   .app-shell {
     display: block;
     min-height: 100vh;
+    --app-page-inset: 18px;
   }
 
   .barberpro-app-header {
@@ -3324,13 +3998,22 @@ select option {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     grid-template-columns: 50px 1fr 96px;
     height: 72px;
-    padding: 0 14px;
+    padding: 0 var(--app-page-inset);
     position: sticky;
     top: 0;
     z-index: 60;
   }
 
+  .app-header-fullscreen {
+    display: none;
+  }
+
+  .app-header-back {
+    display: inline-flex;
+  }
+
   .app-header-brand {
+    display: inline-flex;
     gap: 8px;
   }
 
@@ -3364,7 +4047,7 @@ select option {
   .barberpro-payments {
     height: calc(100dvh - 72px);
     overflow: hidden;
-    padding: 12px 18px 90px;
+    padding: 12px var(--app-page-inset) 90px;
   }
 
   .payments-heading {
@@ -3465,12 +4148,12 @@ select option {
 
   .barberpro-schedule {
     min-height: calc(100vh - 72px);
-    padding: 16px 18px 92px;
+    padding: 16px var(--app-page-inset) 92px;
   }
 
   .coming-soon-screen {
     min-height: calc(100vh - 72px);
-    padding: 16px 18px 92px;
+    padding: 16px var(--app-page-inset) 92px;
   }
 
   .app-nav {
@@ -3493,8 +4176,20 @@ select option {
     z-index: 50;
   }
 
-  .nav-brand {
+  .app-nav .nav-brand,
+  .app-nav .nav-items-desktop,
+  .app-nav .nav-user-card {
     display: none;
+  }
+
+  .app-nav .nav-items-mobile {
+    align-items: center;
+    display: grid;
+    gap: 0;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: 100%;
+    width: 100%;
   }
 
   .app-nav button {
@@ -3588,18 +4283,6 @@ select option {
 
   .settings-screen-shell .button-row {
     flex-direction: column;
-  }
-
-  .settings-screen-shell .compact-list {
-    display: flex;
-    margin-left: -2px;
-    margin-right: -2px;
-    overflow-x: auto;
-  }
-
-  .settings-screen-shell .compact-list span {
-    flex-basis: 180px;
-    min-width: 180px;
   }
 
   .settings-screen-shell .services-list {
@@ -3778,7 +4461,40 @@ select option {
   }
 }
 
+@media (min-width: 1025px) {
+  .app-shell {
+    --app-page-inset: 38px;
+  }
+
+  .barberpro-app-header {
+    grid-template-columns: 96px minmax(0, 1fr) 112px;
+    height: 82px;
+    padding: 0 var(--app-page-inset);
+  }
+
+  .app-header-fullscreen {
+    display: inline-flex !important;
+    justify-self: start;
+  }
+
+  .app-header-back {
+    display: none !important;
+  }
+
+  .app-header-brand {
+    display: none !important;
+  }
+
+  .app-header-actions {
+    justify-self: end;
+  }
+}
+
 @media (max-width: 430px) {
+  .app-shell {
+    --app-page-inset: 14px;
+  }
+
   .app-shell,
   .app-content,
   .barberpro-payments,
@@ -3817,7 +4533,7 @@ select option {
   .barberpro-app-header {
     grid-template-columns: 44px 1fr 86px;
     height: 64px;
-    padding: 0 12px;
+    padding: 0 var(--app-page-inset);
   }
 
   .app-header-brand {
@@ -3863,6 +4579,22 @@ select option {
     padding: 6px 7px 12px;
   }
 
+  .app-nav .nav-brand,
+  .app-nav .nav-items-desktop,
+  .app-nav .nav-user-card {
+    display: none;
+  }
+
+  .app-nav .nav-items-mobile {
+    align-items: center;
+    display: grid;
+    gap: 0;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: 100%;
+    width: 100%;
+  }
+
   .app-nav button {
     font-size: 10px;
     gap: 5px;
@@ -3893,12 +4625,29 @@ select option {
   .settings-screen-shell,
   .closing-screen,
   .coming-soon-screen {
-    padding: 12px 14px 82px;
+    padding: 12px var(--app-page-inset) 82px;
   }
 
   .barberpro-payments {
     height: calc(100dvh - 64px);
-    padding: 10px 14px 82px;
+    padding: 10px var(--app-page-inset) 82px;
+  }
+
+  .payments-form {
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .payments-main-column {
+    gap: 10px;
+  }
+
+  .payments-card-title {
+    display: none;
+  }
+
+  .payments-select-field > span {
+    display: block;
   }
 
   .management-screen .management-greeting h1,
@@ -3932,6 +4681,7 @@ select option {
   }
 
   .payments-select-field div {
+    margin-top: 7px;
     min-height: 40px;
     padding: 0 12px;
   }
@@ -3942,6 +4692,7 @@ select option {
 
   .payments-method-grid {
     gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .payments-method-grid button {
@@ -3972,7 +4723,10 @@ select option {
   }
 
   .payments-summary-card h2 {
+    color: #c9ccd3;
     font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
 
   .payments-summary-card > div {
@@ -4059,6 +4813,54 @@ select option {
 
   .revenue-line-header strong {
     font-size: 22px;
+  }
+
+  .service-distribution-card {
+    padding: 14px 12px;
+  }
+
+  .service-distribution-card h2 {
+    font-size: 15px;
+  }
+
+  .service-distribution-content {
+    gap: 12px;
+    grid-template-columns: 132px minmax(0, 1fr);
+  }
+
+  .service-donut {
+    height: 132px;
+    width: 132px;
+  }
+
+  .service-donut-track,
+  .service-donut-segment {
+    stroke-width: 16;
+  }
+
+  .service-donut-center {
+    height: 62px;
+    width: 62px;
+  }
+
+  .service-donut-center strong {
+    font-size: 22px;
+  }
+
+  .service-donut-center span {
+    font-size: 12px;
+  }
+
+  .service-distribution-list {
+    gap: 11px;
+  }
+
+  .service-distribution-list span {
+    font-size: 12px;
+  }
+
+  .service-distribution-list strong {
+    font-size: 13px;
   }
 
   .schedule-title-row h2 {
@@ -4214,9 +5016,13 @@ select option {
 }
 
 @media (max-width: 370px) {
+  .app-shell {
+    --app-page-inset: 12px;
+  }
+
   .barberpro-app-header {
     grid-template-columns: 40px 1fr 78px;
-    padding: 0 10px;
+    padding: 0 var(--app-page-inset);
   }
 
   .app-header-brand strong {
@@ -4242,13 +5048,13 @@ select option {
   .settings-screen-shell,
   .closing-screen,
   .coming-soon-screen {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: var(--app-page-inset);
+    padding-right: var(--app-page-inset);
   }
 
   .barberpro-payments {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: var(--app-page-inset);
+    padding-right: var(--app-page-inset);
   }
 
   .schedule-date-nav {
@@ -4261,5 +5067,2753 @@ select option {
 
   .schedule-date-nav span {
     font-size: 11px;
+  }
+}
+
+
+
+
+
+
+@media (max-width: 430px) {
+  .schedule-appointment-card {
+    grid-template-columns: 42px minmax(0, 1fr);
+    padding: 9px 10px;
+  }
+
+  .schedule-card-grid {
+    gap: 8px;
+    grid-template-columns: minmax(0, 1.2fr) minmax(72px, 0.8fr) minmax(64px, 0.7fr) 34px;
+  }
+
+  .schedule-card-grid input {
+    font-size: 12px;
+  }
+
+  .schedule-name-column input:first-child {
+    font-size: 13px;
+  }
+
+  .schedule-card-grid .schedule-status-dot {
+    font-size: 0;
+    gap: 0;
+    justify-self: center;
+  }
+
+  .schedule-inline-action {
+    font-size: 0;
+    min-height: 32px;
+    padding: 0;
+    width: 32px;
+  }
+
+  .schedule-inline-action::before {
+    content: '+';
+    font-size: 18px;
+    line-height: 1;
+  }
+}
+
+/* Schedule screen final layout */
+.barberpro-schedule {
+  background: #050506 !important;
+  color: #ffffff !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 22px !important;
+  min-height: calc(100vh - 82px) !important;
+  padding: 28px var(--app-page-inset) 38px !important;
+}
+
+.barberpro-schedule .schedule-hero {
+  display: block !important;
+  margin: 0 !important;
+}
+
+.barberpro-schedule .schedule-title-row {
+  align-items: center !important;
+  display: grid !important;
+  gap: 18px !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  justify-content: initial !important;
+}
+
+.barberpro-schedule .schedule-title-row h2 {
+  color: #ffffff !important;
+  font-size: 30px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.1 !important;
+  margin: 0 !important;
+}
+
+.barberpro-schedule .schedule-title-row p {
+  color: #9a9ea6 !important;
+  font-size: 15px !important;
+  margin: 8px 0 0 !important;
+}
+
+.barberpro-schedule .new-schedule-button {
+  align-items: center !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.24) !important;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  gap: 10px !important;
+  min-height: 44px !important;
+  padding: 0 18px !important;
+  white-space: nowrap !important;
+}
+
+.schedule-workspace {
+  align-items: start !important;
+  display: grid !important;
+  gap: 22px !important;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px) !important;
+}
+
+.schedule-main-panel,
+.schedule-side-panel {
+  background: #0b0b0d !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+.schedule-main-panel {
+  display: block !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.schedule-tabs {
+  background: #0b0b0d !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.schedule-tabs button {
+  align-items: center !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #9a9ea6 !important;
+  display: inline-flex !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  gap: 9px !important;
+  justify-content: center !important;
+  min-height: 50px !important;
+}
+
+.schedule-tabs button:last-child {
+  border-right: 0 !important;
+}
+
+.schedule-tabs button.active {
+  background: rgba(37, 99, 235, 0.08) !important;
+  box-shadow: inset 0 -1px 0 #2563eb !important;
+  color: #3b82f6 !important;
+}
+
+.schedule-date-nav {
+  align-items: center !important;
+  background: #0f1013 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  display: grid !important;
+  gap: 10px !important;
+  grid-template-columns: 52px 52px minmax(0, 1fr) 52px 52px !important;
+  margin: 0 !important;
+  padding: 12px !important;
+  text-align: center !important;
+}
+
+.schedule-date-nav button,
+.schedule-date-picker,
+.schedule-professional-picker,
+.schedule-professional-picker.icon-only-dropdown .dropdown-select-button {
+  align-items: center !important;
+  background: #111214 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  height: 52px !important;
+  justify-content: center !important;
+  min-width: 52px !important;
+  padding: 0 !important;
+  position: relative !important;
+  width: 52px !important;
+}
+
+.schedule-date-nav button {
+  font-size: 30px !important;
+  line-height: 1 !important;
+  padding-bottom: 3px !important;
+}
+
+.schedule-date-nav strong {
+  color: #ffffff !important;
+  display: block !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+}
+
+.schedule-date-nav span {
+  color: #9a9ea6 !important;
+  display: block !important;
+  font-size: 13px !important;
+  margin-top: 5px !important;
+}
+
+.schedule-week-strip {
+  background: #0f1013 !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  margin: 0 !important;
+  padding: 12px 14px !important;
+}
+
+.schedule-week-strip button {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  display: grid !important;
+  gap: 7px !important;
+  justify-items: center !important;
+  min-height: 58px !important;
+}
+
+.schedule-week-strip span {
+  color: #9a9ea6 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.12em !important;
+}
+
+.schedule-week-strip strong {
+  align-items: center !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  font-size: 20px !important;
+  height: 34px !important;
+  justify-content: center !important;
+  width: 34px !important;
+}
+
+.schedule-week-strip button.active span {
+  color: #3b82f6 !important;
+}
+
+.schedule-week-strip button.active strong {
+  background: #2563eb !important;
+  box-shadow: 0 0 22px rgba(37, 99, 235, 0.38) !important;
+  color: #ffffff !important;
+}
+
+.schedule-timeline {
+  display: grid !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 14px !important;
+}
+
+.schedule-time-row {
+  align-items: center !important;
+  display: grid !important;
+  gap: 8px !important;
+  grid-template-columns: 82px minmax(0, 1fr) !important;
+  padding: 0 !important;
+}
+
+.schedule-time-row time {
+  align-items: center !important;
+  background: #111214 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  height: 70px !important;
+  justify-content: center !important;
+  width: 100% !important;
+}
+
+.schedule-appointment-card {
+  align-items: center !important;
+  background: #111214 !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 12px !important;
+  display: grid !important;
+  gap: 14px !important;
+  grid-template-columns: 56px minmax(0, 1fr) !important;
+  min-height: 70px !important;
+  overflow: hidden !important;
+  padding: 10px 14px 10px 18px !important;
+  position: relative !important;
+}
+
+.schedule-appointment-card::before {
+  border-radius: 999px !important;
+  content: '' !important;
+  height: 100% !important;
+  left: 0 !important;
+  position: absolute !important;
+  top: 0 !important;
+  width: 4px !important;
+}
+
+.schedule-appointment-card.open::before {
+  background: #2563eb !important;
+}
+
+.schedule-appointment-card.confirmed::before,
+.schedule-appointment-card.scheduled::before {
+  background: #16c784 !important;
+}
+
+.schedule-avatar {
+  align-items: center !important;
+  background: radial-gradient(circle at 35% 20%, #3b3d44, #15161a) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 999px !important;
+  color: #ffffff !important;
+  display: inline-flex !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  height: 48px !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  width: 48px !important;
+}
+
+.schedule-avatar-open {
+  color: #c9ccd3 !important;
+}
+
+.schedule-card-grid {
+  align-items: center !important;
+  display: grid !important;
+  gap: 14px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  min-width: 0 !important;
+}
+
+.schedule-name-column {
+  display: grid !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+
+.schedule-card-grid input {
+  background: transparent !important;
+  border: 0 !important;
+  color: #ffffff !important;
+  display: block !important;
+  font-size: 14px !important;
+  min-width: 0 !important;
+  outline: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  width: 100% !important;
+}
+
+.schedule-name-column input:first-child {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+}
+
+.schedule-name-column input:last-child,
+.schedule-contact-field {
+  color: #c9ccd3 !important;
+}
+
+.schedule-card-grid input::placeholder {
+  color: #6b7280 !important;
+}
+
+.schedule-status-dot {
+  align-items: center !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #c9ccd3 !important;
+  display: inline-flex !important;
+  font-size: 13px !important;
+  gap: 9px !important;
+  height: auto !important;
+  justify-self: start !important;
+  position: static !important;
+  transform: none !important;
+  width: auto !important;
+}
+
+.schedule-status-dot i {
+  border-radius: 999px !important;
+  display: inline-block !important;
+  height: 9px !important;
+  width: 9px !important;
+}
+
+.schedule-status-dot.open i {
+  background: #2563eb !important;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.56) !important;
+}
+
+.schedule-status-dot.confirmed i,
+.schedule-status-dot.scheduled i {
+  background: #16c784 !important;
+  box-shadow: 0 0 12px rgba(22, 199, 132, 0.56) !important;
+}
+
+.schedule-action-cell {
+  align-items: center !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  min-width: 0 !important;
+}
+
+.schedule-more {
+  align-items: center !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: #9a9ea6 !important;
+  display: inline-flex !important;
+  font-size: 24px !important;
+  height: 32px !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  position: static !important;
+  width: 24px !important;
+}
+
+.schedule-inline-action {
+  background: transparent !important;
+  border: 1px solid rgba(37, 99, 235, 0.45) !important;
+  border-radius: 10px !important;
+  color: #3b82f6 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  min-height: 38px !important;
+  padding: 0 18px !important;
+  position: static !important;
+}
+
+.schedule-side-panel {
+  background: #0b0b0d !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  display: grid !important;
+  gap: 20px !important;
+  padding: 22px 18px !important;
+}
+
+.schedule-side-panel h3 {
+  color: #ffffff !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.03em !important;
+  margin: 0 !important;
+}
+
+.schedule-summary-grid {
+  display: grid !important;
+  gap: 14px !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.schedule-summary-grid article {
+  background: #111214 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  display: grid !important;
+  gap: 5px !important;
+  min-height: 132px !important;
+  padding: 18px !important;
+}
+
+.schedule-summary-grid svg {
+  background: rgba(37, 99, 235, 0.12) !important;
+  border-radius: 12px !important;
+  color: #2563eb !important;
+  height: 40px !important;
+  padding: 8px !important;
+  width: 40px !important;
+}
+
+.schedule-summary-grid strong {
+  color: #ffffff !important;
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  margin-top: 8px !important;
+}
+
+.schedule-summary-grid span,
+.schedule-summary-grid small {
+  color: #9a9ea6 !important;
+  font-size: 13px !important;
+}
+
+.schedule-summary-grid small {
+  align-items: center !important;
+  display: inline-flex !important;
+  gap: 7px !important;
+}
+
+.schedule-summary-grid i {
+  border-radius: 999px !important;
+  display: inline-block !important;
+  height: 8px !important;
+  width: 8px !important;
+}
+
+.schedule-summary-grid i.green { background: #16c784 !important; }
+.schedule-summary-grid i.blue { background: #2563eb !important; }
+.schedule-summary-grid i.red { background: #ff4d4f !important; }
+
+.schedule-quick-filters {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  display: grid !important;
+  gap: 14px !important;
+  padding-top: 18px !important;
+}
+
+.schedule-quick-filters label {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.schedule-quick-filters label > span {
+  color: #6b7280 !important;
+  font-size: 12px !important;
+}
+
+.schedule-quick-filters .dropdown-select,
+.schedule-quick-filters .dropdown-select-button {
+  width: 100% !important;
+}
+
+.schedule-quick-filters .dropdown-select-button {
+  justify-content: flex-start !important;
+  min-height: 54px !important;
+}
+
+.schedule-clear-filters {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  color: #9a9ea6 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  min-height: 52px !important;
+}
+
+@media (max-width: 1180px) {
+  .schedule-workspace {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .barberpro-schedule {
+    min-height: calc(100vh - 72px) !important;
+    padding: 16px var(--app-page-inset) 92px !important;
+  }
+
+  .schedule-side-panel {
+    order: 2 !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .barberpro-schedule .schedule-title-row {
+    align-items: start !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .barberpro-schedule .new-schedule-button {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .schedule-date-nav {
+    grid-template-columns: 42px 42px minmax(0, 1fr) 42px 42px !important;
+    gap: 6px !important;
+    padding: 10px !important;
+  }
+
+  .schedule-date-nav button,
+  .schedule-date-picker,
+  .schedule-professional-picker,
+  .schedule-professional-picker.icon-only-dropdown .dropdown-select-button {
+    height: 42px !important;
+    min-width: 42px !important;
+    width: 42px !important;
+  }
+
+  .schedule-date-nav strong {
+    font-size: 15px !important;
+  }
+
+  .schedule-date-nav span {
+    font-size: 11px !important;
+  }
+
+  .schedule-time-row {
+    grid-template-columns: 54px minmax(0, 1fr) !important;
+  }
+
+  .schedule-time-row time {
+    font-size: 13px !important;
+  }
+
+  .schedule-appointment-card {
+    grid-template-columns: 42px minmax(0, 1fr) !important;
+    padding: 9px 10px !important;
+  }
+
+  .schedule-avatar {
+    height: 36px !important;
+    width: 36px !important;
+  }
+
+  .schedule-card-grid {
+    gap: 8px !important;
+    grid-template-columns: minmax(0, 1.2fr) minmax(70px, 0.8fr) 18px 34px !important;
+  }
+
+  .schedule-card-grid input {
+    font-size: 12px !important;
+  }
+
+  .schedule-name-column input:first-child {
+    font-size: 13px !important;
+  }
+
+  .schedule-status-dot {
+    font-size: 0 !important;
+    gap: 0 !important;
+    justify-self: center !important;
+  }
+
+  .schedule-inline-action {
+    font-size: 0 !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    width: 32px !important;
+  }
+
+  .schedule-inline-action::before {
+    content: '+' !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+}
+
+
+.schedule-card-grid.available {
+  grid-template-columns: minmax(0, 1fr) minmax(100px, auto) minmax(90px, auto) !important;
+}
+
+.schedule-available-label {
+  color: #c9ccd3 !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 430px) {
+  .schedule-card-grid.available {
+    grid-template-columns: minmax(0, 1fr) 18px 34px !important;
+  }
+
+  .schedule-available-label {
+    font-size: 13px !important;
+  }
+}
+
+.schedule-cancel-menu-wrap {
+  align-items: center !important;
+  display: inline-flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  position: relative !important;
+}
+
+.schedule-cancel-action {
+  background: transparent !important;
+  border: 1px solid rgba(255, 77, 79, 0.56) !important;
+  border-radius: 10px !important;
+  color: #ff4d4f !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  min-height: 38px !important;
+  padding: 0 18px !important;
+  white-space: nowrap !important;
+}
+
+.schedule-cancel-action:hover {
+  background: rgba(255, 77, 79, 0.08) !important;
+}
+
+@media (max-width: 430px) {
+  .schedule-cancel-menu-wrap {
+    gap: 6px !important;
+  }
+
+  .schedule-cancel-action {
+    font-size: 0 !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    width: 32px !important;
+  }
+
+  .schedule-cancel-action::before {
+    content: '×' !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+}
+
+.schedule-service-select {
+  background: transparent !important;
+  border: 0 !important;
+  color: #c9ccd3 !important;
+  display: block !important;
+  font-size: 14px !important;
+  min-width: 0 !important;
+  outline: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  width: 100% !important;
+}
+
+.schedule-service-select option {
+  background: #111214 !important;
+  color: #ffffff !important;
+}
+
+.schedule-name-column:has(.schedule-service-select + input) {
+  gap: 4px !important;
+}
+
+@media (max-width: 430px) {
+  .schedule-service-select {
+    font-size: 12px !important;
+  }
+}
+
+/* Schedule appointment row stability */
+.schedule-card-grid.closed {
+  grid-template-columns: minmax(0, 1.35fr) minmax(120px, 0.75fr) minmax(120px, auto) minmax(96px, auto) !important;
+}
+
+.schedule-card-grid.editing {
+  grid-template-columns: minmax(0, 1.35fr) minmax(120px, 0.8fr) minmax(110px, auto) !important;
+}
+
+.schedule-card-grid.editing .schedule-action-cell {
+  display: none !important;
+}
+
+.schedule-card-grid.available {
+  grid-template-columns: minmax(0, 1fr) minmax(104px, auto) minmax(94px, auto) !important;
+}
+
+.schedule-status-dot {
+  align-self: center !important;
+  justify-self: start !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+.schedule-action-cell,
+.schedule-cancel-menu-wrap {
+  min-width: 0 !important;
+}
+
+.schedule-cancel-menu-wrap {
+  justify-self: end !important;
+}
+
+@media (max-width: 430px) {
+  .schedule-time-row {
+    gap: 6px !important;
+    grid-template-columns: 50px minmax(0, 1fr) !important;
+  }
+
+  .schedule-time-row time {
+    border-radius: 10px !important;
+    font-size: 12px !important;
+    height: 58px !important;
+  }
+
+  .schedule-appointment-card {
+    gap: 8px !important;
+    grid-template-columns: 34px minmax(0, 1fr) !important;
+    min-height: 58px !important;
+    overflow: visible !important;
+    padding: 8px 8px 8px 12px !important;
+  }
+
+  .schedule-avatar {
+    font-size: 12px !important;
+    height: 32px !important;
+    width: 32px !important;
+  }
+
+  .schedule-avatar svg {
+    height: 18px !important;
+    width: 18px !important;
+  }
+
+  .schedule-card-grid,
+  .schedule-card-grid.closed,
+  .schedule-card-grid.editing,
+  .schedule-card-grid.available {
+    align-items: center !important;
+    column-gap: 7px !important;
+    min-width: 0 !important;
+  }
+
+  .schedule-card-grid.available {
+    grid-template-columns: minmax(0, 1fr) 10px 30px !important;
+  }
+
+  .schedule-card-grid.editing {
+    grid-template-columns: minmax(0, 1fr) 64px 10px !important;
+  }
+
+  .schedule-card-grid.closed {
+    grid-template-columns: minmax(0, 1fr) 10px 30px !important;
+  }
+
+  .schedule-card-grid.closed .schedule-contact-field {
+    display: none !important;
+  }
+
+  .schedule-card-grid.editing .schedule-action-cell {
+    display: none !important;
+  }
+
+  .schedule-name-column {
+    gap: 3px !important;
+    min-width: 0 !important;
+  }
+
+  .schedule-card-grid input,
+  .schedule-service-select {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+
+  .schedule-name-column input:first-child {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+
+  .schedule-contact-field {
+    font-size: 11px !important;
+    min-width: 0 !important;
+  }
+
+  .schedule-status-dot {
+    font-size: 0 !important;
+    gap: 0 !important;
+    justify-self: center !important;
+    min-width: 10px !important;
+    width: 10px !important;
+  }
+
+  .schedule-status-dot i {
+    height: 8px !important;
+    width: 8px !important;
+  }
+
+  .schedule-action-cell {
+    justify-content: center !important;
+    min-width: 30px !important;
+  }
+
+  .schedule-more {
+    font-size: 20px !important;
+    height: 30px !important;
+    width: 30px !important;
+  }
+
+  .schedule-inline-action {
+    border-radius: 9px !important;
+    font-size: 0 !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    width: 30px !important;
+  }
+
+  .schedule-inline-action::before {
+    content: '+' !important;
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+
+  .schedule-cancel-menu-wrap {
+    gap: 5px !important;
+    position: static !important;
+  }
+
+  .schedule-cancel-action {
+    background: rgba(255, 77, 79, 0.1) !important;
+    border-radius: 9px !important;
+    font-size: 0 !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    width: 30px !important;
+  }
+
+  .schedule-cancel-action::before {
+    content: '×' !important;
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+}
+
+/* Mobile schedule layout matching production reference */
+@media (max-width: 430px) {
+  .barberpro-schedule {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .schedule-timeline {
+    gap: 8px !important;
+    padding: 12px 0 0 !important;
+  }
+
+  .schedule-time-row {
+    align-items: center !important;
+    gap: 10px !important;
+    grid-template-columns: 52px minmax(0, 1fr) !important;
+  }
+
+  .schedule-time-row time {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: #c9ccd3 !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    height: auto !important;
+    min-height: 72px !important;
+    padding: 0 !important;
+  }
+
+  .schedule-appointment-card {
+    background: #111214 !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16) !important;
+    gap: 10px !important;
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    min-height: 72px !important;
+    overflow: visible !important;
+    padding: 10px 12px 10px 16px !important;
+  }
+
+  .schedule-appointment-card::before {
+    border-radius: 999px !important;
+    width: 4px !important;
+  }
+
+  .schedule-avatar {
+    align-self: center !important;
+    font-size: 13px !important;
+    height: 42px !important;
+    width: 42px !important;
+  }
+
+  .schedule-avatar svg {
+    height: 19px !important;
+    width: 19px !important;
+  }
+
+  .schedule-card-grid,
+  .schedule-card-grid.closed,
+  .schedule-card-grid.available {
+    align-items: center !important;
+    gap: 7px !important;
+    grid-template-columns: minmax(0, 1fr) auto 24px !important;
+  }
+
+  .schedule-card-grid.editing {
+    align-items: center !important;
+    gap: 8px !important;
+    grid-template-columns: minmax(0, 1fr) minmax(68px, 0.62fr) auto !important;
+  }
+
+  .schedule-card-grid.editing .schedule-action-cell {
+    display: none !important;
+  }
+
+  .schedule-name-column {
+    gap: 4px !important;
+    min-width: 0 !important;
+  }
+
+  .schedule-card-grid input,
+  .schedule-service-select {
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+  }
+
+  .schedule-name-column input:first-child {
+    color: #ffffff !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+  }
+
+  .schedule-name-column input:last-child,
+  .schedule-service-select,
+  .schedule-contact-field {
+    color: #c9ccd3 !important;
+    font-size: 12px !important;
+  }
+
+  .schedule-card-grid.closed .schedule-contact-field,
+  .schedule-card-grid.available .schedule-contact-field {
+    display: none !important;
+  }
+
+  .schedule-available-label {
+    color: #c9ccd3 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+  }
+
+  .schedule-status-dot {
+    align-items: center !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    gap: 0 !important;
+    justify-self: end !important;
+    line-height: 1 !important;
+    min-height: 24px !important;
+    padding: 0 10px !important;
+    white-space: nowrap !important;
+    width: auto !important;
+  }
+
+  .schedule-status-dot i {
+    display: none !important;
+  }
+
+  .schedule-status-dot.open {
+    background: rgba(37, 99, 235, 0.14) !important;
+    color: #7fb0ff !important;
+  }
+
+  .schedule-status-dot.confirmed,
+  .schedule-status-dot.scheduled {
+    background: rgba(22, 199, 132, 0.14) !important;
+    color: #7ee7b7 !important;
+  }
+
+  .schedule-action-cell {
+    justify-content: flex-end !important;
+    min-width: 24px !important;
+  }
+
+  .schedule-more {
+    color: #9a9ea6 !important;
+    font-size: 22px !important;
+    height: 30px !important;
+    width: 24px !important;
+  }
+
+  .schedule-inline-action {
+    border-radius: 10px !important;
+    font-size: 0 !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    width: 30px !important;
+  }
+
+  .schedule-inline-action::before {
+    content: '+' !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+
+  .schedule-cancel-menu-wrap {
+    align-items: center !important;
+    display: inline-flex !important;
+    gap: 6px !important;
+    justify-self: end !important;
+    position: static !important;
+  }
+
+  .schedule-cancel-action {
+    background: rgba(255, 77, 79, 0.1) !important;
+    border: 1px solid rgba(255, 77, 79, 0.48) !important;
+    border-radius: 9px !important;
+    color: #ff7072 !important;
+    font-size: 0 !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    width: 30px !important;
+  }
+
+  .schedule-cancel-action::before {
+    content: '×' !important;
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+}
+
+/* Mobile schedule layout matching production reference */
+@media (max-width: 430px) {
+  .barberpro-schedule {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .schedule-timeline {
+    gap: 8px !important;
+    padding: 12px 0 0 !important;
+  }
+
+  .schedule-time-row {
+    align-items: center !important;
+    gap: 10px !important;
+    grid-template-columns: 52px minmax(0, 1fr) !important;
+  }
+
+  .schedule-time-row time {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: #c9ccd3 !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    height: auto !important;
+    min-height: 72px !important;
+    padding: 0 !important;
+  }
+
+  .schedule-appointment-card {
+    background: #111214 !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16) !important;
+    gap: 10px !important;
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    min-height: 72px !important;
+    overflow: visible !important;
+    padding: 10px 12px 10px 16px !important;
+  }
+
+  .schedule-appointment-card::before {
+    border-radius: 999px !important;
+    width: 4px !important;
+  }
+
+  .schedule-avatar {
+    align-self: center !important;
+    font-size: 13px !important;
+    height: 42px !important;
+    width: 42px !important;
+  }
+
+  .schedule-avatar svg {
+    height: 19px !important;
+    width: 19px !important;
+  }
+
+  .schedule-card-grid,
+  .schedule-card-grid.closed,
+  .schedule-card-grid.available {
+    align-items: center !important;
+    gap: 7px !important;
+    grid-template-columns: minmax(0, 1fr) auto 24px !important;
+  }
+
+  .schedule-card-grid.editing {
+    align-items: center !important;
+    gap: 8px !important;
+    grid-template-columns: minmax(0, 1fr) minmax(68px, 0.62fr) auto !important;
+  }
+
+  .schedule-card-grid.editing .schedule-action-cell {
+    display: none !important;
+  }
+
+  .schedule-name-column {
+    gap: 4px !important;
+    min-width: 0 !important;
+  }
+
+  .schedule-card-grid input,
+  .schedule-service-select {
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+  }
+
+  .schedule-name-column input:first-child {
+    color: #ffffff !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+  }
+
+  .schedule-name-column input:last-child,
+  .schedule-service-select,
+  .schedule-contact-field {
+    color: #c9ccd3 !important;
+    font-size: 12px !important;
+  }
+
+  .schedule-card-grid.closed .schedule-contact-field,
+  .schedule-card-grid.available .schedule-contact-field {
+    display: none !important;
+  }
+
+  .schedule-available-label {
+    color: #c9ccd3 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+  }
+
+  .schedule-status-dot {
+    align-items: center !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    gap: 0 !important;
+    justify-self: end !important;
+    line-height: 1 !important;
+    min-height: 24px !important;
+    padding: 0 10px !important;
+    white-space: nowrap !important;
+    width: auto !important;
+  }
+
+  .schedule-status-dot i {
+    display: none !important;
+  }
+
+  .schedule-status-dot.open {
+    background: rgba(37, 99, 235, 0.14) !important;
+    color: #7fb0ff !important;
+  }
+
+  .schedule-status-dot.confirmed,
+  .schedule-status-dot.scheduled {
+    background: rgba(22, 199, 132, 0.14) !important;
+    color: #7ee7b7 !important;
+  }
+
+  .schedule-action-cell {
+    justify-content: flex-end !important;
+    min-width: 24px !important;
+  }
+
+  .schedule-more {
+    color: #9a9ea6 !important;
+    font-size: 22px !important;
+    height: 30px !important;
+    width: 24px !important;
+  }
+
+  .schedule-inline-action {
+    border-radius: 10px !important;
+    font-size: 0 !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    width: 30px !important;
+  }
+
+  .schedule-inline-action::before {
+    content: '+' !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+
+  .schedule-cancel-menu-wrap {
+    align-items: center !important;
+    display: inline-flex !important;
+    gap: 6px !important;
+    justify-self: end !important;
+    position: static !important;
+  }
+
+  .schedule-cancel-action {
+    background: rgba(255, 77, 79, 0.1) !important;
+    border: 1px solid rgba(255, 77, 79, 0.48) !important;
+    border-radius: 9px !important;
+    color: #ff7072 !important;
+    font-size: 0 !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    width: 30px !important;
+  }
+
+  .schedule-cancel-action::before {
+    content: '×' !important;
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+}
+
+
+/* Mobile schedule layout matching production reference */
+@media (max-width: 820px) {
+  .barberpro-schedule {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .schedule-timeline {
+    gap: 8px !important;
+    padding: 12px 0 0 !important;
+  }
+
+  .schedule-time-row {
+    align-items: center !important;
+    gap: 10px !important;
+    grid-template-columns: 52px minmax(0, 1fr) !important;
+  }
+
+  .schedule-time-row time {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: #c9ccd3 !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    height: auto !important;
+    min-height: 72px !important;
+    padding: 0 !important;
+  }
+
+  .schedule-appointment-card {
+    background: #111214 !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16) !important;
+    gap: 10px !important;
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    min-height: 72px !important;
+    overflow: visible !important;
+    padding: 10px 12px 10px 16px !important;
+  }
+
+  .schedule-appointment-card::before {
+    border-radius: 999px !important;
+    width: 4px !important;
+  }
+
+  .schedule-avatar {
+    align-self: center !important;
+    font-size: 13px !important;
+    height: 42px !important;
+    width: 42px !important;
+  }
+
+  .schedule-avatar svg {
+    height: 19px !important;
+    width: 19px !important;
+  }
+
+  .schedule-card-grid,
+  .schedule-card-grid.closed,
+  .schedule-card-grid.available {
+    align-items: center !important;
+    gap: 7px !important;
+    grid-template-columns: minmax(0, 1fr) auto 24px !important;
+  }
+
+  .schedule-card-grid.editing {
+    align-items: center !important;
+    gap: 8px !important;
+    grid-template-columns: minmax(0, 1fr) minmax(68px, 0.62fr) auto !important;
+  }
+
+  .schedule-card-grid.editing .schedule-action-cell {
+    display: none !important;
+  }
+
+  .schedule-name-column {
+    gap: 4px !important;
+    min-width: 0 !important;
+  }
+
+  .schedule-card-grid input,
+  .schedule-service-select {
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+  }
+
+  .schedule-name-column input:first-child {
+    color: #ffffff !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+  }
+
+  .schedule-name-column input:last-child,
+  .schedule-service-select,
+  .schedule-contact-field {
+    color: #c9ccd3 !important;
+    font-size: 12px !important;
+  }
+
+  .schedule-card-grid.closed .schedule-contact-field,
+  .schedule-card-grid.available .schedule-contact-field {
+    display: none !important;
+  }
+
+  .schedule-available-label {
+    color: #c9ccd3 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+  }
+
+  .schedule-status-dot {
+    align-items: center !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    gap: 0 !important;
+    justify-self: end !important;
+    line-height: 1 !important;
+    min-height: 24px !important;
+    padding: 0 10px !important;
+    white-space: nowrap !important;
+    width: auto !important;
+  }
+
+  .schedule-status-dot i {
+    display: none !important;
+  }
+
+  .schedule-status-dot.open {
+    background: rgba(37, 99, 235, 0.14) !important;
+    color: #7fb0ff !important;
+  }
+
+  .schedule-status-dot.confirmed,
+  .schedule-status-dot.scheduled {
+    background: rgba(22, 199, 132, 0.14) !important;
+    color: #7ee7b7 !important;
+  }
+
+  .schedule-action-cell {
+    justify-content: flex-end !important;
+    min-width: 24px !important;
+  }
+
+  .schedule-more {
+    color: #9a9ea6 !important;
+    font-size: 22px !important;
+    height: 30px !important;
+    width: 24px !important;
+  }
+
+  .schedule-inline-action {
+    border-radius: 10px !important;
+    font-size: 0 !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    width: 30px !important;
+  }
+
+  .schedule-inline-action::before {
+    content: '+' !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+
+  .schedule-cancel-menu-wrap {
+    align-items: center !important;
+    display: inline-flex !important;
+    gap: 6px !important;
+    justify-self: end !important;
+    position: static !important;
+  }
+
+  .schedule-cancel-action {
+    background: rgba(255, 77, 79, 0.1) !important;
+    border: 1px solid rgba(255, 77, 79, 0.48) !important;
+    border-radius: 9px !important;
+    color: #ff7072 !important;
+    font-size: 0 !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    width: 30px !important;
+  }
+
+  .schedule-cancel-action::before {
+    content: '×' !important;
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+}
+
+
+
+/* Mobile schedule status as dot only */
+@media (max-width: 820px) {
+  .schedule-status-dot {
+    background: transparent !important;
+    border-radius: 999px !important;
+    font-size: 0 !important;
+    gap: 0 !important;
+    min-height: 10px !important;
+    padding: 0 !important;
+    width: 10px !important;
+  }
+
+  .schedule-status-dot i {
+    display: inline-block !important;
+    height: 9px !important;
+    width: 9px !important;
+  }
+}
+
+/* Mobile schedule status fixed at card right */
+@media (max-width: 820px) {
+  .schedule-appointment-card {
+    padding-right: 44px !important;
+  }
+
+  .schedule-card-grid,
+  .schedule-card-grid.closed,
+  .schedule-card-grid.available,
+  .schedule-card-grid.editing {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding-right: 0 !important;
+  }
+
+  .schedule-status-dot {
+    position: absolute !important;
+    right: 28px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 2 !important;
+  }
+
+  .schedule-action-cell {
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 3 !important;
+  }
+
+  .schedule-card-grid.editing .schedule-status-dot {
+    right: 14px !important;
+  }
+}
+
+/* Mobile schedule action and status alignment */
+@media (max-width: 820px) {
+  .schedule-appointment-card {
+    padding-right: 78px !important;
+  }
+
+  .schedule-card-grid,
+  .schedule-card-grid.closed,
+  .schedule-card-grid.available,
+  .schedule-card-grid.editing {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .schedule-status-dot {
+    right: 14px !important;
+    top: 50% !important;
+  }
+
+  .schedule-action-cell {
+    right: 34px !important;
+    top: 50% !important;
+  }
+
+  .schedule-inline-action,
+  .schedule-cancel-action {
+    height: 30px !important;
+    min-height: 30px !important;
+    width: 30px !important;
+  }
+
+  .schedule-card-grid.editing .schedule-status-dot {
+    right: 14px !important;
+  }
+
+  .schedule-card-grid.editing .schedule-action-cell {
+    display: none !important;
+  }
+}
+
+/* Mobile schedule fixed text columns */
+@media (max-width: 820px) {
+  .schedule-card-grid.closed,
+  .schedule-card-grid.editing {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.35fr) minmax(72px, 0.75fr) !important;
+    padding-right: 0 !important;
+  }
+
+  .schedule-card-grid.available {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .schedule-name-column {
+    grid-column: 1 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .schedule-contact-field {
+    grid-column: 2 !important;
+    justify-self: start !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-align: left !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .schedule-card-grid.closed .schedule-contact-field {
+    display: block !important;
+  }
+
+  .schedule-name-column input,
+  .schedule-service-select,
+  .schedule-contact-field {
+    max-width: 100% !important;
+  }
+
+  .schedule-card-grid.editing .schedule-contact-field {
+    display: block !important;
+  }
+
+  .schedule-card-grid.available .schedule-available-label {
+    grid-column: 1 !important;
+    padding-right: 0 !important;
+  }
+}
+
+/* Schedule professional picker icon only */
+.schedule-professional-picker.icon-only-dropdown .dropdown-select-button {
+  font-size: 0 !important;
+  overflow: hidden !important;
+}
+
+.schedule-professional-picker.icon-only-dropdown .dropdown-select-button > span,
+.schedule-professional-picker.icon-only-dropdown .dropdown-select-button .color-dot,
+.schedule-professional-picker.icon-only-dropdown .dropdown-select-button::after {
+  display: none !important;
+}
+
+.schedule-professional-picker.icon-only-dropdown .dropdown-select-button::before {
+  display: block !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* Tablet schedule status as dot only */
+@media (min-width: 431px) and (max-width: 820px) {
+  .schedule-status-dot {
+    background: transparent !important;
+    border-radius: 999px !important;
+    font-size: 0 !important;
+    gap: 0 !important;
+    min-height: 10px !important;
+    padding: 0 !important;
+    width: 10px !important;
+  }
+
+  .schedule-status-dot i {
+    display: inline-block !important;
+    height: 9px !important;
+    width: 9px !important;
+  }
+}
+
+
+/* Schedule mobile/tablet left status bar like desktop */
+@media (max-width: 820px) {
+  .schedule-appointment-card {
+    overflow: hidden !important;
+    padding-left: 18px !important;
+  }
+
+  .schedule-appointment-card::before {
+    border-radius: 12px 0 0 12px !important;
+    bottom: 0 !important;
+    height: auto !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 4px !important;
+  }
+
+  .schedule-appointment-card.open::before {
+    background: #2563eb !important;
+    box-shadow: 0 0 14px rgba(37, 99, 235, 0.45) !important;
+  }
+
+  .schedule-appointment-card.confirmed::before,
+  .schedule-appointment-card.scheduled::before {
+    background: #16c784 !important;
+    box-shadow: 0 0 14px rgba(22, 199, 132, 0.45) !important;
+  }
+}
+
+/* Schedule mobile page spacing aligned with other screens */
+@media (max-width: 820px) {
+  .barberpro-schedule {
+    padding: 12px var(--app-page-inset) 92px !important;
+  }
+
+  .barberpro-schedule .schedule-hero {
+    margin: 0 0 12px !important;
+  }
+
+  .barberpro-schedule .schedule-title-row {
+    margin: 0 !important;
+  }
+
+  .schedule-workspace {
+    gap: 12px !important;
+  }
+
+  .schedule-main-panel,
+  .schedule-side-panel {
+    border-radius: 16px !important;
+    width: 100% !important;
+  }
+
+  .schedule-tabs,
+  .schedule-date-nav,
+  .schedule-week-strip,
+  .schedule-timeline {
+    width: 100% !important;
+  }
+
+  .schedule-tabs {
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .barberpro-schedule {
+    padding-left: var(--app-page-inset) !important;
+    padding-right: var(--app-page-inset) !important;
+  }
+}
+
+/* Schedule mobile card right breathing room */
+@media (max-width: 820px) {
+  .schedule-timeline {
+    padding-right: 6px !important;
+  }
+
+  .schedule-time-row {
+    padding-right: 2px !important;
+  }
+}
+
+/* Schedule mobile contact field width */
+@media (max-width: 820px) {
+  .schedule-card-grid.closed,
+  .schedule-card-grid.editing {
+    grid-template-columns: minmax(0, 1.2fr) minmax(86px, 0.8fr) !important;
+  }
+
+  .schedule-contact-field {
+    min-width: 86px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .schedule-card-grid.closed,
+  .schedule-card-grid.editing {
+    grid-template-columns: minmax(0, 1.05fr) minmax(82px, 0.95fr) !important;
+  }
+
+  .schedule-contact-field {
+    min-width: 82px !important;
+  }
+}
+
+/* Payments mobile: keep charge button above bottom nav when custom service is open */
+@media (max-width: 820px) {
+  .barberpro-payments {
+    height: auto !important;
+    min-height: calc(100dvh - 72px) !important;
+    overflow-y: auto !important;
+    padding-bottom: 112px !important;
+  }
+
+  .payments-form {
+    min-height: auto !important;
+  }
+
+  .payments-summary-card {
+    margin-bottom: 8px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .barberpro-payments {
+    padding-bottom: 118px !important;
+  }
+
+  .payments-custom-grid {
+    gap: 7px !important;
+  }
+}
+
+/* Payments mobile compact one-screen layout */
+@media (max-width: 820px) {
+  .barberpro-payments {
+    display: flex !important;
+    flex-direction: column !important;
+    height: calc(100dvh - 72px) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 10px var(--app-page-inset) 88px !important;
+  }
+
+  .payments-heading {
+    flex: 0 0 auto !important;
+    margin: 0 0 8px !important;
+  }
+
+  .barberpro-payments .payments-heading h1 {
+    font-size: 24px !important;
+    line-height: 1.05 !important;
+    margin: 0 !important;
+  }
+
+  .payments-heading p {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+    margin: 3px 0 0 !important;
+  }
+
+  .payments-form {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    gap: 7px !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .payments-main-column {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    flex-direction: column !important;
+    gap: 7px !important;
+    min-height: 0 !important;
+  }
+
+  .payments-card,
+  .payments-summary-card {
+    border-radius: 14px !important;
+    padding: 9px !important;
+  }
+
+  .payments-service-card {
+    flex: 0 0 auto !important;
+  }
+
+  .payments-method-card {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+
+  .payments-summary-card {
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+  }
+
+  .payments-card-title {
+    display: none !important;
+  }
+
+  .payments-select-field,
+  .payments-section-title {
+    font-size: 10px !important;
+    line-height: 1 !important;
+    margin: 0 0 6px !important;
+  }
+
+  .payments-select-field > span {
+    display: block !important;
+    margin-bottom: 0 !important;
+  }
+
+  .payments-select-field div {
+    border-radius: 11px !important;
+    margin-top: 5px !important;
+    min-height: 36px !important;
+    padding: 0 10px !important;
+  }
+
+  .payments-select-field div svg {
+    height: 18px !important;
+    width: 18px !important;
+  }
+
+  .payments-select-field select,
+  .payments-custom-grid input {
+    font-size: 12px !important;
+  }
+
+  .payments-custom-grid {
+    gap: 6px !important;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) !important;
+    margin-top: 6px !important;
+  }
+
+  .payments-custom-grid input {
+    border-radius: 11px !important;
+    min-height: 34px !important;
+    padding: 0 10px !important;
+  }
+
+  .payments-method-grid {
+    display: grid !important;
+    gap: 6px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .payments-method-grid button {
+    border-radius: 12px !important;
+    min-height: 0 !important;
+    padding: 6px !important;
+  }
+
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 19px !important;
+    width: 19px !important;
+  }
+
+  .payments-method-grid strong {
+    font-size: 13px !important;
+    line-height: 1 !important;
+    margin-top: 4px !important;
+  }
+
+  .payments-method-grid small {
+    display: none !important;
+  }
+
+  .method-check {
+    height: 18px !important;
+    right: 7px !important;
+    top: 7px !important;
+    width: 18px !important;
+  }
+
+  .method-check svg {
+    height: 12px !important;
+    width: 12px !important;
+  }
+
+  .payments-summary-card h2 {
+    color: #c9ccd3 !important;
+    font-size: 11px !important;
+    letter-spacing: 0.08em !important;
+    margin: 0 0 5px !important;
+    text-transform: uppercase !important;
+  }
+
+  .payments-summary-card > div {
+    align-items: center !important;
+    display: flex !important;
+    font-size: 12px !important;
+    justify-content: space-between !important;
+    margin-top: 4px !important;
+  }
+
+  .payments-summary-card span,
+  .payments-summary-card strong {
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+  }
+
+  .payments-total {
+    margin-top: 6px !important;
+    padding-top: 6px !important;
+  }
+
+  .payments-total span,
+  .payments-total strong {
+    font-size: 15px !important;
+  }
+
+  .payments-error,
+  .payments-success {
+    font-size: 11px !important;
+    margin-top: 5px !important;
+    padding: 6px 8px !important;
+  }
+
+  .payments-charge-button {
+    font-size: 13px !important;
+    gap: 7px !important;
+    margin-top: 7px !important;
+    min-height: 38px !important;
+  }
+
+  .payments-charge-button svg {
+    height: 18px !important;
+    width: 18px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .barberpro-payments {
+    padding-bottom: 84px !important;
+  }
+
+  .payments-method-grid button {
+    min-height: 52px !important;
+  }
+}
+
+@media (max-height: 720px) and (max-width: 820px) {
+  .barberpro-payments {
+    padding-top: 8px !important;
+    padding-bottom: 80px !important;
+  }
+
+  .payments-heading p {
+    display: none !important;
+  }
+
+  .payments-select-field div {
+    min-height: 34px !important;
+  }
+
+  .payments-method-grid button {
+    padding: 5px !important;
+  }
+
+  .payments-summary-card h2 {
+    display: none !important;
+  }
+
+  .payments-charge-button {
+    min-height: 36px !important;
+  }
+}
+
+/* Payments mobile method icon proportion */
+@media (max-width: 820px) {
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 24px !important;
+    width: 24px !important;
+  }
+}
+
+@media (max-height: 720px) and (max-width: 820px) {
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 22px !important;
+    width: 22px !important;
+  }
+}
+
+/* Payments mobile typography and method card refinement */
+@media (max-width: 820px) {
+  .barberpro-payments .payments-heading h1 {
+    font-size: 26px !important;
+    line-height: 1.08 !important;
+  }
+
+  .payments-heading p {
+    font-size: 13px !important;
+  }
+
+  .payments-select-field,
+  .payments-section-title,
+  .payments-summary-card > div,
+  .payments-summary-card span,
+  .payments-summary-card strong {
+    font-size: 13px !important;
+  }
+
+  .payments-select-field select,
+  .payments-custom-grid input {
+    font-size: 13px !important;
+  }
+
+  .payments-method-grid {
+    gap: 5px !important;
+  }
+
+  .payments-method-grid button {
+    min-height: 48px !important;
+    padding: 5px !important;
+  }
+
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 22px !important;
+    width: 22px !important;
+  }
+
+  .payments-method-grid strong {
+    font-size: 13px !important;
+    margin-top: 3px !important;
+  }
+
+  .payments-total span,
+  .payments-total strong {
+    font-size: 16px !important;
+  }
+
+  .payments-charge-button {
+    font-size: 14px !important;
+  }
+}
+
+@media (max-height: 720px) and (max-width: 820px) {
+  .barberpro-payments .payments-heading h1 {
+    font-size: 24px !important;
+  }
+
+  .payments-method-grid button {
+    min-height: 44px !important;
+  }
+
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 20px !important;
+    width: 20px !important;
+  }
+}
+
+/* Payments mobile icon/text balance */
+@media (max-width: 820px) {
+  .payments-method-grid button {
+    gap: 2px !important;
+  }
+
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 26px !important;
+    width: 26px !important;
+  }
+
+  .payments-method-grid strong {
+    margin-top: 1px !important;
+  }
+}
+
+@media (max-height: 720px) and (max-width: 820px) {
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 24px !important;
+    width: 24px !important;
+  }
+}
+
+/* Payments mobile method content centered */
+@media (max-width: 820px) {
+  .payments-method-grid button {
+    align-items: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .payments-method-grid button svg:not(.method-check svg) {
+    flex: 0 0 auto !important;
+    margin: 0 auto !important;
+  }
+
+  .payments-method-grid strong {
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+  }
+}
+
+/* Payments mobile method emphasis */
+@media (max-width: 820px) {
+  .payments-method-grid button {
+    gap: 5px !important;
+  }
+
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 30px !important;
+    width: 30px !important;
+  }
+
+  .payments-method-grid strong {
+    font-size: 15px !important;
+    margin-top: 2px !important;
+  }
+}
+
+@media (max-height: 720px) and (max-width: 820px) {
+  .payments-method-grid button {
+    gap: 4px !important;
+  }
+
+  .payments-method-grid button svg:not(.method-check svg) {
+    height: 27px !important;
+    width: 27px !important;
+  }
+
+  .payments-method-grid strong {
+    font-size: 14px !important;
+  }
+}
+
+/* App page title standard */
+.payments-heading,
+.management-screen .management-greeting,
+.barberpro-schedule .schedule-title-row,
+.settings-screen-shell > .page-title,
+.closing-screen > .section-title,
+.coming-soon-screen,
+.admin-header {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 18px !important;
+}
+
+.payments-heading h1,
+.management-screen .management-greeting h1,
+.barberpro-schedule .schedule-title-row h2,
+.settings-screen-shell > .page-title,
+.closing-screen > .section-title h1,
+.closing-screen > .section-title h2,
+.coming-soon-screen h1,
+.admin-header h1 {
+  color: #ffffff !important;
+  font-size: 30px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.12 !important;
+  margin: 0 !important;
+  text-transform: none !important;
+}
+
+.payments-heading p,
+.management-screen .management-greeting p,
+.barberpro-schedule .schedule-title-row p,
+.closing-screen > .section-title p,
+.coming-soon-screen p {
+  color: #9a9ea6 !important;
+  font-size: 15px !important;
+  line-height: 1.35 !important;
+  margin: 6px 0 0 !important;
+}
+
+.management-screen .management-greeting {
+  min-width: 0 !important;
+}
+
+@media (max-width: 820px) {
+  .payments-heading,
+  .management-screen .management-greeting,
+  .barberpro-schedule .schedule-title-row,
+  .settings-screen-shell > .page-title,
+  .closing-screen > .section-title,
+  .coming-soon-screen,
+  .admin-header {
+    margin-bottom: 12px !important;
+  }
+
+  .payments-heading h1,
+  .management-screen .management-greeting h1,
+  .barberpro-schedule .schedule-title-row h2,
+  .settings-screen-shell > .page-title,
+  .closing-screen > .section-title h1,
+  .closing-screen > .section-title h2,
+  .coming-soon-screen h1,
+  .admin-header h1 {
+    font-size: 26px !important;
+    line-height: 1.1 !important;
+  }
+
+  .payments-heading p,
+  .management-screen .management-greeting p,
+  .barberpro-schedule .schedule-title-row p,
+  .closing-screen > .section-title p,
+  .coming-soon-screen p {
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+    margin-top: 4px !important;
+  }
+
+  .barberpro-schedule .schedule-title-row {
+    align-items: center !important;
+    gap: 10px !important;
+  }
+}
+
+@media (max-height: 720px) and (max-width: 820px) {
+  .payments-heading h1,
+  .management-screen .management-greeting h1,
+  .barberpro-schedule .schedule-title-row h2,
+  .settings-screen-shell > .page-title,
+  .closing-screen > .section-title h1,
+  .closing-screen > .section-title h2,
+  .coming-soon-screen h1,
+  .admin-header h1 {
+    font-size: 24px !important;
+  }
+
+  .payments-heading p {
+    display: block !important;
+  }
+}
+
+/* App page title standard for desktop/tablet/mobile */
+:root {
+  --page-title-desktop: 30px;
+  --page-title-tablet: 28px;
+  --page-title-mobile: 26px;
+  --page-title-gap-desktop: 18px;
+  --page-title-gap-mobile: 12px;
+}
+
+.payments-heading,
+.management-screen .management-greeting,
+.barberpro-schedule .schedule-title-row,
+.settings-screen-shell > .page-title,
+.closing-screen > .section-title,
+.coming-soon-screen,
+.admin-header {
+  margin: 0 0 var(--page-title-gap-desktop) !important;
+}
+
+.payments-heading h1,
+.management-screen .management-greeting h1,
+.barberpro-schedule .schedule-title-row h2,
+.settings-screen-shell > .page-title,
+.closing-screen > .section-title h1,
+.closing-screen > .section-title h2,
+.coming-soon-screen h1,
+.admin-header h1 {
+  color: #ffffff !important;
+  font-size: var(--page-title-desktop) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.12 !important;
+  margin: 0 !important;
+  text-transform: none !important;
+}
+
+.payments-heading p,
+.management-screen .management-greeting p,
+.barberpro-schedule .schedule-title-row p,
+.closing-screen > .section-title p,
+.coming-soon-screen p {
+  color: #9a9ea6 !important;
+  font-size: 15px !important;
+  line-height: 1.35 !important;
+  margin: 6px 0 0 !important;
+}
+
+@media (min-width: 821px) and (max-width: 1180px) {
+  .payments-heading,
+  .management-screen .management-greeting,
+  .barberpro-schedule .schedule-title-row,
+  .settings-screen-shell > .page-title,
+  .closing-screen > .section-title,
+  .coming-soon-screen,
+  .admin-header {
+    margin-bottom: 16px !important;
+  }
+
+  .payments-heading h1,
+  .management-screen .management-greeting h1,
+  .barberpro-schedule .schedule-title-row h2,
+  .settings-screen-shell > .page-title,
+  .closing-screen > .section-title h1,
+  .closing-screen > .section-title h2,
+  .coming-soon-screen h1,
+  .admin-header h1 {
+    font-size: var(--page-title-tablet) !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .payments-heading,
+  .management-screen .management-greeting,
+  .barberpro-schedule .schedule-title-row,
+  .settings-screen-shell > .page-title,
+  .closing-screen > .section-title,
+  .coming-soon-screen,
+  .admin-header {
+    margin-bottom: var(--page-title-gap-mobile) !important;
+  }
+
+  .payments-heading h1,
+  .management-screen .management-greeting h1,
+  .barberpro-schedule .schedule-title-row h2,
+  .settings-screen-shell > .page-title,
+  .closing-screen > .section-title h1,
+  .closing-screen > .section-title h2,
+  .coming-soon-screen h1,
+  .admin-header h1 {
+    font-size: var(--page-title-mobile) !important;
+  }
+}
+
+/* Final page-title coverage across app screens */
+.app-content > .settings-screen-shell > .page-title,
+.app-content > .closing-screen > .section-title,
+.app-content > .coming-soon-screen .coming-soon-card,
+.app-content > .barberpro-payments > .payments-heading,
+.app-content > .barberpro-schedule .schedule-title-row,
+.app-content > .management-screen .management-greeting,
+.admin-shell > .admin-header {
+  margin-top: 0 !important;
+  margin-bottom: 18px !important;
+}
+
+.app-content > .closing-screen > .section-title h2,
+.app-content > .coming-soon-screen .coming-soon-card h1,
+.app-content > .settings-screen-shell > .page-title,
+.app-content > .barberpro-payments > .payments-heading h1,
+.app-content > .barberpro-schedule .schedule-title-row h2,
+.app-content > .management-screen .management-greeting h1,
+.admin-shell > .admin-header h1 {
+  color: #ffffff !important;
+  font-size: 30px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.12 !important;
+  margin: 0 !important;
+  text-transform: none !important;
+}
+
+.app-content > .closing-screen > .section-title p,
+.app-content > .coming-soon-screen .coming-soon-card p,
+.app-content > .barberpro-payments > .payments-heading p,
+.app-content > .barberpro-schedule .schedule-title-row p,
+.app-content > .management-screen .management-greeting p {
+  color: #9a9ea6 !important;
+  font-size: 15px !important;
+  line-height: 1.35 !important;
+  margin: 6px 0 0 !important;
+}
+
+@media (min-width: 821px) and (max-width: 1180px) {
+  .app-content > .closing-screen > .section-title h2,
+  .app-content > .coming-soon-screen .coming-soon-card h1,
+  .app-content > .settings-screen-shell > .page-title,
+  .app-content > .barberpro-payments > .payments-heading h1,
+  .app-content > .barberpro-schedule .schedule-title-row h2,
+  .app-content > .management-screen .management-greeting h1,
+  .admin-shell > .admin-header h1 {
+    font-size: 28px !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .app-content > .settings-screen-shell > .page-title,
+  .app-content > .closing-screen > .section-title,
+  .app-content > .coming-soon-screen .coming-soon-card,
+  .app-content > .barberpro-payments > .payments-heading,
+  .app-content > .barberpro-schedule .schedule-title-row,
+  .app-content > .management-screen .management-greeting,
+  .admin-shell > .admin-header {
+    margin-bottom: 12px !important;
+  }
+
+  .app-content > .closing-screen > .section-title h2,
+  .app-content > .coming-soon-screen .coming-soon-card h1,
+  .app-content > .settings-screen-shell > .page-title,
+  .app-content > .barberpro-payments > .payments-heading h1,
+  .app-content > .barberpro-schedule .schedule-title-row h2,
+  .app-content > .management-screen .management-greeting h1,
+  .admin-shell > .admin-header h1 {
+    font-size: 26px !important;
+  }
+
+  .app-content > .closing-screen > .section-title p,
+  .app-content > .coming-soon-screen .coming-soon-card p,
+  .app-content > .barberpro-payments > .payments-heading p,
+  .app-content > .barberpro-schedule .schedule-title-row p,
+  .app-content > .management-screen .management-greeting p {
+    font-size: 13px !important;
+    margin-top: 4px !important;
+  }
+}
+
+/* Final screen title position alignment */
+.app-content > .barberpro-payments,
+.app-content > .barberpro-schedule,
+.app-content > .management-screen,
+.app-content > .settings-screen-shell,
+.app-content > .closing-screen,
+.app-content > .coming-soon-screen {
+  padding-top: 22px !important;
+}
+
+.app-content > .barberpro-payments > .payments-heading,
+.app-content > .barberpro-schedule > .schedule-hero,
+.app-content > .management-screen > .management-top-row,
+.app-content > .settings-screen-shell > .page-title,
+.app-content > .closing-screen > .section-title,
+.app-content > .coming-soon-screen > .coming-soon-card {
+  margin-top: 0 !important;
+  margin-bottom: 18px !important;
+}
+
+.app-content > .management-screen > .management-top-row {
+  align-items: flex-start !important;
+}
+
+.app-content > .management-screen .management-greeting,
+.app-content > .barberpro-schedule .schedule-title-row,
+.app-content > .barberpro-payments .payments-heading,
+.app-content > .closing-screen > .section-title {
+  margin: 0 !important;
+}
+
+.app-content > .settings-screen-shell > .page-title {
+  display: block !important;
+  padding-bottom: 0 !important;
+}
+
+.app-content > .closing-screen > .section-title h2,
+.app-content > .settings-screen-shell > .page-title,
+.app-content > .management-screen .management-greeting h1,
+.app-content > .barberpro-schedule .schedule-title-row h2,
+.app-content > .barberpro-payments .payments-heading h1,
+.app-content > .coming-soon-screen .coming-soon-card h1 {
+  font-size: 30px !important;
+  line-height: 1.12 !important;
+  margin-top: 0 !important;
+}
+
+.app-content > .barberpro-schedule .schedule-title-row {
+  align-items: flex-start !important;
+}
+
+.app-content > .barberpro-schedule .new-schedule-button {
+  align-self: start !important;
+}
+
+@media (min-width: 821px) and (max-width: 1180px) {
+  .app-content > .barberpro-payments,
+  .app-content > .barberpro-schedule,
+  .app-content > .management-screen,
+  .app-content > .settings-screen-shell,
+  .app-content > .closing-screen,
+  .app-content > .coming-soon-screen {
+    padding-top: 22px !important;
+  }
+
+  .app-content > .closing-screen > .section-title h2,
+  .app-content > .settings-screen-shell > .page-title,
+  .app-content > .management-screen .management-greeting h1,
+  .app-content > .barberpro-schedule .schedule-title-row h2,
+  .app-content > .barberpro-payments .payments-heading h1,
+  .app-content > .coming-soon-screen .coming-soon-card h1 {
+    font-size: 28px !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .app-content > .barberpro-payments,
+  .app-content > .barberpro-schedule,
+  .app-content > .management-screen,
+  .app-content > .settings-screen-shell,
+  .app-content > .closing-screen,
+  .app-content > .coming-soon-screen {
+    padding-top: 12px !important;
+  }
+
+  .app-content > .barberpro-payments > .payments-heading,
+  .app-content > .barberpro-schedule > .schedule-hero,
+  .app-content > .management-screen > .management-top-row,
+  .app-content > .settings-screen-shell > .page-title,
+  .app-content > .closing-screen > .section-title,
+  .app-content > .coming-soon-screen > .coming-soon-card {
+    margin-bottom: 12px !important;
+  }
+
+  .app-content > .closing-screen > .section-title h2,
+  .app-content > .settings-screen-shell > .page-title,
+  .app-content > .management-screen .management-greeting h1,
+  .app-content > .barberpro-schedule .schedule-title-row h2,
+  .app-content > .barberpro-payments .payments-heading h1,
+  .app-content > .coming-soon-screen .coming-soon-card h1 {
+    font-size: 26px !important;
+    line-height: 1.1 !important;
+  }
+
+  .app-content > .management-screen > .management-top-row {
+    margin-top: 0 !important;
+  }
+}
+
+@media (max-height: 720px) and (max-width: 820px) {
+  .app-content > .barberpro-payments,
+  .app-content > .barberpro-schedule,
+  .app-content > .management-screen,
+  .app-content > .settings-screen-shell,
+  .app-content > .closing-screen,
+  .app-content > .coming-soon-screen {
+    padding-top: 10px !important;
+  }
+}
+
+/* Web/tablet content layout standard */
+@media (min-width: 768px) {
+  :root {
+    --content-top-space: 30px;
+    --content-side-space: 32px;
+    --content-title-size: 28px;
+    --content-description-size: 15px;
+    --content-title-gap: 24px;
+  }
+
+  .app-content > .barberpro-payments,
+  .app-content > .barberpro-schedule,
+  .app-content > .management-screen,
+  .app-content > .settings-screen-shell,
+  .app-content > .closing-screen,
+  .app-content > .coming-soon-screen {
+    padding-left: var(--content-side-space) !important;
+    padding-right: var(--content-side-space) !important;
+    padding-top: var(--content-top-space) !important;
+  }
+
+  .app-content > .barberpro-payments > .payments-heading,
+  .app-content > .barberpro-schedule > .schedule-hero,
+  .app-content > .management-screen > .management-top-row,
+  .app-content > .settings-screen-shell > .page-title,
+  .app-content > .closing-screen > .section-title {
+    margin: 0 0 var(--content-title-gap) !important;
+  }
+
+  .app-content > .management-screen > .management-top-row,
+  .app-content > .barberpro-schedule .schedule-title-row {
+    align-items: flex-start !important;
+  }
+
+  .app-content > .barberpro-payments > .payments-heading h1,
+  .app-content > .barberpro-schedule .schedule-title-row h2,
+  .app-content > .management-screen .management-greeting h1,
+  .app-content > .settings-screen-shell > .page-title,
+  .app-content > .closing-screen > .section-title h1,
+  .app-content > .closing-screen > .section-title h2 {
+    color: #ffffff !important;
+    font-size: var(--content-title-size) !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1.12 !important;
+    margin: 0 !important;
+    text-transform: none !important;
+  }
+
+  .app-content > .barberpro-payments > .payments-heading p,
+  .app-content > .barberpro-schedule .schedule-title-row p,
+  .app-content > .management-screen .management-greeting p,
+  .app-content > .closing-screen > .section-title p {
+    color: #9a9ea6 !important;
+    font-size: var(--content-description-size) !important;
+    line-height: 1.35 !important;
+    margin: 6px 0 0 !important;
+  }
+
+  .app-content > .barberpro-schedule .new-schedule-button,
+  .app-content > .management-screen .management-top-row .scope-control {
+    align-self: flex-start !important;
+    margin-top: 0 !important;
+  }
+}
+
+@media (min-width: 1181px) {
+  :root {
+    --content-top-space: 32px;
+    --content-side-space: 38px;
+    --content-title-size: 30px;
+    --content-title-gap: 24px;
+  }
+}
+
+/* Web/tablet content layout standard for subpages */
+@media (min-width: 768px) {
+  .app-content > .screen-column,
+  .app-content > div.screen-column,
+  .app-content > .closing-screen,
+  .app-content > .settings-screen-shell,
+  .app-content > .coming-soon-screen,
+  .app-content > .management-screen {
+    padding-left: var(--content-side-space) !important;
+    padding-right: var(--content-side-space) !important;
+    padding-top: var(--content-top-space) !important;
+  }
+
+  .app-content > .screen-column > .section-title:first-child,
+  .app-content > div.screen-column > .section-title:first-child,
+  .app-content > .closing-screen > .section-title:first-child,
+  .app-content > .settings-screen-shell > .page-title:first-child,
+  .app-content > .coming-soon-screen > .coming-soon-card:first-child {
+    margin: 0 0 var(--content-title-gap) !important;
+  }
+
+  .app-content > .screen-column > .section-title:first-child h1,
+  .app-content > .screen-column > .section-title:first-child h2,
+  .app-content > div.screen-column > .section-title:first-child h1,
+  .app-content > div.screen-column > .section-title:first-child h2,
+  .app-content > .closing-screen > .section-title:first-child h1,
+  .app-content > .closing-screen > .section-title:first-child h2,
+  .app-content > .settings-screen-shell > .page-title:first-child,
+  .app-content > .coming-soon-screen > .coming-soon-card:first-child h1 {
+    color: #ffffff !important;
+    font-size: var(--content-title-size) !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.03em !important;
+    line-height: 1.12 !important;
+    margin: 0 !important;
+    text-transform: none !important;
+  }
+
+  .app-content > .screen-column > .section-title:first-child p,
+  .app-content > div.screen-column > .section-title:first-child p,
+  .app-content > .closing-screen > .section-title:first-child p,
+  .app-content > .coming-soon-screen > .coming-soon-card:first-child p {
+    color: #9a9ea6 !important;
+    font-size: var(--content-description-size) !important;
+    line-height: 1.35 !important;
+    margin: 6px 0 0 !important;
   }
 }

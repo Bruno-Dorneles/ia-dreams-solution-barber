@@ -18,6 +18,8 @@ import {
   Mail,
   Home,
   Lock,
+  Maximize2,
+  Minimize2,
   Pencil,
   Phone,
   Plus,
@@ -28,6 +30,7 @@ import {
   Store,
   Tag,
   Trash2,
+  UserCog,
   UserRound,
   Users,
   Wallet,
@@ -355,16 +358,23 @@ function LoginScreenV3({ onAuthenticated, onCreateAccount }) {
 }
 
 function BarberProLogoMark({ size = 'default' }) {
-  const boxClass = size === 'large' ? 'h-14 w-14 rounded-[12px]' : 'h-12 w-12 rounded-[10px]';
-  const textClass = size === 'large' ? 'text-[38px]' : 'text-[32px]';
+  const boxClass =
+    size === 'large'
+      ? 'h-14 w-14 rounded-[12px]'
+      : size === 'sidebar'
+        ? 'h-[52px] w-[52px] rounded-[14px]'
+        : 'h-12 w-12 rounded-[10px]';
 
   return (
     <div
       className={`${boxClass} flex items-center justify-center border border-white/10 bg-white/10 shadow-[0_0_24px_rgba(255,255,255,.14)] backdrop-blur`}
     >
-      <span className={`${textClass} translate-x-[1px] font-semibold leading-none tracking-normal text-white`}>
-        B
-      </span>
+      <svg className="barberpro-logo-glyph" viewBox="0 0 64 64" aria-hidden="true">
+        <path
+          d="M20.5 10.5h15.8c8.2 0 13.3 4.5 13.3 11.5 0 4.3-2.3 7.7-6.1 9.4 4.8 1.6 7.5 5.4 7.5 10.3 0 7.3-5.7 11.8-14.4 11.8H20.5v-43Zm11.8 17.7h3c3 0 4.8-1.7 4.8-4.4 0-2.8-1.8-4.4-4.8-4.4h-3v8.8Zm0 16.9h3.9c3.3 0 5.3-1.8 5.3-4.8 0-2.9-2-4.7-5.3-4.7h-3.9v9.5Z"
+          fill="currentColor"
+        />
+      </svg>
     </div>
   );
 }
@@ -1209,14 +1219,47 @@ function ManagementGreeting({ user }) {
 }
 
 function AppHeader({ onBack, onLogout }) {
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+
+  useEffect(() => {
+    function updateFullscreenState() {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
+
+    document.addEventListener('fullscreenchange', updateFullscreenState);
+    return () => document.removeEventListener('fullscreenchange', updateFullscreenState);
+  }, []);
+
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      await document.documentElement.requestFullscreen();
+    } catch {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
+  }
+
   return (
     <header className="barberpro-app-header">
+      <button
+        type="button"
+        className="app-header-action app-header-fullscreen"
+        onClick={toggleFullscreen}
+        aria-label={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+      >
+        {isFullscreen ? <Minimize2 size={22} /> : <Maximize2 size={22} />}
+      </button>
+
       {onBack ? (
-        <button type="button" className="app-header-action" onClick={onBack} aria-label="Voltar">
+        <button type="button" className="app-header-action app-header-back" onClick={onBack} aria-label="Voltar">
           <ArrowLeft size={21} />
         </button>
       ) : (
-        <span className="app-header-spacer" aria-hidden="true" />
+        <span className="app-header-spacer app-header-back" aria-hidden="true" />
       )}
 
       <div className="app-header-brand">
@@ -1239,7 +1282,7 @@ function AppHeader({ onBack, onLogout }) {
   );
 }
 
-const APP_NAV_ITEMS = [
+const MOBILE_NAV_ITEMS = [
   { id: 'management', label: 'Financeiro', icon: <Home size={23} /> },
   { id: 'schedule', label: 'Agendamentos', icon: <CalendarClock size={23} /> },
   { id: 'payments', label: 'Pagamentos', icon: <Plus size={31} />, featured: true },
@@ -1247,14 +1290,48 @@ const APP_NAV_ITEMS = [
   { id: 'settings', label: 'Configurações', icon: <SettingsIcon size={23} /> },
 ];
 
-function AppNavigation({ currentScreen, onNavigate }) {
+const DESKTOP_NAV_ITEMS = [
+  { id: 'payments', label: 'Pagamentos', icon: <WalletCards size={22} /> },
+  { id: 'management', label: 'Financeiro', icon: <Home size={22} /> },
+  { id: 'schedule', label: 'Agendamentos', icon: <CalendarClock size={22} /> },
+  { id: 'professionals', label: 'Profissionais', icon: <UserCog size={22} /> },
+  { id: 'closing', label: 'Relatórios', icon: <BarChart3 size={22} /> },
+  { id: 'inventory', label: 'Estoque', icon: <Store size={22} /> },
+  { id: 'settings', label: 'Configurações', icon: <SettingsIcon size={22} /> },
+];
+
+function AppNavigation({ currentScreen, onNavigate, barbershop, user }) {
+  const currentNavId = currentScreen === 'professionals' ? 'settings' : currentScreen;
+
   return (
     <nav className="app-nav" aria-label="Navegação principal">
       <div className="nav-brand">
-        <Scissors size={22} />
+        <BarberProLogoMark size="sidebar" />
+        <div>
+          <strong>BarberPro</strong>
+          <span>IA Dreams</span>
+        </div>
       </div>
 
-      {APP_NAV_ITEMS.map((item) => (
+      <div className="nav-items nav-items-desktop">
+        {DESKTOP_NAV_ITEMS.map((item) => (
+          <button
+            key={item.id}
+            className={currentNavId === item.id ? 'active' : ''}
+            onClick={() => onNavigate(item.id)}
+            title={item.label}
+            aria-label={item.label}
+            aria-current={currentNavId === item.id ? 'page' : undefined}
+            type="button"
+          >
+            {item.icon}
+            <span className="nav-label">{item.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="nav-items nav-items-mobile">
+        {MOBILE_NAV_ITEMS.map((item) => (
         <button
           key={item.id}
           className={`${currentScreen === item.id ? 'active' : ''} ${
@@ -1269,7 +1346,17 @@ function AppNavigation({ currentScreen, onNavigate }) {
           {item.icon}
           <span className="nav-label">{item.label}</span>
         </button>
-      ))}
+        ))}
+      </div>
+
+      <div className="nav-user-card">
+        <div className="nav-user-avatar">B</div>
+        <div>
+          <strong>{barbershop?.name || 'Barbearia'}</strong>
+          <span>{user?.role === 'admin' ? 'Admin' : user?.role === 'owner' ? 'Dono' : 'Profissional'}</span>
+          <small><i /> Online</small>
+        </div>
+      </div>
     </nav>
   );
 }
@@ -1481,6 +1568,7 @@ function Workspace({ session, onLogout }) {
   const [users, setUsers] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [costs, setCosts] = useState([]);
+  const [settingsInitialTab, setSettingsInitialTab] = useState('company');
 
   async function loadData() {
     const [
@@ -1508,11 +1596,25 @@ function Workspace({ session, onLogout }) {
     setAppointments(appointmentsResponse.data);
     setSchedules(schedulesResponse.data);
     setCosts(costsResponse.data);
+
+    const sessionProfessionalExists = professionalsResponse.data.some(
+      (professional) => professional.id === user.professionalId,
+    );
+    if (user.role !== 'owner' && !sessionProfessionalExists) {
+      onLogout();
+      return;
+    }
+
+    if (user.role === 'owner' && user.professionalId && !sessionProfessionalExists) {
+      onLogout();
+    }
   }
 
   useEffect(() => {
     activeBarbershopId = user.barbershopId;
-    loadData().catch(() => {});
+    loadData().catch(() => {
+      onLogout();
+    });
     return () => {
       activeBarbershopId = null;
     };
@@ -1527,7 +1629,24 @@ function Workspace({ session, onLogout }) {
         '--accent-color': barbershop?.accentColor || '#111827',
       }}
     >
-      <AppNavigation currentScreen={screen} onNavigate={setScreen} />
+      <AppNavigation
+        currentScreen={screen}
+        barbershop={barbershop}
+        user={user}
+        onNavigate={(nextScreen) => {
+          if (nextScreen === 'professionals') {
+            setSettingsInitialTab('team');
+            setScreen('settings');
+            return;
+          }
+
+          if (nextScreen === 'settings') {
+            setSettingsInitialTab('company');
+          }
+
+          setScreen(nextScreen);
+        }}
+      />
 
       <section className="app-content">
         <AppHeader
@@ -1551,6 +1670,7 @@ function Workspace({ session, onLogout }) {
         {screen === 'schedule' && (
           <ScheduleScreenV2
             professionals={professionals}
+            services={services}
             schedules={schedules}
             barbershop={barbershop}
             onSaved={loadData}
@@ -1593,6 +1713,7 @@ function Workspace({ session, onLogout }) {
               professionals={professionals}
               services={services}
               costs={costs}
+              initialTab={settingsInitialTab}
               onSaved={loadData}
             />
           </div>
@@ -1687,86 +1808,99 @@ function PaymentsScreenV2({ user, professionals, services, onSaved }) {
       </section>
 
       <form className="payments-form" onSubmit={handleSubmit}>
-        <section className="payments-card">
-          {canOwnerChoose && (
+        <div className="payments-main-column">
+          <section className="payments-card payments-service-card">
+            <div className="payments-card-title">
+              <h2>1. Serviço</h2>
+              <p>Selecione o serviço</p>
+            </div>
+
+            {canOwnerChoose && (
+              <label className="payments-select-field">
+                <span>Profissional</span>
+                <div>
+                  <UserRound size={22} />
+                  <select
+                    value={professionalId}
+                    onChange={(event) => setProfessionalId(event.target.value)}
+                    required
+                  >
+                    <option value="">Selecione o profissional</option>
+                    {professionals.map((professional) => (
+                      <option key={professional.id} value={professional.id}>
+                        {professional.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </label>
+            )}
+
             <label className="payments-select-field">
-              <span>Profissional</span>
+              <span>Serviço</span>
               <div>
-                <UserRound size={22} />
+                <Scissors size={22} />
                 <select
-                  value={professionalId}
-                  onChange={(event) => setProfessionalId(event.target.value)}
+                  value={serviceId}
+                  onChange={(event) => setServiceId(event.target.value)}
                   required
                 >
-                  <option value="">Selecione o profissional</option>
-                  {professionals.map((professional) => (
-                    <option key={professional.id} value={professional.id}>
-                      {professional.name}
+                  <option value="">Selecione o serviço</option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} - {money(service.priceCents)}
                     </option>
                   ))}
+                  <option value="other">Outro</option>
                 </select>
               </div>
             </label>
-          )}
 
-          <label className="payments-select-field">
-            <span>Serviço</span>
-            <div>
-              <Scissors size={22} />
-              <select
-                value={serviceId}
-                onChange={(event) => setServiceId(event.target.value)}
-                required
-              >
-                <option value="">Selecione o serviço</option>
-                {services.map((service) => (
-                  <option key={service.id} value={service.id}>
-                    {service.name} - {money(service.priceCents)}
-                  </option>
-                ))}
-                <option value="other">Outro</option>
-              </select>
+            {isOther && (
+              <div className="payments-custom-grid">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={customPrice}
+                  placeholder="Valor livre"
+                  onChange={(event) => setCustomPrice(event.target.value)}
+                  required
+                />
+                <input
+                  value={customServiceName}
+                  placeholder="Descrição"
+                  onChange={(event) => setCustomServiceName(event.target.value)}
+                />
+              </div>
+            )}
+          </section>
+
+          <section className="payments-card payments-method-card">
+            <div className="payments-card-title">
+              <h2>2. Forma de pagamento</h2>
+              <p>Escolha a forma de pagamento</p>
             </div>
-          </label>
 
-          {isOther && (
-            <div className="payments-custom-grid">
-              <input
-                value={customServiceName}
-                placeholder="Descrição"
-                onChange={(event) => setCustomServiceName(event.target.value)}
-              />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={customPrice}
-                placeholder="Valor livre"
-                onChange={(event) => setCustomPrice(event.target.value)}
-                required
-              />
+            <div className="payments-method-grid">
+              {methods.map((method) => (
+                <button
+                  key={method.value}
+                  type="button"
+                  className={paymentMethod === method.value ? 'active' : ''}
+                  onClick={() => setPaymentMethod(method.value)}
+                >
+                  {paymentMethod === method.value && (
+                    <span className="method-check"><Check size={18} /></span>
+                  )}
+                  {method.icon}
+                  <strong>{method.title}</strong>
+                  <small>{method.description}</small>
+                </button>
+              ))}
             </div>
-          )}
-
-          <div className="payments-section-title">Forma de pagamento</div>
-          <div className="payments-method-grid">
-            {methods.map((method) => (
-              <button
-                key={method.value}
-                type="button"
-                className={paymentMethod === method.value ? 'active' : ''}
-                onClick={() => setPaymentMethod(method.value)}
-              >
-                {paymentMethod === method.value && (
-                  <span className="method-check"><Check size={18} /></span>
-                )}
-                {method.icon}
-                <strong>{method.title}</strong>
-                <small>{method.description}</small>
-              </button>
-            ))}
-          </div>
-        </section>
+          </section>
+        </div>
 
         <section className="payments-summary-card">
           <h2>Resumo do atendimento</h2>
@@ -1810,14 +1944,21 @@ function ComingSoonScreen({ title }) {
   );
 }
 
-function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
+function ScheduleScreenV2({ professionals, services = [], schedules, barbershop, onSaved }) {
   const [selectedDate, setSelectedDate] = useState(today());
   const [professionalId, setProfessionalId] = useState(professionals[0]?.id || '');
   const [viewMode, setViewMode] = useState('day');
+  const [serviceFilter, setServiceFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [drafts, setDrafts] = useState({});
+  const [editingSlot, setEditingSlot] = useState('');
+  const [openCancelSlot, setOpenCancelSlot] = useState('');
+  const [canceledCounts, setCanceledCounts] = useState({});
+  const [customServiceSlots, setCustomServiceSlots] = useState({});
   const selectedDateObj = new Date(`${selectedDate}T12:00:00`);
   const weekDays = scheduleWeekDays(selectedDate);
   const selectedProfessional = professionals.find((item) => item.id === professionalId);
+  const scheduleSlots = useMemo(() => businessSlots(barbershop), [barbershop]);
 
   useEffect(() => {
     const currentExists = professionals.some((professional) => professional.id === professionalId);
@@ -1828,7 +1969,7 @@ function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
 
   useEffect(() => {
     const nextDrafts = {};
-    for (const slot of businessSlots(barbershop)) {
+    for (const slot of scheduleSlots) {
       const startsAt = `${selectedDate}T${slot}`;
       const schedule = schedules.find(
         (item) =>
@@ -1842,7 +1983,7 @@ function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
       };
     }
     setDrafts(nextDrafts);
-  }, [barbershop, professionalId, schedules, selectedDate]);
+  }, [professionalId, scheduleSlots, schedules, selectedDate]);
 
   function updateDraft(startsAt, field, value) {
     setDrafts((current) => ({
@@ -1868,6 +2009,33 @@ function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
     await onSaved();
   }
 
+  async function cancelLine(startsAt) {
+    if (!professionalId) return;
+
+    await api.post('/schedules', {
+      professionalId,
+      startsAt,
+      clientName: '',
+      clientContact: '',
+      serviceName: '',
+    });
+
+    setDrafts((current) => ({
+      ...current,
+      [startsAt]: {
+        clientName: '',
+        clientContact: '',
+        serviceName: '',
+      },
+    }));
+    setCanceledCounts((current) => ({
+      ...current,
+      [`${professionalId}-${selectedDate}`]: (current[`${professionalId}-${selectedDate}`] || 0) + 1,
+    }));
+    setOpenCancelSlot('');
+    setEditingSlot('');
+    await onSaved();
+  }
   function moveDate(days) {
     const next = new Date(`${selectedDate}T12:00:00`);
     next.setDate(next.getDate() + days);
@@ -1886,6 +2054,22 @@ function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
     .filter((item) => scheduleDateTimeKey(item.startsAt).slice(0, 10) >= selectedDate)
     .sort((a, b) => scheduleDateTimeKey(a.startsAt).localeCompare(scheduleDateTimeKey(b.startsAt)))
     .slice(0, 12);
+  const serviceOptions = Array.from(
+    new Set(
+      [
+        ...services.map((service) => service.name),
+        ...schedules
+          .filter((item) => item.professionalId === professionalId)
+          .map((item) => item.serviceName),
+      ].filter(Boolean),
+    ),
+  );
+  const scheduledSlots = Object.values(drafts).filter((draft) =>
+    Boolean(draft.clientName || draft.clientContact || draft.serviceName),
+  );
+  const openSlotsCount = Math.max(scheduleSlots.length - scheduledSlots.length, 0);
+  const canceledKey = professionalId + '-' + selectedDate;
+  const canceledCount = canceledCounts[canceledKey] || 0;
 
   return (
     <div className="barberpro-schedule">
@@ -1896,206 +2080,381 @@ function ScheduleScreenV2({ professionals, schedules, barbershop, onSaved }) {
             <p>Gerencie os agendamentos da sua barbearia.</p>
           </div>
           <button type="button" className="new-schedule-button">
-            <CalendarPlus size={22} />
-            Novo
+            <Plus size={18} />
+            Novo agendamento
           </button>
         </div>
       </header>
 
-      <div className="schedule-tabs">
-        <button className={viewMode === 'day' ? 'active' : ''} type="button" onClick={() => setViewMode('day')}>
-          <CalendarClock size={19} />
-          Dia
-        </button>
-        <button className={viewMode === 'week' ? 'active' : ''} type="button" onClick={() => setViewMode('week')}>
-          <CalendarClock size={19} />
-          Semana
-        </button>
-        <button className={viewMode === 'month' ? 'active' : ''} type="button" onClick={() => setViewMode('month')}>
-          <CalendarClock size={19} />
-          Mês
-        </button>
-        <button className={viewMode === 'list' ? 'active' : ''} type="button" onClick={() => setViewMode('list')}>
-          <SlidersHorizontal size={19} />
-          Lista
-        </button>
-      </div>
+      <section className="schedule-workspace">
+        <div className="schedule-main-panel">
+          <div className="schedule-tabs">
+            <button className={viewMode === 'day' ? 'active' : ''} type="button" onClick={() => setViewMode('day')}>
+              <CalendarClock size={19} />
+              Dia
+            </button>
+            <button className={viewMode === 'week' ? 'active' : ''} type="button" onClick={() => setViewMode('week')}>
+              <CalendarClock size={19} />
+              Semana
+            </button>
+            <button className={viewMode === 'month' ? 'active' : ''} type="button" onClick={() => setViewMode('month')}>
+              <CalendarClock size={19} />
+              Mês
+            </button>
+            <button className={viewMode === 'list' ? 'active' : ''} type="button" onClick={() => setViewMode('list')}>
+              <SlidersHorizontal size={19} />
+              Lista
+            </button>
+          </div>
 
-      <div className="schedule-date-nav">
-        <button type="button" onClick={() => moveDate(-1)} aria-label="Dia anterior">
-          ‹
-        </button>
-        <label className="schedule-date-picker" aria-label="Selecionar data">
-          <CalendarClock size={19} />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(event) => setSelectedDate(event.target.value)}
-          />
-        </label>
-        <div>
-          <strong>{formatLongDate(selectedDateObj)}</strong>
-          <span>{capitalize(weekdayFullLabel(selectedDateObj))}</span>
-        </div>
-        <DropdownSelect
-          className="schedule-professional-picker icon-only-dropdown"
-          value={professionalId}
-          options={professionals.map((professional) => ({
-            value: professional.id,
-            label: professional.name,
-            color: professional.color || '#111827',
-          }))}
-          onChange={setProfessionalId}
-          ariaLabel="Selecionar profissional"
-        />
-        <button type="button" onClick={() => moveDate(1)} aria-label="Próximo dia">
-          ›
-        </button>
-      </div>
-
-      <div className="schedule-week-strip">
-        {weekDays.map((day) => (
-          <button
-            key={day.date}
-            type="button"
-            className={day.date === selectedDate ? 'active' : ''}
-            onClick={() => setSelectedDate(day.date)}
-          >
-            <span>{day.weekday}</span>
-            <strong>{day.day}</strong>
-          </button>
-        ))}
-      </div>
-
-      {viewMode === 'day' && <section className="schedule-timeline">
-        {businessSlots(barbershop).map((slot, index) => {
-          const startsAt = `${selectedDate}T${slot}`;
-          const draft = drafts[startsAt] || {};
-          const isClosed = Boolean(
-            draft.clientName || draft.clientContact || draft.serviceName,
-          );
-          const statusClass = isClosed
-            ? index % 3 === 0
-              ? 'scheduled'
-              : 'confirmed'
-            : 'open';
-
-          return (
-            <div className="schedule-time-row" key={startsAt}>
-              <time>{slot}</time>
-              <article className={`schedule-appointment-card ${statusClass}`}>
-                <div className="schedule-avatar">
-                  {initials(draft.clientName || selectedProfessional?.name || 'BP')}
-                </div>
-                <div className="schedule-card-fields">
-                  <input
-                    value={draft.clientName || ''}
-                    onChange={(event) => updateDraft(startsAt, 'clientName', event.target.value)}
-                    onBlur={(event) =>
-                      saveLine(startsAt, { ...drafts[startsAt], clientName: event.target.value })
-                    }
-                    placeholder="Nome do cliente"
-                    aria-label={`Cliente ${slot}`}
-                  />
-                  <div>
-                    <input
-                      value={draft.serviceName || ''}
-                      onChange={(event) => updateDraft(startsAt, 'serviceName', event.target.value)}
-                      onBlur={(event) =>
-                        saveLine(startsAt, { ...drafts[startsAt], serviceName: event.target.value })
-                      }
-                      placeholder="Serviço"
-                      aria-label={`Serviço ${slot}`}
-                    />
-                    <input
-                      value={draft.clientContact || ''}
-                      onChange={(event) => updateDraft(startsAt, 'clientContact', event.target.value)}
-                      onBlur={(event) =>
-                        saveLine(startsAt, { ...drafts[startsAt], clientContact: event.target.value })
-                      }
-                      placeholder="Contato"
-                      aria-label={`Contato ${slot}`}
-                    />
-                  </div>
-                </div>
-                <span
-                  className={`schedule-status-dot ${statusClass}`}
-                  title={isClosed ? 'Agendado' : 'Aberto'}
-                />
-                <button type="button" className="schedule-more" aria-label="Mais opções">
-                  ⋮
-                </button>
-              </article>
+          <div className="schedule-date-nav">
+            <button type="button" onClick={() => moveDate(-1)} aria-label="Dia anterior">
+              ‹
+            </button>
+            <label className="schedule-date-picker" aria-label="Selecionar data">
+              <CalendarClock size={19} />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(event) => setSelectedDate(event.target.value)}
+              />
+            </label>
+            <div>
+              <strong>{formatLongDate(selectedDateObj)}</strong>
+              <span>{capitalize(weekdayFullLabel(selectedDateObj))}</span>
             </div>
-          );
-        })}
-      </section>}
+            <DropdownSelect
+              className="schedule-professional-picker icon-only-dropdown"
+              value={professionalId}
+              options={professionals.map((professional) => ({
+                value: professional.id,
+                label: professional.name,
+                color: professional.color || '#111827',
+              }))}
+              onChange={setProfessionalId}
+              ariaLabel="Selecionar profissional"
+            />
+            <button type="button" onClick={() => moveDate(1)} aria-label="Próximo dia">
+              ›
+            </button>
+          </div>
 
-      {viewMode === 'week' && (
-        <section className="schedule-week-view">
-          {weekDays.map((day) => {
-            const daySchedules = schedulesForDate(day.date);
-            return (
+          <div className="schedule-week-strip">
+            {weekDays.map((day) => (
               <button
-                type="button"
                 key={day.date}
+                type="button"
                 className={day.date === selectedDate ? 'active' : ''}
-                onClick={() => {
-                  setSelectedDate(day.date);
-                  setViewMode('day');
-                }}
+                onClick={() => setSelectedDate(day.date)}
               >
                 <span>{day.weekday}</span>
                 <strong>{day.day}</strong>
-                <small>{daySchedules.length} agenda{daySchedules.length === 1 ? '' : 's'}</small>
-                <div>
-                  {daySchedules.slice(0, 3).map((item) => (
-                    <i key={item.id || item.startsAt}>{item.clientName || 'Reservado'}</i>
-                  ))}
+              </button>
+            ))}
+          </div>
+
+          {viewMode === 'day' && <section className="schedule-timeline">
+            {scheduleSlots.map((slot, index) => {
+              const startsAt = `${selectedDate}T${slot}`;
+              const draft = drafts[startsAt] || {};
+              const isClosed = Boolean(
+                draft.clientName || draft.clientContact || draft.serviceName,
+              );
+              const isEditing = editingSlot === startsAt;
+              const statusClass = isClosed ? 'confirmed' : 'open';
+              const hiddenByStatus =
+                (statusFilter === 'open' && isClosed) ||
+                (statusFilter === 'scheduled' && !isClosed);
+              const hiddenByService =
+                serviceFilter !== 'all' &&
+                (!isClosed || draft.serviceName !== serviceFilter);
+              if (hiddenByStatus || hiddenByService) return null;
+
+              const isCustomService = Boolean(customServiceSlots[startsAt]) || Boolean(draft.serviceName && !serviceOptions.includes(draft.serviceName));
+              const serviceSelectValue = isCustomService ? 'other' : draft.serviceName || '';
+
+              return (
+                <div className="schedule-time-row" key={startsAt}>
+                  <time>{slot}</time>
+                  <article className={`schedule-appointment-card ${statusClass}`}>
+                    {isClosed ? (
+                      <div className="schedule-avatar">
+                        {initials(draft.clientName || selectedProfessional?.name || 'BP')}
+                      </div>
+                    ) : (
+                      <div className="schedule-avatar schedule-avatar-open">
+                        <CalendarClock size={22} />
+                      </div>
+                    )}
+                    <div className={`schedule-card-grid ${!isClosed && !isEditing ? 'available' : ''} ${isEditing ? 'editing' : ''} ${isClosed ? 'closed' : 'open-slot'}`}>
+                      {!isClosed && !isEditing ? (
+                        <div className="schedule-available-label">Horário disponível</div>
+                      ) : (
+                        <>
+                          <div className="schedule-name-column">
+                            <input
+                              value={draft.clientName || ''}
+                              onChange={(event) => updateDraft(startsAt, 'clientName', event.target.value)}
+                              onBlur={(event) =>
+                                saveLine(startsAt, { ...drafts[startsAt], clientName: event.target.value })
+                              }
+                              placeholder="Nome do cliente"
+                              aria-label={`Cliente ${slot}`}
+                            />
+                            <select
+                              className="schedule-service-select"
+                              value={serviceSelectValue}
+                              onChange={(event) => {
+                                const nextService = event.target.value;
+                                if (nextService === 'other') {
+                                  setCustomServiceSlots((current) => ({
+                                    ...current,
+                                    [startsAt]: true,
+                                  }));
+                                  updateDraft(startsAt, 'serviceName', '');
+                                  return;
+                                }
+
+                                setCustomServiceSlots((current) => ({
+                                  ...current,
+                                  [startsAt]: false,
+                                }));
+                                updateDraft(startsAt, 'serviceName', nextService);
+                                if (nextService) {
+                                  saveLine(startsAt, { ...drafts[startsAt], serviceName: nextService });
+                                }
+                              }}
+                              aria-label={`Serviço ${slot}`}
+                            >
+                              <option value="">Serviço</option>
+                              {serviceOptions.map((serviceName) => (
+                                <option key={serviceName} value={serviceName}>{serviceName}</option>
+                              ))}
+                              <option value="other">Outro</option>
+                            </select>
+                            {isCustomService && (
+                              <input
+                                value={draft.serviceName || ''}
+                                onChange={(event) => updateDraft(startsAt, 'serviceName', event.target.value)}
+                                onBlur={(event) =>
+                                  saveLine(startsAt, { ...drafts[startsAt], serviceName: event.target.value })
+                                }
+                                placeholder="Digite o serviço"
+                                aria-label={`Outro serviço ${slot}`}
+                              />
+                            )}
+                          </div>
+                          <input
+                            className="schedule-contact-field"
+                            value={draft.clientContact || ''}
+                            onChange={(event) => updateDraft(startsAt, 'clientContact', event.target.value)}
+                            onBlur={(event) =>
+                              saveLine(startsAt, { ...drafts[startsAt], clientContact: event.target.value })
+                            }
+                            placeholder="Contato"
+                            aria-label={`Contato ${slot}`}
+                          />
+                        </>
+                      )}
+                      <span
+                        className={`schedule-status-dot ${statusClass}`}
+                        title={isClosed ? 'Confirmado' : 'Aberto'}
+                      >
+                        <i />
+                        {isClosed ? 'Confirmado' : 'Pendente'}
+                      </span>
+                      <div className="schedule-action-cell">
+                        {isClosed ? (
+                          <div className="schedule-cancel-menu-wrap">
+                            <button
+                              type="button"
+                              className="schedule-more"
+                              aria-label="Mais opções"
+                              onClick={() => setOpenCancelSlot(openCancelSlot === startsAt ? '' : startsAt)}
+                            >
+                              ⋮
+                            </button>
+                            {openCancelSlot === startsAt && (
+                              <button
+                                type="button"
+                                className="schedule-cancel-action"
+                                onClick={() => cancelLine(startsAt)}
+                              >
+                                Cancelar
+                              </button>
+                            )}
+                          </div>
+                        ) : isEditing ? null : (
+                          <button
+                            type="button"
+                            className="schedule-inline-action"
+                            onClick={() => {
+                              setEditingSlot(startsAt);
+                              window.setTimeout(() => {
+                                const input = document.querySelector(`[aria-label="Cliente ${slot}"]`);
+                                input?.focus();
+                              }, 0);
+                            }}
+                          >
+                            Agendar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </article>
                 </div>
-              </button>
-            );
-          })}
-        </section>
-      )}
+              );
+            })}
+          </section>}
 
-      {viewMode === 'month' && (
-        <section className="schedule-month-view">
-          {monthCalendarDays(selectedDate).map((day) => {
-            const daySchedules = schedulesForDate(day.date);
-            return (
-              <button
-                type="button"
-                key={day.date}
-                className={`${day.currentMonth ? '' : 'muted'} ${day.date === selectedDate ? 'active' : ''}`}
-                onClick={() => {
-                  setSelectedDate(day.date);
-                  setViewMode('day');
-                }}
-              >
-                <span>{day.day}</span>
-                {daySchedules.length > 0 && <em>{daySchedules.length}</em>}
-              </button>
-            );
-          })}
-        </section>
-      )}
+          {viewMode === 'week' && (
+            <section className="schedule-week-view">
+              {weekDays.map((day) => {
+                const daySchedules = schedulesForDate(day.date);
+                return (
+                  <button
+                    type="button"
+                    key={day.date}
+                    className={day.date === selectedDate ? 'active' : ''}
+                    onClick={() => {
+                      setSelectedDate(day.date);
+                      setViewMode('day');
+                    }}
+                  >
+                    <span>{day.weekday}</span>
+                    <strong>{day.day}</strong>
+                    <small>{daySchedules.length} agenda{daySchedules.length === 1 ? '' : 's'}</small>
+                    <div>
+                      {daySchedules.slice(0, 3).map((item) => (
+                        <i key={item.id || item.startsAt}>{item.clientName || 'Reservado'}</i>
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </section>
+          )}
 
-      {viewMode === 'list' && (
-        <section className="schedule-list-view">
-          {listSchedules.length === 0 && <p>Nenhum agendamento encontrado.</p>}
-          {listSchedules.map((item) => {
-            const key = scheduleDateTimeKey(item.startsAt);
-            return (
-              <article key={item.id || key}>
-                <time>{formatDate(key.slice(0, 10))} às {key.slice(11, 16)}</time>
-                <strong>{item.clientName || 'Cliente sem nome'}</strong>
-                <span>{item.serviceName || 'Serviço não informado'}</span>
-              </article>
-            );
-          })}
-        </section>
-      )}
+          {viewMode === 'month' && (
+            <section className="schedule-month-view">
+              {monthCalendarDays(selectedDate).map((day) => {
+                const daySchedules = schedulesForDate(day.date);
+                return (
+                  <button
+                    type="button"
+                    key={day.date}
+                    className={`${day.currentMonth ? '' : 'muted'} ${day.date === selectedDate ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedDate(day.date);
+                      setViewMode('day');
+                    }}
+                  >
+                    <span>{day.day}</span>
+                    {daySchedules.length > 0 && <em>{daySchedules.length}</em>}
+                  </button>
+                );
+              })}
+            </section>
+          )}
+
+          {viewMode === 'list' && (
+            <section className="schedule-list-view">
+              {listSchedules.length === 0 && <p>Nenhum agendamento encontrado.</p>}
+              {listSchedules.map((item) => {
+                const key = scheduleDateTimeKey(item.startsAt);
+                return (
+                  <article key={item.id || key}>
+                    <time>{formatDate(key.slice(0, 10))} às {key.slice(11, 16)}</time>
+                    <strong>{item.clientName || 'Cliente sem nome'}</strong>
+                    <span>{item.serviceName || 'Serviço não informado'}</span>
+                  </article>
+                );
+              })}
+            </section>
+          )}
+        </div>
+
+        <aside className="schedule-side-panel">
+          <h3>Resumo do dia</h3>
+          <div className="schedule-summary-grid">
+            <article>
+              <CalendarClock size={24} />
+              <strong>{scheduledSlots.length}</strong>
+              <span>Agendamentos</span>
+              <small><i className="green" />Confirmados</small>
+            </article>
+            <article>
+              <CalendarClock size={24} />
+              <strong>{openSlotsCount}</strong>
+              <span>Pendentes</span>
+              <small><i className="blue" />Abertos</small>
+            </article>
+            <article>
+              <UserRound size={24} />
+              <strong>0</strong>
+              <span>Cancelados</span>
+              <small><i className="red" />Cancelados</small>
+            </article>
+            <article>
+              <BarChart3 size={24} />
+              <strong>R$ 0,00</strong>
+              <span>Faturamento do dia</span>
+            </article>
+          </div>
+
+          <div className="schedule-quick-filters">
+            <h3>Filtros rápidos</h3>
+            <label>
+              <span>Profissional</span>
+              <DropdownSelect
+                value={professionalId}
+                options={professionals.map((professional) => ({
+                  value: professional.id,
+                  label: professional.name,
+                  color: professional.color || '#111827',
+                }))}
+                onChange={setProfessionalId}
+                ariaLabel="Filtrar profissional"
+              />
+            </label>
+            <label>
+              <span>Serviço</span>
+              <DropdownSelect
+                value={serviceFilter}
+                options={[
+                  { value: 'all', label: 'Todos' },
+                  ...serviceOptions.map((service) => ({ value: service, label: service })),
+                ]}
+                onChange={setServiceFilter}
+                ariaLabel="Filtrar serviço"
+              />
+            </label>
+            <label>
+              <span>Status</span>
+              <DropdownSelect
+                value={statusFilter}
+                options={[
+                  { value: 'all', label: 'Todos' },
+                  { value: 'scheduled', label: 'Confirmados' },
+                  { value: 'open', label: 'Abertos' },
+                ]}
+                onChange={setStatusFilter}
+                ariaLabel="Filtrar status"
+              />
+            </label>
+            <button
+              type="button"
+              className="schedule-clear-filters"
+              onClick={() => {
+                setServiceFilter('all');
+                setStatusFilter('all');
+              }}
+            >
+              Limpar filtros
+            </button>
+          </div>
+        </aside>
+      </section>
     </div>
   );
 }
@@ -2222,6 +2581,7 @@ function ManagementScreen({
       icon: <BarChart3 size={24} />,
     },
   ];
+  const serviceDistributionItems = buildServiceDistribution(currentMonthAppointments);
 
   return (
     <div className="screen-column management-screen">
@@ -2267,9 +2627,12 @@ function ManagementScreen({
         </div>
       </section>
 
-      <section className="performance-section">
-        <h2>Desempenho</h2>
-        <RevenueChart items={chartItems} mode={chartMode} onModeChange={setChartMode} />
+      <section className="finance-charts-grid">
+        <section className="performance-section">
+          <h2>Desempenho</h2>
+          <RevenueChart items={chartItems} mode={chartMode} onModeChange={setChartMode} />
+        </section>
+        <ServiceDistributionChart items={serviceDistributionItems} total={currentMonthAppointments.length} />
       </section>
 
       {user.role === 'owner' && (
@@ -2444,6 +2807,57 @@ function RevenueChart({ items, mode, onModeChange }) {
         ))}
       </svg>
     </div>
+  );
+}
+
+const serviceDistributionColors = ['#2563eb', '#60a5fa', '#8b5cf6', '#7c9ce8', '#9ca3af'];
+
+function ServiceDistributionChart({ items, total }) {
+  const radius = 44;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+
+  return (
+    <section className="service-distribution-card">
+      <h2>Distribuição de serviços</h2>
+      <div className="service-distribution-content">
+        <div className="service-donut-wrap">
+          <svg className="service-donut" viewBox="0 0 120 120" role="img" aria-label="Distribuição de serviços">
+            <circle className="service-donut-track" cx="60" cy="60" r={radius} />
+            {items.map((item) => {
+              const dash = (item.percent / 100) * circumference;
+              const segment = (
+                <circle
+                  key={item.label}
+                  className="service-donut-segment"
+                  cx="60"
+                  cy="60"
+                  r={radius}
+                  stroke={item.color}
+                  strokeDasharray={`${dash} ${circumference - dash}`}
+                  strokeDashoffset={-offset}
+                />
+              );
+              offset += dash;
+              return segment;
+            })}
+          </svg>
+          <div className="service-donut-center">
+            <strong>{total}</strong>
+            <span>Total</span>
+          </div>
+        </div>
+
+        <div className="service-distribution-list">
+          {items.map((item) => (
+            <div key={item.label}>
+              <span><i style={{ background: item.color }} /> {item.label}</span>
+              <strong>{item.displayPercent ?? item.percent}%</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -2715,10 +3129,15 @@ function SettingsScreen({
   users,
   professionals,
   services,
+  initialTab = 'company',
   onSaved,
 }) {
   const isOwner = user.role === 'owner';
-  const [tab, setTab] = useState('company');
+  const [tab, setTab] = useState(initialTab);
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   if (!isOwner) {
     return (
@@ -3329,6 +3748,34 @@ function buildReport(appointments) {
   );
 }
 
+function buildServiceDistribution(appointments) {
+  if (appointments.length === 0) {
+    return [
+      { label: 'Sem vendas', count: 0, percent: 0, displayPercent: 0, color: serviceDistributionColors[4] },
+    ];
+  }
+
+  const counts = appointments.reduce((acc, appointment) => {
+    const name = appointment.serviceName || 'Outros';
+    acc[name] = (acc[name] || 0) + 1;
+    return acc;
+  }, {});
+
+  const entries = Object.entries(counts)
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
+  const top = entries.slice(0, 4);
+  const otherCount = entries.slice(4).reduce((sum, item) => sum + item.count, 0);
+  const grouped = otherCount > 0 ? [...top, { label: 'Outros', count: otherCount }] : top;
+
+  return grouped.map((item, index) => ({
+    ...item,
+    percent: Math.max(1, Math.round((item.count / appointments.length) * 100)),
+    displayPercent: Math.round((item.count / appointments.length) * 100),
+    color: serviceDistributionColors[index] || serviceDistributionColors[serviceDistributionColors.length - 1],
+  }));
+}
+
 function buildChartItems(appointments, mode, professionals) {
   const dates = mode === 'week' ? lastNDates(7) : daysInCurrentMonth();
 
@@ -3624,6 +4071,18 @@ function getRevenueChartMaxCents(maxRevenueCents) {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

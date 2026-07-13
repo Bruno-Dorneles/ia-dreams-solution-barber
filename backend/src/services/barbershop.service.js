@@ -679,10 +679,13 @@ class BarberShopService {
       ? null
       : state.services.find((item) => item.id === body.serviceId);
     const requestedProfessional = state.professionals.find((item) => item.id === body.professionalId);
+    const requestedBarbershop = state.barbershops.find((item) => item.id === body.barbershopId);
     let targetBarbershopId =
-      getTargetBarbershopId(body.barbershopId) ||
       requestedProfessional?.barbershopId ||
       service?.barbershopId ||
+      requestedBarbershop?.id ||
+      body.barbershopId ||
+      state.barbershop?.id ||
       '';
     if (!targetBarbershopId && state.barbershops.length === 1) {
       targetBarbershopId = state.barbershops[0].id;
@@ -696,7 +699,7 @@ class BarberShopService {
     }
 
     const professional =
-      requestedProfessional ||
+      (requestedProfessional?.barbershopId === targetBarbershopId ? requestedProfessional : null) ||
       ensureOwnerProfessional(targetBarbershopId) ||
       state.professionals.find((item) => item.barbershopId === targetBarbershopId);
 
