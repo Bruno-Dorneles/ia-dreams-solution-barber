@@ -20,6 +20,7 @@ import {
   Lock,
   Maximize2,
   Minimize2,
+  MoreVertical,
   Pencil,
   Phone,
   Plus,
@@ -33,6 +34,7 @@ import {
   UserCog,
   UserRound,
   Users,
+  X,
   Wallet,
   LogOut,
   UserPlus,
@@ -81,6 +83,7 @@ const paymentLabels = {
 };
 
 function App() {
+  const publicBookingMatch = window.location.pathname.match(/^\/agendar\/([^/]+)/);
   const [session, setSession] = useState(() => loadSavedSession());
 
   function handleAuthenticated(data, remember) {
@@ -106,6 +109,10 @@ function App() {
     }
   }, [session]);
 
+  if (publicBookingMatch) {
+    return <PublicBookingPage slug={decodeURIComponent(publicBookingMatch[1])} />;
+  }
+
   if (!session?.user) {
     return <AuthGateway onAuthenticated={handleAuthenticated} />;
   }
@@ -117,6 +124,347 @@ function App() {
   return <Workspace session={session} onLogout={handleLogout} />;
 }
 
+function PublicBookingPage({ slug }) {
+  const [page, setPage] = useState(null);
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState('');
+  const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [selectedDate, setSelectedDate] = useState(today());
+  const [selectedTime, setSelectedTime] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [clientContact, setClientContact] = useState('');
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const railDragRef = useRef({ active: false, startX: 0, startLeft: 0, moved: false });
+  const ignoreRailClickRef = useRef(false);
+
+  function handleRailPointerDown(event) {
+    const rail = event.currentTarget;
+    railDragRef.current = {
+      active: true,
+      startX: event.clientX,
+      startLeft: rail.scrollLeft,
+      moved: false,
+    };
+    rail.classList.add('dragging');
+
+    if (event.pointerType === 'mouse') {
+      rail.setPointerCapture?.(event.pointerId);
+    }
+  }
+
+  function handleRailPointerMove(event) {
+    const drag = railDragRef.current;
+
+    if (!drag.active) {
+      return;
+    }
+
+    const delta = event.clientX - drag.startX;
+
+    if (Math.abs(delta) > 4) {
+      drag.moved = true;
+      ignoreRailClickRef.current = true;
+      event.currentTarget.scrollLeft = drag.startLeft - delta;
+      event.preventDefault();
+    }
+  }
+
+  function handleRailPointerEnd(event) {
+    const drag = railDragRef.current;
+    event.currentTarget.classList.remove('dragging');
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    railDragRef.current = { active: false, startX: 0, startLeft: 0, moved: false };
+
+    if (drag.moved) {
+      window.setTimeout(() => {
+        ignoreRailClickRef.current = false;
+      }, 80);
+    }
+  }
+
+  function handleRailClickCapture(event) {
+    if (ignoreRailClickRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  async function loadPublicPage() {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await api.get(`/public/barbershops/${slug}`);
+      if (response.data.error) {
+        setError(response.data.error);
+        return;
+      }
+
+      setPage(response.data);
+      setSelectedProfessionalId(response.data.professionals[0]?.id || '');
+      setSelectedServiceId(response.data.services[0]?.id || '');
+    } catch {
+      setError('Nao foi possivel carregar a pagina de agendamento.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    activeBarbershopId = null;
+    loadPublicPage();
+  }, [slug]);
+
+  const barbershop = page?.barbershop;
+  const professionals = page?.professionals || [];
+  const services = page?.services || [];
+  const schedules = page?.schedules || [];
+  const selectedProfessional = professionals.find((item) => item.id === selectedProfessionalId);
+  const selectedService = services.find((item) => item.id === selectedServiceId);
+  const weekDays = scheduleWeekDays(selectedDate);
+  const dateLabel = formatLongDate(new Date(`${selectedDate}T12:00:00`));
+  const slots = useMemo(() => businessSlots(barbershop), [barbershop]);
+  const occupiedTimes = new Set(
+    schedules
+      .filter((item) => item.professionalId === selectedProfessionalId)
+      .map((item) => scheduleDateTimeKey(item.startsAt)),
+  );
+  const availableSlots = slots.filter((slot) => !occupiedTimes.has(`${selectedDate}T${slot}`));
+
+  function changeDate(offset) {
+    const date = new Date(`${selectedDate}T12:00:00`);
+    date.setDate(date.getDate() + offset);
+    setSelectedDate(toInputDate(date));
+    setSelectedTime('');
+    setResult(null);
+  }
+
+  async function submitBooking(event) {
+    event?.preventDefault?.();
+    setError('');
+    setResult(null);
+
+    if (!selectedProfessionalId || !selectedServiceId || !selectedDate || !selectedTime) {
+      setError('Escolha profissional, servico, data e horário.');
+      return;
+    }
+
+    const whatsappPhone = normalizeWhatsAppPhone(clientContact);
+
+    if (!clientName.trim() || !clientContact.trim()) {
+      setError('Informe seu nome e WhatsApp.');
+      return;
+    }
+
+    if (!whatsappPhone) {
+      setError('Informe um WhatsApp válido com DDD. Exemplo: (51) 99999-9999.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await api.post(`/public/barbershops/${slug}/schedules`, {
+        professionalId: selectedProfessionalId,
+        serviceId: selectedServiceId,
+        startsAt: `${selectedDate}T${selectedTime}`,
+        clientName: clientName.trim(),
+        clientContact: whatsappPhone,
+      });
+
+      if (response.data.error) {
+        setError(response.data.error);
+        await loadPublicPage();
+        return;
+      }
+
+      setResult(response.data);
+      setSelectedTime('');
+      notifyScheduleRequestCreated(response.data?.barbershop?.id || barbershop?.id);
+      await loadPublicPage();
+    } catch {
+      setError('Nao foi possivel solicitar o agendamento agora.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <main className="public-booking-shell loading">
+        <BarberProWordmark />
+        <p>Carregando agenda...</p>
+      </main>
+    );
+  }
+
+  if (error && !page) {
+    return (
+      <main className="public-booking-shell loading">
+        <BarberProWordmark />
+        <p>{error}</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="public-booking-shell">
+      <section className="public-booking-frame">
+        <aside className="public-booking-hero">
+          <div className="public-booking-brand">
+            <BarberProLogoMark />
+            <div>
+              <strong>BarberPro</strong>
+              <span>IA Dreams</span>
+            </div>
+          </div>
+          <div className="public-booking-hero-copy">
+            <h1>{barbershop?.name || 'Barbearia'}</h1>
+            <p>Agende seu horário em poucos segundos</p>
+          </div>
+          <div className="public-booking-powered">Powered by BarberPro IA DREAMS</div>
+        </aside>
+
+        <form className="public-booking-panel" onSubmit={submitBooking}>
+          <div className="public-booking-mobile-brand">
+            <BarberProWordmark />
+            <h1>{barbershop?.name || 'Barbearia'}</h1>
+            <p>Agende seu horário em poucos segundos</p>
+          </div>
+
+          <section className="public-booking-step">
+            <h2><span>1</span> Escolha o profissional</h2>
+            <div className="public-card-grid professionals" onPointerDown={handleRailPointerDown} onPointerMove={handleRailPointerMove} onPointerUp={handleRailPointerEnd} onPointerCancel={handleRailPointerEnd} onClickCapture={handleRailClickCapture}>
+              {professionals.map((professional) => (
+                <button
+                  key={professional.id}
+                  type="button"
+                  className={selectedProfessionalId === professional.id ? 'selected' : ''}
+                  onClick={() => {
+                    setSelectedProfessionalId(professional.id);
+                    setSelectedTime('');
+                    setResult(null);
+                  }}
+                >
+                  <i style={{ '--avatar-color': professional.color || '#2563eb' }}>{initials(professional.name)}</i>
+                  <strong>{professional.name}</strong>
+                  <small>Barbeiro</small>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="public-booking-step">
+            <h2><span>2</span> Escolha o servico</h2>
+            <div className="public-card-grid services" onPointerDown={handleRailPointerDown} onPointerMove={handleRailPointerMove} onPointerUp={handleRailPointerEnd} onPointerCancel={handleRailPointerEnd} onClickCapture={handleRailClickCapture}>
+              {services.map((service) => (
+                <button
+                  key={service.id}
+                  type="button"
+                  className={selectedServiceId === service.id ? 'selected' : ''}
+                  onClick={() => {
+                    setSelectedServiceId(service.id);
+                    setResult(null);
+                  }}
+                >
+                  <Scissors size={24} />
+                  <strong>{service.name}</strong>
+                  <small>{money(service.priceCents)}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="public-booking-step">
+            <h2><span>3</span> Data e horário</h2>
+            <div className="public-date-row">
+              <button type="button" onClick={() => changeDate(-1)} aria-label="Dia anterior">
+                <ArrowLeft size={18} />
+              </button>
+              <strong>{dateLabel}</strong>
+              <button type="button" onClick={() => changeDate(1)} aria-label="Proximo dia">
+                <ChevronRight size={18} />
+              </button>
+            </div>
+            <div className="public-week-strip">
+              {weekDays.map((day) => (
+                <button
+                  key={day.date}
+                  type="button"
+                  className={day.date === selectedDate ? 'active' : ''}
+                  onClick={() => {
+                    setSelectedDate(day.date);
+                    setSelectedTime('');
+                    setResult(null);
+                  }}
+                >
+                  <span>{day.weekday}</span>
+                  <strong>{day.day}</strong>
+                </button>
+              ))}
+            </div>
+            <div className="public-time-grid">
+              {availableSlots.length === 0 && <p>Nenhum horário disponivel para esta data.</p>}
+              {availableSlots.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  className={selectedTime === slot ? 'selected' : ''}
+                  onClick={() => {
+                    setSelectedTime(slot);
+                    setResult(null);
+                  }}
+                >
+                  {slot}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="public-booking-step">
+            <h2><span>4</span> Seus dados</h2>
+            <div className="public-client-grid">
+              <label>
+                <span>Nome</span>
+                <input value={clientName} onChange={(event) => setClientName(event.target.value)} placeholder="Digite seu nome" />
+              </label>
+              <label>
+                <span>WhatsApp</span>
+                <input
+                  value={clientContact}
+                  onChange={(event) => setClientContact(formatWhatsAppInput(event.target.value))}
+                  placeholder="(00) 00000-0000"
+                  inputMode="tel"
+                  maxLength={16}
+                />
+              </label>
+            </div>
+          </section>
+
+          {error && <p className="public-booking-error">{error}</p>}
+          {result && <p className="public-booking-success">Solicitação enviada para a barbearia.</p>}
+
+          <button className="public-booking-submit" type="button" disabled={saving} onClick={submitBooking}>
+            <CalendarPlus size={19} />
+            {saving ? 'Solicitando...' : 'Solicitar agendamento'}
+          </button>
+
+          <aside className="public-booking-summary">
+            <h2><span>5</span> {result ? 'Solicitado com sucesso' : 'Resumo do agendamento'}</h2>
+            <ul>
+              <li><UserRound size={16} /> {selectedProfessional?.name || 'Profissional'}</li>
+              <li><Scissors size={16} /> {selectedService?.name || 'Serviço'} {selectedService ? `- ${money(selectedService.priceCents)}` : ''}</li>
+              <li><CalendarClock size={16} /> {formatDate(selectedDate)} {selectedTime || '--:--'}</li>
+              <li><Phone size={16} /> {clientContact || 'WhatsApp para confirmação'}</li>
+            </ul>
+            {result && <p>Em breve a barbearia entrará em contato para confirmar seu horário.</p>}
+          </aside>
+        </form>
+      </section>
+    </main>
+  );
+}
 function AuthGateway({ onAuthenticated }) {
   const [mode, setMode] = useState('login');
 
@@ -937,7 +1285,7 @@ function RegisterScreenV2({ onAuthenticated, onBack }) {
               className="mb-6 flex h-10 w-10 appearance-none items-center justify-center rounded-full border-0 bg-transparent p-0 text-[34px] font-normal leading-none text-white shadow-none transition duration-ia hover:bg-white/5 lg:hidden"
               aria-label="Voltar"
             >
-              ‹
+              ©
             </button>
 
             <div className="mb-2 hidden items-center justify-end gap-5 text-[13px] text-white/80 lg:flex">
@@ -1218,8 +1566,12 @@ function ManagementGreeting({ user }) {
   );
 }
 
-function AppHeader({ onBack, onLogout }) {
+function AppHeader({ onBack, onLogout, notifications = [], readNotificationIds = [], onMarkNotificationsRead, onNavigate }) {
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsRef = useRef(null);
+  const unreadNotifications = notifications.filter((item) => !readNotificationIds.includes(item.id));
+
 
   useEffect(() => {
     function updateFullscreenState() {
@@ -1230,6 +1582,41 @@ function AppHeader({ onBack, onLogout }) {
     return () => document.removeEventListener('fullscreenchange', updateFullscreenState);
   }, []);
 
+  useEffect(() => {
+    if (!notificationsOpen) {
+      return undefined;
+    }
+
+    function closeOnOutside(event) {
+      if (!notificationsRef.current?.contains(event.target)) {
+        setNotificationsOpen(false);
+      }
+    }
+
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') {
+        setNotificationsOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', closeOnOutside);
+    document.addEventListener('touchstart', closeOnOutside);
+    document.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutside);
+      document.removeEventListener('touchstart', closeOnOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [notificationsOpen]);
+
+  function handleNotificationClick(notification) {
+    onMarkNotificationsRead?.([notification.id]);
+    if (notification.screen) {
+      onNavigate?.(notification.screen);
+    }
+    setNotificationsOpen(false);
+  }
   async function toggleFullscreen() {
     try {
       if (document.fullscreenElement) {
@@ -1271,13 +1658,84 @@ function AppHeader({ onBack, onLogout }) {
       </div>
 
       <div className="app-header-actions">
-        <button type="button" className="app-header-action" aria-label="Avisos">
-          <Bell size={21} />
-        </button>
+        <div className="notifications-anchor" ref={notificationsRef}>
+          <button
+            type="button"
+            className={`app-header-action notification-bell-button ${notificationsOpen ? 'active' : ''}`}
+            aria-label="Avisos"
+            aria-expanded={notificationsOpen}
+            onClick={() => setNotificationsOpen((current) => !current)}
+          >
+            <Bell size={21} />
+            {unreadNotifications.length > 0 && <span className="notification-unread-dot" />}
+          </button>
+
+          {notificationsOpen && (
+            <>
+              <div className="notifications-backdrop" aria-hidden="true" />
+              <section className="notifications-popover" aria-label="Notificações">
+                <div className="notifications-panel-header">
+                  <div>
+                    <h2>Notificações</h2>
+                    <span>{unreadNotifications.length} novas</span>
+                  </div>
+                  <button type="button" onClick={() => setNotificationsOpen(false)} aria-label="Fechar notificações">
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="notifications-tabs" aria-label="Filtros de notificações">
+                  <button type="button" className="active">Todas</button>
+                  <button type="button">Não lidas</button>
+                </div>
+
+                <div className="notifications-list">
+                  {notifications.length === 0 ? (
+                    <div className="notifications-empty">
+                      <Bell size={22} />
+                      <strong>Nenhum aviso agora</strong>
+                      <p>Quando houver algo importante, aparece aqui.</p>
+                    </div>
+                  ) : (
+                    notifications.map((notification) => {
+                      const unread = !readNotificationIds.includes(notification.id);
+                      return (
+                        <button
+                          key={notification.id}
+                          type="button"
+                          className={`notification-item ${unread ? 'unread' : ''}`}
+                          onClick={() => handleNotificationClick(notification)}
+                        >
+                          <span className="notification-dot" />
+                          <span className={`notification-icon ${notification.tone}`}>{notification.icon}</span>
+                          <span className="notification-copy">
+                            <strong>{notification.title}</strong>
+                            <small>{notification.description}</small>
+                          </span>
+                          <span className="notification-time">{notification.time}</span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="notifications-read-all"
+                  onClick={() => onMarkNotificationsRead?.(notifications.map((item) => item.id))}
+                  disabled={unreadNotifications.length === 0}
+                >
+                  Marcar todas como lidas
+                </button>
+              </section>
+            </>
+          )}
+        </div>
         <button type="button" className="app-header-action" onClick={onLogout} aria-label="Sair">
           <LogOut size={21} />
         </button>
       </div>
+
     </header>
   );
 }
@@ -1569,6 +2027,14 @@ function Workspace({ session, onLogout }) {
   const [schedules, setSchedules] = useState([]);
   const [costs, setCosts] = useState([]);
   const [settingsInitialTab, setSettingsInitialTab] = useState('company');
+  const notificationStorageKey = `barberpro-notifications-read-${user.barbershopId || user.id}`;
+  const [readNotificationIds, setReadNotificationIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(notificationStorageKey) || '[]');
+    } catch {
+      return [];
+    }
+  });
 
   async function loadData() {
     const [
@@ -1611,11 +2077,49 @@ function Workspace({ session, onLogout }) {
   }
 
   useEffect(() => {
+    try {
+      localStorage.setItem(notificationStorageKey, JSON.stringify(readNotificationIds));
+    } catch {
+      // Ignora falhas de armazenamento local.
+    }
+  }, [notificationStorageKey, readNotificationIds]);
+
+  const notifications = useMemo(
+    () => buildAppNotifications({ barbershop, appointments, schedules }),
+    [barbershop, appointments, schedules],
+  );
+
+  function markNotificationsRead(ids) {
+    setReadNotificationIds((current) => Array.from(new Set([...current, ...ids])));
+  }
+  useEffect(() => {
     activeBarbershopId = user.barbershopId;
-    loadData().catch(() => {
-      onLogout();
-    });
+    let active = true;
+
+    function refreshData() {
+      if (!active) return;
+      loadData().catch(() => {
+        if (active) onLogout();
+      });
+    }
+
+    function refreshFromScheduleSignal(event) {
+      const signalBarbershopId = event.detail?.barbershopId || event.key?.replace('barberpro-new-schedule-', '');
+      if (!signalBarbershopId || signalBarbershopId === user.barbershopId) {
+        refreshData();
+      }
+    }
+
+    refreshData();
+    const interval = window.setInterval(refreshData, 12000);
+    window.addEventListener('storage', refreshFromScheduleSignal);
+    window.addEventListener('barberpro-new-schedule', refreshFromScheduleSignal);
+
     return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('storage', refreshFromScheduleSignal);
+      window.removeEventListener('barberpro-new-schedule', refreshFromScheduleSignal);
       activeBarbershopId = null;
     };
   }, [user.barbershopId]);
@@ -1656,6 +2160,10 @@ function Workspace({ session, onLogout }) {
               : () => setScreen(screen === 'closing' ? 'management' : 'payments')
           }
           onLogout={onLogout}
+          notifications={notifications}
+          readNotificationIds={readNotificationIds}
+          onMarkNotificationsRead={markNotificationsRead}
+          onNavigate={setScreen}
         />
 
         {screen === 'payments' && (
@@ -1980,6 +2488,7 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
         clientName: schedule?.clientName || '',
         clientContact: schedule?.clientContact || '',
         serviceName: schedule?.serviceName || '',
+        status: schedule?.status || '',
       };
     }
     setDrafts(nextDrafts);
@@ -2009,8 +2518,33 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
     await onSaved();
   }
 
+  async function confirmLine(startsAt) {
+    if (!professionalId) return;
+
+    const draft = drafts[startsAt] || {};
+    const whatsappWindow = draft.clientContact ? window.open('about:blank', '_blank') : null;
+
+    await api.post('/schedules', {
+      professionalId,
+      startsAt,
+      clientName: draft.clientName || '',
+      clientContact: draft.clientContact || '',
+      serviceName: draft.serviceName || '',
+    });
+    openWhatsAppMessage(
+      draft.clientContact,
+      buildScheduleWhatsAppMessage({ barbershop, draft, startsAt, accepted: true }),
+      whatsappWindow,
+    );
+    await onSaved();
+  }
+
   async function cancelLine(startsAt) {
     if (!professionalId) return;
+
+    const draft = drafts[startsAt] || {};
+    const shouldNotifyRejection = draft.status === 'pending' && draft.clientContact;
+    const whatsappWindow = shouldNotifyRejection ? window.open('about:blank', '_blank') : null;
 
     await api.post('/schedules', {
       professionalId,
@@ -2019,6 +2553,14 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
       clientContact: '',
       serviceName: '',
     });
+
+    if (shouldNotifyRejection) {
+      openWhatsAppMessage(
+        draft.clientContact,
+        buildScheduleWhatsAppMessage({ barbershop, draft, startsAt, accepted: false }),
+        whatsappWindow,
+      );
+    }
 
     setDrafts((current) => ({
       ...current,
@@ -2067,6 +2609,8 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
   const scheduledSlots = Object.values(drafts).filter((draft) =>
     Boolean(draft.clientName || draft.clientContact || draft.serviceName),
   );
+  const pendingSlotsCount = scheduledSlots.filter((draft) => draft.status === 'pending').length;
+  const confirmedSlotsCount = scheduledSlots.filter((draft) => draft.status !== 'pending').length;
   const openSlotsCount = Math.max(scheduleSlots.length - scheduledSlots.length, 0);
   const canceledKey = professionalId + '-' + selectedDate;
   const canceledCount = canceledCounts[canceledKey] || 0;
@@ -2109,7 +2653,7 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
 
           <div className="schedule-date-nav">
             <button type="button" onClick={() => moveDate(-1)} aria-label="Dia anterior">
-              ‹
+              <ArrowLeft size={20} />
             </button>
             <label className="schedule-date-picker" aria-label="Selecionar data">
               <CalendarClock size={19} />
@@ -2135,7 +2679,7 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
               ariaLabel="Selecionar profissional"
             />
             <button type="button" onClick={() => moveDate(1)} aria-label="Próximo dia">
-              ›
+              <ChevronRight size={20} />
             </button>
           </div>
 
@@ -2161,7 +2705,8 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
                 draft.clientName || draft.clientContact || draft.serviceName,
               );
               const isEditing = editingSlot === startsAt;
-              const statusClass = isClosed ? 'confirmed' : 'open';
+              const isPending = draft.status === 'pending';
+              const statusClass = isClosed ? (isPending ? 'pending' : 'confirmed') : 'open';
               const hiddenByStatus =
                 (statusFilter === 'open' && isClosed) ||
                 (statusFilter === 'scheduled' && !isClosed);
@@ -2189,6 +2734,16 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
                     <div className={`schedule-card-grid ${!isClosed && !isEditing ? 'available' : ''} ${isEditing ? 'editing' : ''} ${isClosed ? 'closed' : 'open-slot'}`}>
                       {!isClosed && !isEditing ? (
                         <div className="schedule-available-label">Horário disponível</div>
+                      ) : isPending ? (
+                        <>
+                          <div className="schedule-name-column schedule-readonly-column">
+                            <strong>{draft.clientName || 'Cliente'}</strong>
+                            <small>{draft.serviceName || 'Serviço'}</small>
+                          </div>
+                          <div className="schedule-contact-field schedule-readonly-contact">
+                            {draft.clientContact || 'Contato'}
+                          </div>
+                        </>
                       ) : (
                         <>
                           <div className="schedule-name-column">
@@ -2258,13 +2813,31 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
                       )}
                       <span
                         className={`schedule-status-dot ${statusClass}`}
-                        title={isClosed ? 'Confirmado' : 'Aberto'}
+                        title={isPending ? 'Pendente' : isClosed ? 'Confirmado' : 'Aberto'}
                       >
                         <i />
-                        {isClosed ? 'Confirmado' : 'Pendente'}
+                        {isPending ? 'Pendente' : isClosed ? 'Confirmado' : 'Aberto'}
                       </span>
                       <div className="schedule-action-cell">
-                        {isClosed ? (
+                        {isPending ? (
+                          <div className="schedule-pending-actions">
+                            <button
+                              type="button"
+                              className="schedule-confirm-action"
+                              onClick={() => confirmLine(startsAt)}
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              type="button"
+                              className="schedule-reject-action"
+                              onClick={() => cancelLine(startsAt)}
+                              aria-label="Cancelar solicitação"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : isClosed ? (
                           <div className="schedule-cancel-menu-wrap">
                             <button
                               type="button"
@@ -2272,7 +2845,7 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
                               aria-label="Mais opções"
                               onClick={() => setOpenCancelSlot(openCancelSlot === startsAt ? '' : startsAt)}
                             >
-                              ⋮
+                              <MoreVertical size={20} />
                             </button>
                             {openCancelSlot === startsAt && (
                               <button
@@ -2379,19 +2952,19 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
           <div className="schedule-summary-grid">
             <article>
               <CalendarClock size={24} />
-              <strong>{scheduledSlots.length}</strong>
+              <strong>{confirmedSlotsCount}</strong>
               <span>Agendamentos</span>
               <small><i className="green" />Confirmados</small>
             </article>
             <article>
               <CalendarClock size={24} />
-              <strong>{openSlotsCount}</strong>
+              <strong>{pendingSlotsCount}</strong>
               <span>Pendentes</span>
-              <small><i className="blue" />Abertos</small>
+              <small><i className="blue" />Aguardando confirmação</small>
             </article>
             <article>
               <UserRound size={24} />
-              <strong>0</strong>
+              <strong>{canceledCount}</strong>
               <span>Cancelados</span>
               <small><i className="red" />Cancelados</small>
             </article>
@@ -3455,6 +4028,9 @@ function CompanyEditor({ barbershop, onSaved }) {
     ownerName: barbershop?.ownerName || '',
     contact: barbershop?.contact || '',
   });
+  const [copied, setCopied] = useState(false);
+  const bookingSlug = barbershop?.id || barbershop?.publicSlug || clientSlugify(barbershop?.name || form.name);
+  const bookingUrl = bookingSlug ? `${window.location.origin}/agendar/${bookingSlug}` : '';
 
   useEffect(() => {
     setForm({
@@ -3470,31 +4046,67 @@ function CompanyEditor({ barbershop, onSaved }) {
     onSaved();
   }
 
+  async function copyBookingLink() {
+    if (!bookingUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(bookingUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
+
   return (
-    <div className="panel">
-      <SectionTitle eyebrow="Empresa" title="Perfil da barbearia" compact />
-      <form className="stack-form" onSubmit={submit}>
-        <input
-          placeholder="Nome da barbearia"
-          value={form.name}
-          onChange={(event) => setForm({ ...form, name: event.target.value })}
-        />
-        <input
-          placeholder="Responsável"
-          value={form.ownerName}
-          onChange={(event) => setForm({ ...form, ownerName: event.target.value })}
-        />
-        <input
-          placeholder="Contato"
-          value={form.contact}
-          onChange={(event) => setForm({ ...form, contact: event.target.value })}
-        />
-        <button>Salvar empresa</button>
-      </form>
+    <div className="settings-company-layout">
+      <div className="panel">
+        <SectionTitle eyebrow="Empresa" title="Perfil da barbearia" compact />
+        <form className="stack-form" onSubmit={submit}>
+          <input
+            placeholder="Nome da barbearia"
+            value={form.name}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
+          />
+          <input
+            placeholder="Responsável"
+            value={form.ownerName}
+            onChange={(event) => setForm({ ...form, ownerName: event.target.value })}
+          />
+          <input
+            placeholder="Contato"
+            value={form.contact}
+            onChange={(event) => setForm({ ...form, contact: event.target.value })}
+          />
+          <button>Salvar empresa</button>
+        </form>
+      </div>
+
+      <div className="panel public-link-panel">
+        <SectionTitle eyebrow="Agenda online" title="Link de agendamento" compact />
+        <p>
+          Envie este link no WhatsApp, Instagram ou bio para os clientes solicitarem horário.
+        </p>
+        <div className="public-link-box">
+          <span>{bookingUrl || 'Salve o nome da barbearia para gerar o link.'}</span>
+        </div>
+        <div className="public-link-actions">
+          <button type="button" onClick={copyBookingLink} disabled={!bookingUrl}>
+            {copied ? 'Copiado' : 'Copiar link'}
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => bookingUrl && window.open(bookingUrl, '_blank', 'noopener,noreferrer')}
+            disabled={!bookingUrl}
+          >
+            Abrir página
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
-
 function ThemeEditor({ barbershop, onSaved }) {
   const defaultTheme = {
     logoUrl: '',
@@ -4100,6 +4712,161 @@ function limitRangeEnd(currentStart, nextEnd) {
   return nextEnd;
 }
 
+function notifyScheduleRequestCreated(barbershopId) {
+  if (!barbershopId) return;
+
+  try {
+    const key = `barberpro-new-schedule-${barbershopId}`;
+    const value = String(Date.now());
+    localStorage.setItem(key, value);
+    window.dispatchEvent(new CustomEvent('barberpro-new-schedule', { detail: { barbershopId, value } }));
+  } catch {
+    // Ignora quando o navegador não permite armazenamento local.
+  }
+}
+function openWhatsAppMessage(contact, message, targetWindow = null) {
+  const url = buildWhatsAppUrl(contact, message);
+  if (!url) return;
+
+  if (targetWindow) {
+    targetWindow.location.href = url;
+    return;
+  }
+
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function buildWhatsAppUrl(contact, message) {
+  const phone = normalizeWhatsAppPhone(contact);
+  if (!phone) return '';
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+function normalizeWhatsAppPhone(contact) {
+  let digits = String(contact || '').replace(/\D/g, '');
+
+  if (digits.startsWith('55')) {
+    digits = digits.slice(2);
+  }
+
+  if (digits.length !== 10 && digits.length !== 11) {
+    return '';
+  }
+
+  const ddd = Number(digits.slice(0, 2));
+  if (ddd < 11 || ddd > 99) {
+    return '';
+  }
+
+  return `55${digits}`;
+}
+
+function formatWhatsAppInput(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+
+  if (digits.startsWith('55') && digits.length > 11) {
+    digits = digits.slice(2);
+  }
+
+  digits = digits.slice(0, 11);
+
+  if (!digits) return '';
+  if (digits.length <= 2) return `(${digits}`;
+
+  const ddd = digits.slice(0, 2);
+  const rest = digits.slice(2);
+
+  if (rest.length <= 4) return `(${ddd}) ${rest}`;
+  if (rest.length <= 8) return `(${ddd}) ${rest.slice(0, 4)}-${rest.slice(4)}`;
+
+  return `(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5, 9)}`;
+}
+
+function buildScheduleWhatsAppMessage({ barbershop, draft, startsAt, accepted }) {
+  const [date, time] = String(startsAt || '').split('T');
+  const shopName = barbershop?.name || 'BarberPro';
+  const clientName = draft?.clientName || 'tudo bem';
+  const serviceName = draft?.serviceName || 'serviço';
+
+  if (accepted) {
+    return `Olá, ${clientName}! Seu agendamento na ${shopName} foi confirmado para ${formatDate(date)} às ${time}. Serviço: ${serviceName}. Até lá!`;
+  }
+
+  return `Olá, ${clientName}! Infelizmente não conseguimos confirmar seu agendamento na ${shopName} para ${formatDate(date)} às ${time}. Pode nos chamar por aqui para escolher outro horário?`;
+}
+function buildAppNotifications({ barbershop, appointments, schedules }) {
+  const items = [];
+  const todayKey = today();
+
+  const pendingSchedules = schedules
+    .filter((schedule) => schedule.status === 'pending')
+    .sort((a, b) => scheduleDateTimeKey(b.startsAt).localeCompare(scheduleDateTimeKey(a.startsAt)))
+    .slice(0, 3);
+
+  pendingSchedules.forEach((schedule) => {
+    const key = scheduleDateTimeKey(schedule.startsAt);
+    const [date, time] = key.split('T');
+    items.push({
+      id: `schedule-${schedule.id}-${schedule.status}`,
+      title: 'Novo agendamento solicitado',
+      description: `${schedule.clientName || 'Cliente'} pediu horário para ${formatDate(date)} às ${time}.`,
+      time: date === todayKey ? 'Hoje' : formatDate(date),
+      screen: 'schedule',
+      tone: 'info',
+      icon: <CalendarClock size={20} />,
+    });
+  });
+
+  const todayAppointments = appointments
+    .filter((appointment) => appointmentDateKey(appointment) === todayKey)
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+
+  if (todayAppointments[0]) {
+    items.push({
+      id: `payment-${todayAppointments[0].id}`,
+      title: 'Pagamento registrado',
+      description: `Atendimento de ${money(todayAppointments[0].priceCents)} salvo no financeiro de hoje.`,
+      time: 'Hoje',
+      screen: 'management',
+      tone: 'success',
+      icon: <CircleDollarSign size={20} />,
+    });
+  }
+
+  const todayRevenue = todayAppointments.reduce((sum, appointment) => sum + Number(appointment.priceCents || 0), 0);
+  if (todayAppointments.length > 0) {
+    items.push({
+      id: `closing-${todayKey}-${todayAppointments.length}-${todayRevenue}`,
+      title: 'Fechamento do dia pronto',
+      description: `${todayAppointments.length} atendimentos somando ${money(todayRevenue)} para conferir.`,
+      time: 'Hoje',
+      screen: 'closing',
+      tone: 'neutral',
+      icon: <BarChart3 size={20} />,
+    });
+  }
+
+  if (barbershop?.paymentStatus && barbershop.paymentStatus !== 'ok') {
+    const labels = {
+      near_due: 'Assinatura próxima do vencimento',
+      overdue: 'Assinatura vencida',
+      non_paying: 'Conta não pagante',
+    };
+    items.push({
+      id: `subscription-${barbershop.paymentStatus}-${barbershop.paymentDueDate || 'sem-data'}`,
+      title: labels[barbershop.paymentStatus] || 'Aviso da assinatura',
+      description: barbershop.paymentDueDate
+        ? `Vencimento em ${formatDate(barbershop.paymentDueDate)}.`
+        : 'Confira a situação da assinatura no painel administrativo.',
+      time: barbershop.paymentStatus === 'overdue' ? 'Vencido' : 'Aviso',
+      screen: 'settings',
+      tone: barbershop.paymentStatus === 'overdue' ? 'danger' : 'warning',
+      icon: <Wallet size={20} />,
+    });
+  }
+
+  return items.slice(0, 6);
+}
 function today() {
   return toInputDate(new Date());
 }
@@ -4281,6 +5048,15 @@ function initials(value) {
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
 }
 
+function clientSlugify(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'barbearia';
+}
+
 function formatDate(date) {
   return new Intl.DateTimeFormat('pt-BR').format(new Date(`${date}T12:00:00`));
 }
@@ -4320,6 +5096,11 @@ function getRevenueChartMaxCents(maxRevenueCents) {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
+
+
+
+
+
 
 
 

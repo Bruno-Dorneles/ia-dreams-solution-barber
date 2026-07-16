@@ -46,6 +46,13 @@ class AppController {
     return this.barberShopService.updateAdminBarbershop(barbershopId, body);
   }
 
+  getPublicBookingPage(slug) {
+    return this.barberShopService.getPublicBookingPage(slug);
+  }
+
+  createPublicSchedule(slug, body) {
+    return this.barberShopService.createPublicSchedule(slug, body);
+  }
   getBarberShop(barbershopId) {
     return this.barberShopService.getBarberShop(barbershopId);
   }
@@ -165,6 +172,11 @@ Get('admin/barbershops')(AppController.prototype, 'listAdminBarbershops', Object
 Post('admin/barbershops/:barbershopId')(AppController.prototype, 'updateAdminBarbershop', Object.getOwnPropertyDescriptor(AppController.prototype, 'updateAdminBarbershop'));
 Param('barbershopId')(AppController.prototype, 'updateAdminBarbershop', 0);
 Body()(AppController.prototype, 'updateAdminBarbershop', 1);
+Get('public/barbershops/:slug')(AppController.prototype, 'getPublicBookingPage', Object.getOwnPropertyDescriptor(AppController.prototype, 'getPublicBookingPage'));
+Param('slug')(AppController.prototype, 'getPublicBookingPage', 0);
+Post('public/barbershops/:slug/schedules')(AppController.prototype, 'createPublicSchedule', Object.getOwnPropertyDescriptor(AppController.prototype, 'createPublicSchedule'));
+Param('slug')(AppController.prototype, 'createPublicSchedule', 0);
+Body()(AppController.prototype, 'createPublicSchedule', 1);
 Get('barbershop')(AppController.prototype, 'getBarberShop', Object.getOwnPropertyDescriptor(AppController.prototype, 'getBarberShop'));
 Query('barbershopId')(AppController.prototype, 'getBarberShop', 0);
 Post('barbershop')(AppController.prototype, 'updateBarberShop', Object.getOwnPropertyDescriptor(AppController.prototype, 'updateBarberShop'));
@@ -226,3 +238,4 @@ Param('professionalId')(AppController.prototype, 'getProfessionalCommission', 0)
 Query('month')(AppController.prototype, 'getProfessionalCommission', 1);
 
 module.exports = { AppController };
+

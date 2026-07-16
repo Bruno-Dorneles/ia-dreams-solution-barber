@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+﻿const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const { Injectable } = require('@nestjs/common');
 
@@ -295,6 +295,7 @@ class BarberShopService {
     const barbershop = {
       id: `shop-${Date.now()}`,
       name: body.barbershopName,
+      publicSlug: uniqueBarbershopSlug(body.barbershopName),
       ownerName: body.name,
       contact: body.contact,
       partnerCode: partner?.code || null,
@@ -461,6 +462,117 @@ class BarberShopService {
     return findBarbershop(barbershopId);
   }
 
+  getPublicBookingPage(slug) {
+    const barbershop = findBarbershopBySlug(slug);
+
+    if (!barbershop) {
+      return { error: 'Barbearia nao encontrada.' };
+    }
+
+    ensureOwnerProfessional(barbershop.id);
+    ensureDefaultServices(barbershop.id);
+
+    return {
+      barbershop: {
+        id: barbershop.id,
+        name: barbershop.name,
+        ownerName: barbershop.ownerName,
+        logoUrl: barbershop.logoUrl || '',
+        publicSlug: barbershop.publicSlug || slugify(barbershop.name),
+        scheduleStartHour: barbershop.scheduleStartHour ?? 8,
+        scheduleEndHour: barbershop.scheduleEndHour ?? 18,
+        scheduleSlotMinutes: barbershop.scheduleSlotMinutes ?? 60,
+      },
+      professionals: state.professionals
+        .filter((item) => item.barbershopId === barbershop.id && item.active !== false)
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          color: item.color || '#2563eb',
+        })),
+      services: state.services
+        .filter((item) => item.barbershopId === barbershop.id && item.active !== false)
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          priceCents: item.priceCents || 0,
+        })),
+      schedules: state.schedules
+        .filter((item) => item.barbershopId === barbershop.id)
+        .map((item) => ({
+          id: item.id,
+          professionalId: item.professionalId,
+          startsAt: item.startsAt,
+          status: item.status || 'closed',
+        })),
+    };
+  }
+
+  createPublicSchedule(slug, body) {
+    const page = this.getPublicBookingPage(slug);
+
+    if (page.error) {
+      return page;
+    }
+
+    const professional = page.professionals.find((item) => item.id === body.professionalId);
+    const service = page.services.find((item) => item.id === body.serviceId);
+
+    if (!professional) {
+      return { error: 'Escolha um profissional valido.' };
+    }
+
+    if (!service) {
+      return { error: 'Escolha um servico valido.' };
+    }
+
+    if (!body.clientName || !body.clientContact) {
+      return { error: 'Informe nome e WhatsApp.' };
+    }
+
+    const clientContact = normalizeWhatsAppPhone(body.clientContact);
+    if (!clientContact) {
+      return { error: 'Informe um WhatsApp valido com DDD. Exemplo: (51) 99999-9999.' };
+    }
+
+    const startsAt = String(body.startsAt || '').slice(0, 16);
+    if (!startsAt) {
+      return { error: 'Escolha data e horario.' };
+    }
+
+    const isTaken = state.schedules.some(
+      (item) => item.professionalId === professional.id && item.startsAt === startsAt,
+    );
+
+    if (isTaken) {
+      return { error: 'Este horario acabou de ser ocupado. Escolha outro horario.' };
+    }
+
+    const schedule = {
+      id: `sch-${Date.now()}`,
+      barbershopId: page.barbershop.id,
+      clientName: body.clientName,
+      clientContact,
+      serviceName: service.name,
+      professionalId: professional.id,
+      professionalName: professional.name,
+      startsAt,
+      notes: 'Solicitado pela pagina publica',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    state.schedules.push(schedule);
+    schedulePersist();
+
+    return {
+      message: 'Agendamento solicitado com sucesso.',
+      schedule,
+      barbershop: page.barbershop,
+      service,
+      professional,
+    };
+  }
   updateBarberShop(body) {
     const barbershop = findBarbershop(body.barbershopId);
     if (!barbershop) {
@@ -1074,6 +1186,36 @@ function nextProfessionalColor() {
   return professionalColors.find((color) => !used.has(color)) || professionalColors[state.professionals.length % professionalColors.length];
 }
 
+function slugify(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'barbearia';
+}
+
+function uniqueBarbershopSlug(name) {
+  const baseSlug = slugify(name);
+  let slug = baseSlug;
+  let counter = 2;
+
+  while (state.barbershops.some((item) => (item.publicSlug || slugify(item.name)) === slug)) {
+    slug = `${baseSlug}-${counter}`;
+    counter += 1;
+  }
+
+  return slug;
+}
+
+function findBarbershopBySlug(slug) {
+  const rawSlug = String(slug || '').trim();
+  const normalizedSlug = slugify(rawSlug);
+  return state.barbershops.find((item) => {
+    const itemSlug = item.publicSlug || slugify(item.name);
+    return item.id === rawSlug || itemSlug === normalizedSlug || slugify(item.id) === normalizedSlug;
+  }) || null;
+}
 function findBarbershop(barbershopId) {
   return state.barbershops.find((item) => item.id === barbershopId) || state.barbershop || null;
 }
@@ -1152,6 +1294,24 @@ function ensureDefaultServices(barbershopId) {
   schedulePersist();
 }
 
+function normalizeWhatsAppPhone(contact) {
+  let digits = String(contact || '').replace(/\D/g, '');
+
+  if (digits.startsWith('55')) {
+    digits = digits.slice(2);
+  }
+
+  if (digits.length !== 10 && digits.length !== 11) {
+    return '';
+  }
+
+  const ddd = Number(digits.slice(0, 2));
+  if (ddd < 11 || ddd > 99) {
+    return '';
+  }
+
+  return `55${digits}`;
+}
 function validateStrongPassword(password) {
   const value = String(password || '');
 
@@ -1173,3 +1333,6 @@ function validateStrongPassword(password) {
 
   return '';
 }
+
+
+
