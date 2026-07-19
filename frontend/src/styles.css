@@ -9977,3 +9977,82 @@ select option {
     grid-template-columns: 1fr 1fr;
   }
 }
+/* Settings mobile production guard: keep the whole page inside app margins */
+@media (max-width: 820px) {
+  .app-content > .settings-screen-shell {
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+    padding-left: var(--app-page-inset, 18px) !important;
+    padding-right: var(--app-page-inset, 18px) !important;
+    padding-bottom: 112px !important;
+    width: 100% !important;
+  }
+
+  .settings-screen-shell > .screen-column,
+  .settings-screen-shell .settings-tabs,
+  .settings-screen-shell .settings-grid,
+  .settings-screen-shell .settings-company-layout,
+  .settings-screen-shell .panel,
+  .settings-screen-shell .stack-form,
+  .settings-screen-shell .editable-list,
+  .settings-screen-shell .services-list,
+  .settings-screen-shell .service-row,
+  .settings-screen-shell .editable-row,
+  .settings-screen-shell .theme-grid,
+  .settings-screen-shell .three-columns,
+  .settings-screen-shell .button-row,
+  .settings-screen-shell .public-link-box,
+  .settings-screen-shell .public-link-actions {
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .settings-screen-shell .settings-tabs {
+    display: grid !important;
+    gap: 6px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow: hidden !important;
+  }
+
+  .settings-screen-shell .settings-tabs button,
+  .settings-screen-shell .panel button,
+  .settings-screen-shell input,
+  .settings-screen-shell select,
+  .settings-screen-shell .dropdown-select,
+  .settings-screen-shell .dropdown-select-button,
+  .settings-screen-shell .percent-field {
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .settings-screen-shell .panel {
+    overflow: hidden !important;
+  }
+
+  .settings-screen-shell .settings-grid,
+  .settings-screen-shell .settings-company-layout,
+  .settings-screen-shell .theme-grid,
+  .settings-screen-shell .three-columns,
+  .settings-screen-shell .editable-row,
+  .settings-screen-shell .public-link-actions {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .settings-screen-shell .service-row {
+    grid-template-columns: minmax(0, 1fr) 36px !important;
+  }
+
+  .settings-screen-shell .service-info,
+  .settings-screen-shell .public-link-box span,
+  .settings-screen-shell .dropdown-select-button > span:not(.color-dot) {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
