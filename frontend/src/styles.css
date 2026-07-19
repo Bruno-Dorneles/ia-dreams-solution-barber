@@ -8386,11 +8386,11 @@ select option {
 }
 
 .revenue-bar-bg {
-  fill: rgba(37, 99, 235, 0.16);
+  fill: rgba(37, 99, 235, 0.26);
 }
 
 .revenue-bar-segment {
-  filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.18));
+  filter: drop-shadow(0 0 10px rgba(37, 99, 235, 0.34));
 }
 
 /* Public client booking page */
@@ -9454,7 +9454,7 @@ select option {
   .public-card-grid.professionals,
   .public-card-grid.services {
     cursor: grab;
-    touch-action: pan-y !important;
+    touch-action: pan-x !important;
   }
 
   .public-card-grid.professionals button,

@@ -141,6 +141,7 @@ function PublicBookingPage({ slug }) {
 
   function handleRailPointerDown(event) {
     const rail = event.currentTarget;
+    ignoreRailClickRef.current = false;
     railDragRef.current = {
       active: true,
       startX: event.clientX,
@@ -148,10 +149,6 @@ function PublicBookingPage({ slug }) {
       moved: false,
     };
     rail.classList.add('dragging');
-
-    if (event.pointerType === 'mouse') {
-      rail.setPointerCapture?.(event.pointerId);
-    }
   }
 
   function handleRailPointerMove(event) {
@@ -174,18 +171,22 @@ function PublicBookingPage({ slug }) {
   function handleRailPointerEnd(event) {
     const drag = railDragRef.current;
     event.currentTarget.classList.remove('dragging');
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
     railDragRef.current = { active: false, startX: 0, startLeft: 0, moved: false };
 
     if (drag.moved) {
       window.setTimeout(() => {
         ignoreRailClickRef.current = false;
       }, 80);
+      return;
     }
+
+    ignoreRailClickRef.current = false;
   }
 
   function handleRailClickCapture(event) {
     if (ignoreRailClickRef.current) {
+      ignoreRailClickRef.current = false;
       event.preventDefault();
       event.stopPropagation();
     }
@@ -363,6 +364,11 @@ function PublicBookingPage({ slug }) {
                   key={service.id}
                   type="button"
                   className={selectedServiceId === service.id ? 'selected' : ''}
+                  onPointerUp={() => {
+                    if (railDragRef.current.moved) return;
+                    setSelectedServiceId(service.id);
+                    setResult(null);
+                  }}
                   onClick={() => {
                     setSelectedServiceId(service.id);
                     setResult(null);
@@ -3507,7 +3513,7 @@ function RevenueBarChart({ items, maxValue }) {
                   width={barWidth}
                   height={segmentHeight}
                   rx={segmentIndex === segments.length - 1 ? 7 : 0}
-                  fill={segment.color || '#2563eb'}
+                  fill="#2563eb"
                 />
               );
             })}
@@ -4816,54 +4822,6 @@ function buildAppNotifications({ barbershop, appointments, schedules }) {
       icon: <CalendarClock size={20} />,
     });
   });
-
-  const todayAppointments = appointments
-    .filter((appointment) => appointmentDateKey(appointment) === todayKey)
-    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
-
-  if (todayAppointments[0]) {
-    items.push({
-      id: `payment-${todayAppointments[0].id}`,
-      title: 'Pagamento registrado',
-      description: `Atendimento de ${money(todayAppointments[0].priceCents)} salvo no financeiro de hoje.`,
-      time: 'Hoje',
-      screen: 'management',
-      tone: 'success',
-      icon: <CircleDollarSign size={20} />,
-    });
-  }
-
-  const todayRevenue = todayAppointments.reduce((sum, appointment) => sum + Number(appointment.priceCents || 0), 0);
-  if (todayAppointments.length > 0) {
-    items.push({
-      id: `closing-${todayKey}-${todayAppointments.length}-${todayRevenue}`,
-      title: 'Fechamento do dia pronto',
-      description: `${todayAppointments.length} atendimentos somando ${money(todayRevenue)} para conferir.`,
-      time: 'Hoje',
-      screen: 'closing',
-      tone: 'neutral',
-      icon: <BarChart3 size={20} />,
-    });
-  }
-
-  if (barbershop?.paymentStatus && barbershop.paymentStatus !== 'ok') {
-    const labels = {
-      near_due: 'Assinatura próxima do vencimento',
-      overdue: 'Assinatura vencida',
-      non_paying: 'Conta não pagante',
-    };
-    items.push({
-      id: `subscription-${barbershop.paymentStatus}-${barbershop.paymentDueDate || 'sem-data'}`,
-      title: labels[barbershop.paymentStatus] || 'Aviso da assinatura',
-      description: barbershop.paymentDueDate
-        ? `Vencimento em ${formatDate(barbershop.paymentDueDate)}.`
-        : 'Confira a situação da assinatura no painel administrativo.',
-      time: barbershop.paymentStatus === 'overdue' ? 'Vencido' : 'Aviso',
-      screen: 'settings',
-      tone: barbershop.paymentStatus === 'overdue' ? 'danger' : 'warning',
-      icon: <Wallet size={20} />,
-    });
-  }
 
   return items.slice(0, 6);
 }
