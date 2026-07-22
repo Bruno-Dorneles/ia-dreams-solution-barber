@@ -486,13 +486,19 @@ function PublicBookingPage({ slug }) {
 }
 function AuthGateway({ onAuthenticated }) {
   const [mode, setMode] = useState('login');
+  const [showSupportNotice, setShowSupportNotice] = useState(false);
 
   if (mode === 'login') {
     return (
-      <LoginScreenV3
-        onAuthenticated={onAuthenticated}
-        onCreateAccount={() => setMode('register')}
-      />
+      <>
+        <LoginScreenV3
+          onAuthenticated={onAuthenticated}
+          onCreateAccount={() => setShowSupportNotice(true)}
+        />
+        {showSupportNotice && (
+          <SupportSignupNotice onClose={() => setShowSupportNotice(false)} />
+        )}
+      </>
     );
   }
 
@@ -535,6 +541,29 @@ function AuthGateway({ onAuthenticated }) {
         )}
       </section>
     </main>
+  );
+}
+
+function SupportSignupNotice({ onClose }) {
+  return (
+    <div className="support-signup-overlay" role="dialog" aria-modal="true" aria-labelledby="support-signup-title">
+      <div className="support-signup-card">
+        <button type="button" className="support-signup-close" onClick={onClose} aria-label="Fechar aviso">
+          <X size={18} />
+        </button>
+        <div className="support-signup-icon">
+          <UserPlus size={24} />
+        </div>
+        <h2 id="support-signup-title">Criação de conta liberada pelo suporte</h2>
+        <p>
+          No momento, novas contas são ativadas pela equipe BarberPro. Para criar sua conta,
+          fale conosco pelo WhatsApp: <strong>(51) 99793-2297</strong>.
+        </p>
+        <a href="https://wa.me/5551997932297" target="_blank" rel="noreferrer">
+          Falar com suporte
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -1911,6 +1940,7 @@ function DropdownSelect({ value, options, onChange, ariaLabel, className = '' })
 function AdminWorkspace({ onLogout }) {
   const [summary, setSummary] = useState(null);
   const [barbershops, setBarbershops] = useState([]);
+  const [creatingClient, setCreatingClient] = useState(false);
 
   async function loadAdminData() {
     const [summaryResponse, barbershopsResponse] = await Promise.all([
@@ -1931,6 +1961,20 @@ function AdminWorkspace({ onLogout }) {
     await loadAdminData();
   }
 
+  async function handleClientCreated() {
+    setCreatingClient(false);
+    await loadAdminData();
+  }
+
+  if (creatingClient) {
+    return (
+      <RegisterScreenV2
+        onAuthenticated={handleClientCreated}
+        onBack={() => setCreatingClient(false)}
+      />
+    );
+  }
+
   return (
     <main className="admin-shell">
       <header className="admin-header">
@@ -1938,10 +1982,16 @@ function AdminWorkspace({ onLogout }) {
           <p className="eyebrow">IA Dreams</p>
           <h1>Painel de controle</h1>
         </div>
-        <button onClick={onLogout}>
-          <LogOut size={18} />
-          Sair
-        </button>
+        <div className="admin-header-actions">
+          <button className="admin-primary-button" type="button" onClick={() => setCreatingClient(true)}>
+            <UserPlus size={18} />
+            Novo Cliente
+          </button>
+          <button type="button" onClick={onLogout}>
+            <LogOut size={18} />
+            Sair
+          </button>
+        </div>
       </header>
 
       <section className="admin-metrics">
@@ -3231,8 +3281,8 @@ function ManagementScreen({
               <div className="summary-icon">{item.icon}</div>
               <span>{item.label}</span>
               <strong>{item.value}</strong>
-              <small className={item.trend.direction}>
-                {item.trend.direction === 'flat' ? '•' : item.trend.direction === 'down' ? '▼' : '▲'} {Math.abs(item.trend.value)}%
+              <small className={`summary-trend ${item.trend.direction}`}>
+                {formatTrendLabel(item.trend)}
               </small>
             </article>
           ))}
@@ -3354,8 +3404,7 @@ function RevenueChart({ items, mode, onModeChange }) {
   const areaPath = points.length
     ? `${linePath} L ${points[points.length - 1].x} ${chartBottom} L ${points[0].x} ${chartBottom} Z`
     : '';
-  const todayKey = today();
-  const activePoint = points.find((point) => point.key === todayKey) || points[points.length - 1];
+  const lastPoint = points[points.length - 1];
 
   function handleDragStart(event) {
     dragStartX.current = event.clientX ?? event.touches?.[0]?.clientX ?? null;
@@ -3440,23 +3489,20 @@ function RevenueChart({ items, mode, onModeChange }) {
               {areaPath && <path className="revenue-area" d={areaPath} />}
               {linePath && <path className="revenue-line" d={linePath} filter="url(#lineGlow)" />}
 
-              {activePoint && (
+              {lastPoint && (
                 <>
-                  <text className="revenue-value-badge" x={Math.max(chartLeft, activePoint.x - 44)} y={activePoint.y - 18}>
-                    {money(activePoint.revenueCents).replace('R$ ', 'R$ ')}
+                  <text className="revenue-value-badge" x={Math.max(chartLeft, lastPoint.x - 44)} y={lastPoint.y - 18}>
+                    {money(lastPoint.revenueCents).replace('R$ ', 'R$ ')}
                   </text>
-                  <circle className="revenue-dot-outer" cx={activePoint.x} cy={activePoint.y} r="11" />
-                  <circle className="revenue-dot" cx={activePoint.x} cy={activePoint.y} r="6" />
+                  <circle className="revenue-dot-outer" cx={lastPoint.x} cy={lastPoint.y} r="11" />
+                  <circle className="revenue-dot" cx={lastPoint.x} cy={lastPoint.y} r="6" />
                 </>
               )}
 
               {points.map((point) => (
-                <g key={point.key}>
-
-                  <text className={`revenue-x-label ${point.key === todayKey ? 'today' : ''}`} x={point.x} y="210">
-                    {point.label}
-                  </text>
-                </g>
+                <text key={point.key} className="revenue-x-label" x={point.x} y="210">
+                  {point.label}
+                </text>
               ))}
             </svg>
           </div>
@@ -3497,7 +3543,6 @@ function RevenueBarChart({ items, maxValue }) {
   const barGap = items.length > 16 ? 5 : 10;
   const barWidth = Math.max(8, Math.min(34, (chartWidth - barGap * Math.max(0, items.length - 1)) / Math.max(1, items.length)));
   const step = items.length > 1 ? chartWidth / items.length : chartWidth;
-  const todayKey = today();
 
   return (
     <svg className="revenue-line-chart revenue-bar-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Gráfico de faturamento em barras">
@@ -3555,7 +3600,7 @@ function RevenueBarChart({ items, maxValue }) {
               );
             })}
 
-            <text className={`revenue-x-label ${item.key === todayKey ? 'today' : ''}`} x={x + barWidth / 2} y="210">
+            <text className="revenue-x-label" x={x + barWidth / 2} y="210">
               {item.label}
             </text>
           </g>
@@ -4792,7 +4837,7 @@ function buildPaymentDistribution(appointments) {
   });
 }
 function buildChartItems(appointments, mode, professionals) {
-  const dates = mode === 'week' ? currentWeekDates() : daysInCurrentMonth();
+  const dates = mode === 'week' ? lastNDates(7) : daysInCurrentMonth();
 
   return dates.map((date, index) => {
     const day = Number(date.slice(8, 10));
@@ -4826,16 +4871,10 @@ function buildChartItems(appointments, mode, professionals) {
   });
 }
 
-function currentWeekDates() {
-  const todayDate = new Date();
-  const weekDay = todayDate.getDay();
-  const mondayOffset = weekDay === 0 ? -6 : 1 - weekDay;
-  const monday = new Date(todayDate);
-  monday.setDate(todayDate.getDate() + mondayOffset);
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + index);
+function lastNDates(amount) {
+  return Array.from({ length: amount }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (amount - 1 - index));
     return toInputDate(date);
   });
 }
@@ -5056,8 +5095,8 @@ function percentageTrend(current, previous) {
     return { value: 0, direction: 'flat' };
   }
 
-  if (!previous) {
-    return { value: 0, direction: 'flat' };
+  if (!previous && current > 0) {
+    return { value: 100, direction: 'up' };
   }
 
   const change = Math.round(((current - previous) / previous) * 100);
@@ -5065,6 +5104,14 @@ function percentageTrend(current, previous) {
     value: change,
     direction: change === 0 ? 'flat' : change < 0 ? 'down' : 'up',
   };
+}
+
+function formatTrendLabel(trend) {
+  if (!trend || trend.direction === 'flat') {
+    return '•';
+  }
+
+  return `${trend.direction === 'down' ? '▼' : '▲'} ${Math.abs(trend.value)}%`;
 }
 
 function appointmentDateKey(appointment) {

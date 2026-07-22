@@ -140,6 +140,16 @@ select option {
   min-height: 42px;
   padding: 0 14px;
 }
+.admin-header-actions {
+  align-items: center;
+  display: inline-flex;
+  gap: 10px;
+}
+
+.admin-header button.admin-primary-button {
+  background: #ffffff;
+  color: #050506;
+}
 
 .admin-metrics {
   display: grid;
@@ -3356,8 +3366,12 @@ select option {
 }
 
 .management-summary-card small {
+  align-items: center;
+  display: inline-flex;
   font-size: 12px;
   font-weight: 700;
+  justify-content: center;
+  min-height: 16px;
 }
 
 .management-summary-card small.up {
@@ -10224,25 +10238,86 @@ select option {
   }
 }
 
-/* Current day marker on revenue charts */
-.revenue-x-label.today {
-  fill: #9a9ea6;
-  font-weight: 400;
-  text-decoration: underline;
-  text-decoration-color: #9a9ea6;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 5px;
+.support-signup-overlay {
+  align-items: center;
+  background: rgba(5, 5, 6, 0.76);
+  backdrop-filter: blur(12px);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 9999;
 }
 
-.revenue-today-line {
-  stroke: rgba(245, 165, 36, 0.28);
-  stroke-dasharray: 4 7;
-  stroke-width: 2;
+.support-signup-card {
+  background: #111214;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+  color: #ffffff;
+  max-width: 430px;
+  padding: 30px;
+  position: relative;
+  text-align: center;
+  width: 100%;
 }
 
-.revenue-today-marker {
-  fill: #d8a044;
-  filter: drop-shadow(0 0 8px rgba(245, 165, 36, 0.7));
-  stroke: #0b0b0d;
-  stroke-width: 3;
+.support-signup-close {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 34px;
+}
+
+.support-signup-icon {
+  align-items: center;
+  background: rgba(37, 99, 235, 0.14);
+  border-radius: 16px;
+  color: #2563eb;
+  display: inline-flex;
+  height: 54px;
+  justify-content: center;
+  margin-bottom: 18px;
+  width: 54px;
+}
+
+.support-signup-card h2 {
+  font-size: 24px;
+  line-height: 1.14;
+  margin: 0;
+}
+
+.support-signup-card p {
+  color: #c7cad1;
+  font-size: 15px;
+  line-height: 1.65;
+  margin: 14px 0 22px;
+}
+
+.support-signup-card strong {
+  color: #ffffff;
+}
+
+.support-signup-card a {
+  align-items: center;
+  background: #ffffff;
+  border-radius: 14px;
+  color: #050506;
+  display: inline-flex;
+  font-size: 15px;
+  font-weight: 700;
+  height: 48px;
+  justify-content: center;
+  padding: 0 22px;
+  text-decoration: none;
 }
