@@ -1,4 +1,4 @@
-const {
+﻿const {
   Body,
   Controller,
   Get,
@@ -105,6 +105,10 @@ class AppController {
     return this.barberShopService.listAppointments(barbershopId);
   }
 
+  deleteAppointment(appointmentId) {
+    return this.barberShopService.deleteAppointment(appointmentId);
+  }
+
   listSchedules(barbershopId) {
     return this.barberShopService.listSchedules(barbershopId);
   }
@@ -209,6 +213,8 @@ Get('appointments')(AppController.prototype, 'listAppointments', Object.getOwnPr
 Query('barbershopId')(AppController.prototype, 'listAppointments', 0);
 Post('appointments')(AppController.prototype, 'createAppointment', Object.getOwnPropertyDescriptor(AppController.prototype, 'createAppointment'));
 Body()(AppController.prototype, 'createAppointment', 0);
+Post('appointments/:appointmentId/delete')(AppController.prototype, 'deleteAppointment', Object.getOwnPropertyDescriptor(AppController.prototype, 'deleteAppointment'));
+Param('appointmentId')(AppController.prototype, 'deleteAppointment', 0);
 
 Get('schedules')(AppController.prototype, 'listSchedules', Object.getOwnPropertyDescriptor(AppController.prototype, 'listSchedules'));
 Query('barbershopId')(AppController.prototype, 'listSchedules', 0);

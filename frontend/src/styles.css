@@ -10056,3 +10056,193 @@ select option {
     text-overflow: ellipsis !important;
   }
 }
+/* Appointment deletion action */
+.appointment-row {
+  grid-template-columns: 70px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto 34px;
+}
+
+.sale-delete-button {
+  align-items: center;
+  background: rgba(255, 77, 79, 0.08);
+  border: 1px solid rgba(255, 77, 79, 0.18);
+  border-radius: 10px;
+  color: #ff8587;
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  justify-self: end;
+  padding: 0;
+  width: 32px;
+}
+
+.sale-delete-button:hover {
+  background: rgba(255, 77, 79, 0.16);
+  border-color: rgba(255, 77, 79, 0.34);
+}
+
+@media (max-width: 820px) {
+  .appointment-row {
+    grid-template-areas:
+      "time name total delete"
+      "time service payment delete";
+    grid-template-columns: 58px minmax(0, 1fr) auto 34px;
+  }
+
+  .sale-delete-button {
+    align-self: center;
+    grid-area: delete;
+  }
+}
+/* Payment method settings */
+.payments-fee-note {
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  color: #f5a524;
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+  padding-top: 10px;
+}
+
+.payments-fee-note strong {
+  color: #f5a524;
+  font-size: 14px;
+}
+
+.sale-payment {
+  display: grid;
+  gap: 2px;
+}
+
+.sale-payment small {
+  color: #f5a524;
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.payment-methods-form {
+  display: grid;
+  gap: 10px;
+}
+
+.payment-method-row {
+  align-items: center;
+  background: rgba(5, 5, 6, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 116px 120px;
+  min-height: 72px;
+  padding: 12px;
+}
+
+.payment-method-name {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.payment-method-name i {
+  align-items: center;
+  background: rgba(37, 99, 235, 0.16);
+  border-radius: 12px;
+  color: #3b82f6;
+  display: inline-flex;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.payment-method-name strong,
+.payment-method-name span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-method-name strong {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.payment-method-name span,
+.payment-method-fee {
+  color: #9a9ea6;
+  font-size: 12px;
+}
+
+.payment-method-toggle {
+  align-items: center;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.payment-method-toggle input {
+  accent-color: #2563eb;
+  height: 18px;
+  width: 18px;
+}
+
+.payment-method-fee {
+  display: grid;
+  gap: 6px;
+}
+
+.payment-method-fee .percent-field input {
+  min-height: 38px;
+}
+
+.payment-methods-save {
+  align-items: center;
+  background: #2563eb;
+  border: 0;
+  border-radius: 12px;
+  color: #ffffff;
+  display: inline-flex;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+}
+
+@media (max-width: 820px) {
+  .payment-method-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .payment-method-toggle,
+  .payment-method-fee,
+  .payment-methods-save {
+    width: 100%;
+  }
+}
+
+/* Current day marker on revenue charts */
+.revenue-x-label.today {
+  fill: #9a9ea6;
+  font-weight: 400;
+  text-decoration: underline;
+  text-decoration-color: #9a9ea6;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 5px;
+}
+
+.revenue-today-line {
+  stroke: rgba(245, 165, 36, 0.28);
+  stroke-dasharray: 4 7;
+  stroke-width: 2;
+}
+
+.revenue-today-marker {
+  fill: #d8a044;
+  filter: drop-shadow(0 0 8px rgba(245, 165, 36, 0.7));
+  stroke: #0b0b0d;
+  stroke-width: 3;
+}

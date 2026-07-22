@@ -81,6 +81,19 @@ const paymentLabels = {
   credit_card: 'Credito',
   debit_card: 'Debito',
 };
+const paymentMethodOptions = [
+  { value: 'pix', title: 'Pix', description: 'Pagamento instantâneo', icon: 'wallet' },
+  { value: 'cash', title: 'Dinheiro', description: 'Pagamento em espécie', icon: 'cash' },
+  { value: 'credit_card', title: 'Crédito', description: 'Cartão de crédito', icon: 'card' },
+  { value: 'debit_card', title: 'Débito', description: 'Cartão de débito', icon: 'card' },
+];
+
+const defaultPaymentSettings = {
+  pix: { enabled: true, feePercent: 0 },
+  cash: { enabled: true, feePercent: 0 },
+  credit_card: { enabled: true, feePercent: 3 },
+  debit_card: { enabled: true, feePercent: 2 },
+};
 
 function App() {
   const publicBookingMatch = window.location.pathname.match(/^\/agendar\/([^/]+)/);
@@ -2175,6 +2188,7 @@ function Workspace({ session, onLogout }) {
         {screen === 'payments' && (
           <PaymentsScreenV2
             user={user}
+            barbershop={barbershop}
             professionals={professionals}
             services={services}
             onSaved={loadData}
@@ -2237,7 +2251,7 @@ function Workspace({ session, onLogout }) {
   );
 }
 
-function PaymentsScreenV2({ user, professionals, services, onSaved }) {
+function PaymentsScreenV2({ user, barbershop, professionals, services, onSaved }) {
   const canOwnerChoose = user.role === 'owner' && professionals.length > 1;
   const firstProfessionalId = professionals[0]?.id || '';
   const userProfessionalExists = professionals.some((professional) => professional.id === user.professionalId);
@@ -2262,12 +2276,30 @@ function PaymentsScreenV2({ user, professionals, services, onSaved }) {
     }
   }, [defaultProfessionalId, professionalId, professionals]);
 
+  useEffect(() => {
+    const settings = normalizePaymentSettings(barbershop?.paymentSettings);
+    if (!settings[paymentMethod]?.enabled) {
+      const firstEnabled = paymentMethodOptions.find((method) => settings[method.value]?.enabled);
+      setPaymentMethod(firstEnabled?.value || 'pix');
+    }
+  }, [barbershop, paymentMethod]);
+
+  const paymentSettings = normalizePaymentSettings(barbershop?.paymentSettings);
+  const methods = paymentMethodOptions
+    .filter((method) => paymentSettings[method.value]?.enabled)
+    .map((method) => ({
+      ...method,
+      feePercent: Number(paymentSettings[method.value]?.feePercent || 0),
+      icon: paymentMethodIcon(method.value, 34),
+    }));
+  const selectedPaymentSetting = paymentSettings[paymentMethod] || defaultPaymentSettings[paymentMethod];
   const selectedService = services.find((service) => service.id === serviceId);
   const selectedProfessional = professionals.find((professional) => professional.id === professionalId);
   const isOther = serviceId === 'other';
   const amountCents = isOther
     ? Math.round(Number(customPrice || 0) * 100)
     : selectedService?.priceCents || 0;
+  const paymentFeeCents = Math.round((amountCents * Number(selectedPaymentSetting?.feePercent || 0)) / 100);
   const chargeProfessionalId = professionalId || user.professionalId || firstProfessionalId || '';
 
   async function handleSubmit(event) {
@@ -2307,12 +2339,6 @@ function PaymentsScreenV2({ user, professionals, services, onSaved }) {
     window.setTimeout(() => setSaved(false), 1800);
   }
 
-  const methods = [
-    { value: 'pix', title: 'Pix', description: 'Pagamento instantâneo', icon: <WalletCards size={34} /> },
-    { value: 'cash', title: 'Dinheiro', description: 'Pagamento em espécie', icon: <Banknote size={34} /> },
-    { value: 'credit_card', title: 'Crédito', description: 'Cartão de crédito', icon: <CreditCard size={34} /> },
-    { value: 'debit_card', title: 'Débito', description: 'Cartão de débito', icon: <CreditCard size={34} /> },
-  ];
 
   return (
     <div className="barberpro-payments">
@@ -2430,6 +2456,12 @@ function PaymentsScreenV2({ user, professionals, services, onSaved }) {
             <span>Total</span>
             <strong>{amountCents ? money(amountCents) : 'R$ 0,00'}</strong>
           </div>
+          {paymentFeeCents > 0 && (
+            <div className="payments-fee-note">
+              <span>Taxa do método</span>
+              <strong>- {money(paymentFeeCents)}</strong>
+            </div>
+          )}
 
           {error && <div className="payments-error">{error}</div>}
           {saved && <div className="payments-success">Atendimento salvo</div>}
@@ -3291,7 +3323,7 @@ function ManagementScreen({
             <h2>Atendimentos do dia</h2>
           </div>
         </div>
-        <AppointmentList appointments={dayAppointments} />
+        <AppointmentList appointments={dayAppointments} onDeleted={onSaved} />
       </section>
     </div>
   );
@@ -3322,7 +3354,8 @@ function RevenueChart({ items, mode, onModeChange }) {
   const areaPath = points.length
     ? `${linePath} L ${points[points.length - 1].x} ${chartBottom} L ${points[0].x} ${chartBottom} Z`
     : '';
-  const lastPoint = points[points.length - 1];
+  const todayKey = today();
+  const activePoint = points.find((point) => point.key === todayKey) || points[points.length - 1];
 
   function handleDragStart(event) {
     dragStartX.current = event.clientX ?? event.touches?.[0]?.clientX ?? null;
@@ -3407,20 +3440,23 @@ function RevenueChart({ items, mode, onModeChange }) {
               {areaPath && <path className="revenue-area" d={areaPath} />}
               {linePath && <path className="revenue-line" d={linePath} filter="url(#lineGlow)" />}
 
-              {lastPoint && (
+              {activePoint && (
                 <>
-                  <text className="revenue-value-badge" x={Math.max(chartLeft, lastPoint.x - 44)} y={lastPoint.y - 18}>
-                    {money(lastPoint.revenueCents).replace('R$ ', 'R$ ')}
+                  <text className="revenue-value-badge" x={Math.max(chartLeft, activePoint.x - 44)} y={activePoint.y - 18}>
+                    {money(activePoint.revenueCents).replace('R$ ', 'R$ ')}
                   </text>
-                  <circle className="revenue-dot-outer" cx={lastPoint.x} cy={lastPoint.y} r="11" />
-                  <circle className="revenue-dot" cx={lastPoint.x} cy={lastPoint.y} r="6" />
+                  <circle className="revenue-dot-outer" cx={activePoint.x} cy={activePoint.y} r="11" />
+                  <circle className="revenue-dot" cx={activePoint.x} cy={activePoint.y} r="6" />
                 </>
               )}
 
               {points.map((point) => (
-                <text key={point.key} className="revenue-x-label" x={point.x} y="210">
-                  {point.label}
-                </text>
+                <g key={point.key}>
+
+                  <text className={`revenue-x-label ${point.key === todayKey ? 'today' : ''}`} x={point.x} y="210">
+                    {point.label}
+                  </text>
+                </g>
               ))}
             </svg>
           </div>
@@ -3461,6 +3497,7 @@ function RevenueBarChart({ items, maxValue }) {
   const barGap = items.length > 16 ? 5 : 10;
   const barWidth = Math.max(8, Math.min(34, (chartWidth - barGap * Math.max(0, items.length - 1)) / Math.max(1, items.length)));
   const step = items.length > 1 ? chartWidth / items.length : chartWidth;
+  const todayKey = today();
 
   return (
     <svg className="revenue-line-chart revenue-bar-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Gráfico de faturamento em barras">
@@ -3517,7 +3554,8 @@ function RevenueBarChart({ items, maxValue }) {
                 />
               );
             })}
-            <text className="revenue-x-label" x={x + barWidth / 2} y="210">
+
+            <text className={`revenue-x-label ${item.key === todayKey ? 'today' : ''}`} x={x + barWidth / 2} y="210">
               {item.label}
             </text>
           </g>
@@ -3908,20 +3946,45 @@ function Metric({ label, value }) {
   );
 }
 
-function AppointmentList({ appointments }) {
+function AppointmentList({ appointments, onDeleted }) {
   if (appointments.length === 0) {
     return <p className="empty">Nenhum atendimento neste dia.</p>;
   }
 
+  async function deleteAppointment(appointment) {
+    const confirmed = window.confirm(
+      `Excluir atendimento de ${money(appointment.totalCents)}? Esta ação não pode ser desfeita.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    await api.post(`/appointments/${appointment.id}/delete`);
+    await onDeleted?.();
+  }
+
   return (
-    <div className="table">
+    <div className="table appointment-table">
       {appointments.map((appointment) => (
-        <div className="table-row" key={appointment.id}>
+        <div className="table-row appointment-row" key={appointment.id}>
           <span className="sale-time">{timeOnly(appointment.createdAt)}</span>
           <span className="sale-name">{appointment.professionalName}</span>
           <span className="sale-service">{appointment.serviceName}</span>
-          <span className="sale-payment">{paymentLabels[appointment.paymentMethod]}</span>
+          <span className="sale-payment">
+            <span>{paymentLabels[appointment.paymentMethod]}</span>
+            {appointment.paymentFeeCents > 0 && <small>Taxa {money(appointment.paymentFeeCents)}</small>}
+          </span>
           <strong className="sale-total">{money(appointment.totalCents)}</strong>
+          <button
+            className="sale-delete-button"
+            type="button"
+            title="Excluir atendimento"
+            aria-label="Excluir atendimento"
+            onClick={() => deleteAppointment(appointment)}
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
       ))}
     </div>
@@ -3960,6 +4023,7 @@ function SettingsScreen({
         <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>Customização</button>
         <button className={tab === 'team' ? 'active' : ''} onClick={() => setTab('team')}>Equipe</button>
         <button className={tab === 'services' ? 'active' : ''} onClick={() => setTab('services')}>Serviços</button>
+        <button className={tab === 'payments' ? 'active' : ''} onClick={() => setTab('payments')}>Métodos</button>
         <button className={tab === 'schedule' ? 'active' : ''} onClick={() => setTab('schedule')}>Agendamento</button>
       </div>
 
@@ -3976,6 +4040,7 @@ function SettingsScreen({
         </div>
       )}
       {tab === 'services' && <ServicesEditor services={services} onSaved={onSaved} />}
+      {tab === 'payments' && <PaymentMethodsEditor barbershop={barbershop} onSaved={onSaved} />}
       {tab === 'schedule' && (
         <ScheduleSettings barbershop={barbershop} onSaved={onSaved} />
       )}
@@ -4189,6 +4254,74 @@ function ThemeEditor({ barbershop, onSaved }) {
   );
 }
 
+
+function PaymentMethodsEditor({ barbershop, onSaved }) {
+  const [settings, setSettings] = useState(() => normalizePaymentSettings(barbershop?.paymentSettings));
+
+  useEffect(() => {
+    setSettings(normalizePaymentSettings(barbershop?.paymentSettings));
+  }, [barbershop]);
+
+  function updateMethod(method, patch) {
+    setSettings((current) => ({
+      ...current,
+      [method]: {
+        ...current[method],
+        ...patch,
+      },
+    }));
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    await api.post('/barbershop', { paymentSettings: settings });
+    onSaved();
+  }
+
+  return (
+    <div className="panel payment-methods-panel">
+      <SectionTitle eyebrow="Pagamentos" title="Métodos de pagamento" compact />
+      <form className="payment-methods-form" onSubmit={submit}>
+        {paymentMethodOptions.map((method) => {
+          const methodSettings = settings[method.value] || defaultPaymentSettings[method.value];
+          return (
+            <div className="payment-method-row" key={method.value}>
+              <div className="payment-method-name">
+                <i>{paymentMethodIcon(method.value, 18)}</i>
+                <div>
+                  <strong>{method.title}</strong>
+                  <span>{method.description}</span>
+                </div>
+              </div>
+              <label className="payment-method-toggle">
+                <input
+                  type="checkbox"
+                  checked={methodSettings.enabled}
+                  onChange={(event) => updateMethod(method.value, { enabled: event.target.checked })}
+                />
+                <span>{methodSettings.enabled ? 'Ativo' : 'Inativo'}</span>
+              </label>
+              <label className="payment-method-fee">
+                Taxa
+                <div className="percent-field">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={methodSettings.feePercent}
+                    onChange={(event) => updateMethod(method.value, { feePercent: event.target.value })}
+                  />
+                  <span>%</span>
+                </div>
+              </label>
+            </div>
+          );
+        })}
+        <button className="payment-methods-save">Salvar métodos</button>
+      </form>
+    </div>
+  );
+}
 function ScheduleSettings({ barbershop, onSaved }) {
   const [form, setForm] = useState({
     scheduleStartHour: barbershop?.scheduleStartHour ?? 8,
@@ -4620,6 +4753,23 @@ function buildServiceDistribution(appointments) {
   }));
 }
 
+function normalizePaymentSettings(settings = {}) {
+  return paymentMethodOptions.reduce((acc, method) => {
+    const current = settings?.[method.value] || {};
+    const fallback = defaultPaymentSettings[method.value];
+    acc[method.value] = {
+      enabled: current.enabled === undefined ? fallback.enabled : Boolean(current.enabled),
+      feePercent: Math.max(0, Number(current.feePercent ?? fallback.feePercent ?? 0)),
+    };
+    return acc;
+  }, {});
+}
+
+function paymentMethodIcon(method, size = 18) {
+  if (method === 'pix') return <WalletCards size={size} />;
+  if (method === 'cash') return <Banknote size={size} />;
+  return <CreditCard size={size} />;
+}
 function buildPaymentDistribution(appointments) {
   const methods = [
     { method: 'cash', label: 'Dinheiro', icon: <Banknote size={18} /> },
@@ -4642,7 +4792,7 @@ function buildPaymentDistribution(appointments) {
   });
 }
 function buildChartItems(appointments, mode, professionals) {
-  const dates = mode === 'week' ? lastNDates(7) : daysInCurrentMonth();
+  const dates = mode === 'week' ? currentWeekDates() : daysInCurrentMonth();
 
   return dates.map((date, index) => {
     const day = Number(date.slice(8, 10));
@@ -4676,10 +4826,16 @@ function buildChartItems(appointments, mode, professionals) {
   });
 }
 
-function lastNDates(amount) {
-  return Array.from({ length: amount }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (amount - 1 - index));
+function currentWeekDates() {
+  const todayDate = new Date();
+  const weekDay = todayDate.getDay();
+  const mondayOffset = weekDay === 0 ? -6 : 1 - weekDay;
+  const monday = new Date(todayDate);
+  monday.setDate(todayDate.getDate() + mondayOffset);
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
     return toInputDate(date);
   });
 }

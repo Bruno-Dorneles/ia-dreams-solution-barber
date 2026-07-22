@@ -3,6 +3,12 @@ const { Pool } = require('pg');
 const { Injectable } = require('@nestjs/common');
 
 const paymentMethods = ['cash', 'pix', 'credit_card', 'debit_card'];
+const defaultPaymentSettings = {
+  pix: { enabled: true, feePercent: 0 },
+  cash: { enabled: true, feePercent: 0 },
+  credit_card: { enabled: true, feePercent: 3 },
+  debit_card: { enabled: true, feePercent: 2 },
+};
 const supportEmail = 'suporte@azaroseu';
 const supportPhone = '9999-9999';
 const passwordCodeTtlMs = 10 * 60 * 1000;
@@ -306,6 +312,7 @@ class BarberShopService {
       scheduleStartHour: 8,
       scheduleEndHour: 18,
       scheduleSlotMinutes: 60,
+      paymentSettings: normalizePaymentSettings(),
       status: 'trial',
       paymentDueDate: nextBillingDate(new Date()),
       adminNotes: '',
@@ -581,6 +588,9 @@ class BarberShopService {
 
     Object.assign(barbershop, {
       ...body,
+      paymentSettings: body.paymentSettings
+        ? normalizePaymentSettings(body.paymentSettings)
+        : normalizePaymentSettings(barbershop.paymentSettings),
       partnerCode: body.partnerCode ? normalizePartnerCode(body.partnerCode) : barbershop.partnerCode,
     });
 
@@ -834,6 +844,15 @@ class BarberShopService {
       return { error: 'Informe um valor valido.' };
     }
 
+
+    const paymentSettings = normalizePaymentSettings(requestedBarbershop?.paymentSettings);
+    const selectedPaymentSetting = paymentSettings[body.paymentMethod] || defaultPaymentSettings[body.paymentMethod];
+    if (!selectedPaymentSetting?.enabled) {
+      return { error: 'Forma de pagamento desativada nas configuracoes.' };
+    }
+    const paymentFeePercent = Number(selectedPaymentSetting.feePercent || 0);
+    const paymentFeeCents = Math.round((totalCents * paymentFeePercent) / 100);
+
     const commissionCents = calculateCommissionCents({
       totalCents,
       commissionType: professional.commissionType,
@@ -848,9 +867,12 @@ class BarberShopService {
       serviceId: service?.id || 'other',
       serviceName: service?.name || body.serviceName || 'Outro',
       paymentMethod: body.paymentMethod,
+      paymentFeePercent,
+      paymentFeeCents,
       totalCents,
       commissionCents,
       netForShopCents: totalCents - commissionCents,
+      netAfterPaymentFeeCents: totalCents - commissionCents - paymentFeeCents,
       businessDate: normalizeBusinessDate(body.businessDate) || localDateKey(new Date()),
       createdAt: body.createdAt || new Date().toISOString(),
     };
@@ -866,6 +888,17 @@ class BarberShopService {
       .filter((item) => item.barbershopId === targetBarbershopId)
       .slice()
       .reverse();
+  }
+
+  deleteAppointment(appointmentId) {
+    const exists = state.appointments.some((item) => item.id === appointmentId);
+    if (!exists) {
+      return { error: 'Atendimento nao encontrado.' };
+    }
+
+    state.appointments = state.appointments.filter((item) => item.id !== appointmentId);
+    schedulePersist();
+    return { message: 'Atendimento excluido.' };
   }
 
   listSchedules(barbershopId) {
@@ -1333,6 +1366,14 @@ function validateStrongPassword(password) {
 
   return '';
 }
-
-
-
+function normalizePaymentSettings(settings = {}) {
+  return paymentMethods.reduce((acc, method) => {
+    const current = settings?.[method] || {};
+    const fallback = defaultPaymentSettings[method];
+    acc[method] = {
+      enabled: current.enabled === undefined ? fallback.enabled : Boolean(current.enabled),
+      feePercent: Math.max(0, Number(current.feePercent ?? fallback.feePercent ?? 0)),
+    };
+    return acc;
+  }, {});
+}
