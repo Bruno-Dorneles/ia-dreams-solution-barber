@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -48,8 +48,16 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
 });
 let activeBarbershopId = null;
+let activeSessionToken = null;
 
 api.interceptors.request.use((config) => {
+  if (activeSessionToken) {
+    config.headers = {
+      ...(config.headers || {}),
+      Authorization: 'Bearer ' + activeSessionToken,
+    };
+  }
+
   if (!activeBarbershopId) {
     return config;
   }
@@ -100,6 +108,7 @@ function App() {
   const [session, setSession] = useState(() => loadSavedSession());
 
   function handleAuthenticated(data, remember) {
+    activeSessionToken = data.token || null;
     const nextSession = {
       token: data.token,
       user: data.user,
@@ -109,13 +118,19 @@ function App() {
   }
 
   function handleLogout() {
+    activeSessionToken = null;
+    activeBarbershopId = null;
     localStorage.removeItem(savedSessionKey);
     sessionStorage.removeItem(temporarySessionKey);
     setSession(null);
   }
 
+  activeSessionToken = session?.token || null;
+
   useEffect(() => {
     if (session?.user && session.user.role !== 'admin' && !session.user.barbershopId) {
+      activeSessionToken = null;
+      activeBarbershopId = null;
       localStorage.removeItem(savedSessionKey);
       sessionStorage.removeItem(temporarySessionKey);
       setSession(null);

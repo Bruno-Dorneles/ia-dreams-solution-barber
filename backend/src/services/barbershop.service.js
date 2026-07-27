@@ -1,4 +1,5 @@
-﻿const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const { Injectable } = require('@nestjs/common');
 
@@ -54,9 +55,12 @@ const persistenceKey = 'solution-barber-state';
 let pool = null;
 let persistenceReady = false;
 let persistenceTimer = null;
+const rateLimitBuckets = new Map();
+const rateLimitCleanupMs = 60 * 60 * 1000;
 
 async function initializePersistentState() {
   if (!process.env.DATABASE_URL || persistenceReady) {
+    migratePasswordHashes();
     persistenceReady = true;
     return;
   }
@@ -78,10 +82,13 @@ async function initializePersistentState() {
     const result = await pool.query('select data from app_state where key = $1', [persistenceKey]);
     if (result.rows[0]?.data) {
       Object.assign(state, result.rows[0].data);
+      if (migratePasswordHashes()) {
+        await persistState();
+      }
     } else {
+      migratePasswordHashes();
       await persistState();
     }
-
   } catch (error) {
     console.error('PostgreSQL indisponivel. Rodando com dados temporarios:', error.message);
     pool = null;
@@ -120,14 +127,62 @@ function schedulePersist() {
 }
 
 class BarberShopService {
+  authenticateToken(authHeader) {
+    const token = extractBearerToken(authHeader);
+    if (!token) {
+      return { error: 'Sessao expirada. Faça login novamente.' };
+    }
+
+    try {
+      const payload = jwt.verify(token, getJwtSecret());
+      const user = state.users.find((item) => item.id === payload.sub);
+      if (!user) {
+        return { error: 'Sessao invalida. Faça login novamente.' };
+      }
+
+      const userBarbershop = user.barbershopId
+        ? state.barbershops.find((item) => item.id === user.barbershopId)
+        : null;
+      if (userBarbershop && ['blocked', 'canceled'].includes(userBarbershop.status)) {
+        return { error: 'Conta bloqueada. Entre em contato com a IA Dreams.' };
+      }
+
+      return publicUser(user);
+    } catch {
+      return { error: 'Sessao expirada. Faça login novamente.' };
+    }
+  }
+
   login({ email, password }) {
     const normalizedEmail = normalizeEmail(email);
-    const user = state.users.find(
-      (item) => normalizeEmail(item.email) === normalizedEmail && item.password === password,
-    );
+    const rateLimitKey = 'login:' + (normalizedEmail || 'unknown');
+    const rateLimitError = checkRateLimit(rateLimitKey, {
+      limit: 8,
+      windowMs: 15 * 60 * 1000,
+      blockMs: 15 * 60 * 1000,
+    });
+    if (rateLimitError) {
+      addSecurityEvent('login_rate_limited', { email: normalizedEmail });
+      return rateLimitError;
+    }
 
-    if (!user) {
+    if (!isValidEmail(normalizedEmail)) {
+      addSecurityEvent('login_invalid_email', { email: normalizedEmail });
       return { error: 'Credenciais invalidas.' };
+    }
+
+    const user = state.users.find((item) => normalizeEmail(item.email) === normalizedEmail);
+
+    if (!user || !verifyPassword(password, user.password)) {
+      addSecurityEvent('login_failed', { email: normalizedEmail });
+      return { error: 'Credenciais invalidas.' };
+    }
+
+    clearRateLimit(rateLimitKey);
+
+    if (!isPasswordHash(user.password)) {
+      user.password = hashPassword(password);
+      schedulePersist();
     }
 
     const userBarbershop = user.barbershopId
@@ -142,24 +197,17 @@ class BarberShopService {
         sub: user.id,
         role: user.role,
         professionalId: user.professionalId,
+        barbershopId: user.barbershopId,
       },
-      process.env.JWT_SECRET || 'dev-secret',
+      getJwtSecret(),
       { expiresIn: '8h' },
     );
 
     return {
       token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        professionalId: user.professionalId,
-        barbershopId: user.barbershopId,
-      },
+      user: publicUser(user),
     };
   }
-
   getAdminSummary() {
     const barbershops = this.listAdminBarbershops();
     const activeClients = barbershops.filter((item) => item.status === 'active').length;
@@ -275,9 +323,20 @@ class BarberShopService {
   registerOwner(body) {
     const email = normalizeEmail(body.email);
     const partnerCode = normalizePartnerCode(body.partnerCode);
+    const ownerName = normalizeText(body.name, 80);
+    const barbershopName = normalizeText(body.barbershopName, 100);
+    const contact = normalizeWhatsAppPhone(body.contact);
 
-    if (!body.name || !body.barbershopName || !email || !body.contact || !body.password) {
+    if (!ownerName || !barbershopName || !email || !body.contact || !body.password) {
       return { error: 'Preencha todos os campos obrigatorios.' };
+    }
+
+    if (!isValidEmail(email)) {
+      return { error: 'Informe um e-mail valido.' };
+    }
+
+    if (!contact) {
+      return { error: 'Informe um WhatsApp valido com DDD.' };
     }
 
     const passwordError = validateStrongPassword(body.password);
@@ -299,11 +358,11 @@ class BarberShopService {
 
     const partner = partnerCode ? validPartnerCodes[partnerCode] : null;
     const barbershop = {
-      id: `shop-${Date.now()}`,
-      name: body.barbershopName,
-      publicSlug: uniqueBarbershopSlug(body.barbershopName),
-      ownerName: body.name,
-      contact: body.contact,
+      id: 'shop-' + Date.now(),
+      name: barbershopName,
+      publicSlug: uniqueBarbershopSlug(barbershopName),
+      ownerName,
+      contact,
       partnerCode: partner?.code || null,
       logoUrl: '',
       panelColor: '#ffffff',
@@ -322,12 +381,12 @@ class BarberShopService {
     state.barbershop = barbershop;
     state.barbershops.push(barbershop);
 
-    const professionalId = `pro-${Date.now()}`;
+    const professionalId = 'pro-' + Date.now();
     const user = {
-      id: `user-${Date.now()}`,
-      name: body.name,
+      id: 'user-' + Date.now(),
+      name: ownerName,
       email,
-      password: body.password,
+      password: hashPassword(body.password),
       role: 'owner',
       professionalId,
       barbershopId: barbershop.id,
@@ -337,25 +396,28 @@ class BarberShopService {
     state.professionals.push({
       id: professionalId,
       barbershopId: barbershop.id,
-      name: body.name,
+      name: ownerName,
       email,
-      contact: body.contact,
+      contact,
       color: '#111827',
       commissionType: 'percentage',
       commissionValue: 0,
       ownerUserId: user.id,
       active: true,
     });
+
+    addSecurityEvent('owner_registered', { email, barbershopId: barbershop.id });
+
     state.services.push(
       {
-        id: `svc-${Date.now()}-1`,
+        id: 'svc-' + Date.now() + '-1',
         barbershopId: barbershop.id,
         name: 'Corte',
         priceCents: 3500,
         active: true,
       },
       {
-        id: `svc-${Date.now()}-2`,
+        id: 'svc-' + Date.now() + '-2',
         barbershopId: barbershop.id,
         name: 'Barba',
         priceCents: 2500,
@@ -370,7 +432,6 @@ class BarberShopService {
       ...this.login({ email, password: body.password }),
     };
   }
-
   requestPasswordCode({ email }) {
     const normalizedEmail = normalizeEmail(email);
     const user = state.users.find((item) => normalizeEmail(item.email) === normalizedEmail);
@@ -397,12 +458,14 @@ class BarberShopService {
     };
 
     schedulePersist();
-    return {
+    const response = {
       message: 'Codigo de verificacao enviado.',
-      // Apenas para o MVP local. Depois isso sai e entra envio real por e-mail.
-      debugCode: code,
       expiresInMinutes: 10,
     };
+    if (process.env.NODE_ENV !== 'production') {
+      response.debugCode = code;
+    }
+    return response;
   }
 
   verifyPasswordCode({ email, code }) {
@@ -458,7 +521,7 @@ class BarberShopService {
       return { error: 'As senhas nao conferem.' };
     }
 
-    user.password = password;
+    user.password = hashPassword(password);
     delete state.passwordRecoveries[normalizedEmail];
 
     schedulePersist();
@@ -533,7 +596,8 @@ class BarberShopService {
       return { error: 'Escolha um servico valido.' };
     }
 
-    if (!body.clientName || !body.clientContact) {
+    const clientName = normalizeText(body.clientName, 80);
+    if (!clientName || !body.clientContact) {
       return { error: 'Informe nome e WhatsApp.' };
     }
 
@@ -542,6 +606,15 @@ class BarberShopService {
       return { error: 'Informe um WhatsApp valido com DDD. Exemplo: (51) 99999-9999.' };
     }
 
+    const rateLimitError = checkRateLimit('public_schedule:' + page.barbershop.id + ':' + clientContact, {
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+      blockMs: 60 * 60 * 1000,
+    });
+    if (rateLimitError) {
+      addSecurityEvent('public_schedule_rate_limited', { barbershopId: page.barbershop.id, contact: clientContact });
+      return rateLimitError;
+    }
     const startsAt = String(body.startsAt || '').slice(0, 16);
     if (!startsAt) {
       return { error: 'Escolha data e horario.' };
@@ -558,7 +631,7 @@ class BarberShopService {
     const schedule = {
       id: `sch-${Date.now()}`,
       barbershopId: page.barbershop.id,
-      clientName: body.clientName,
+      clientName,
       clientContact,
       serviceName: service.name,
       professionalId: professional.id,
@@ -570,6 +643,7 @@ class BarberShopService {
     };
 
     state.schedules.push(schedule);
+    addSecurityEvent('public_schedule_created', { barbershopId: page.barbershop.id, scheduleId: schedule.id });
     schedulePersist();
 
     return {
@@ -655,7 +729,7 @@ class BarberShopService {
         id: `user-${Date.now()}`,
         name: body.name,
         email,
-        password: body.password || '123456',
+        password: hashPassword(body.password || 'Acesso@123'),
         role: 'barber',
         professionalId: professional.id,
         barbershopId: professional.barbershopId,
@@ -666,11 +740,15 @@ class BarberShopService {
     return professional;
   }
 
-  updateProfessional(professionalId, body) {
+  updateProfessional(professionalId, body, authUser) {
     const professional = state.professionals.find((item) => item.id === professionalId);
 
     if (!professional) {
       return { error: 'Profissional nao encontrado.' };
+    }
+
+    if (!canAccessBarbershop(authUser, professional.barbershopId)) {
+      return denyAccess();
     }
 
     Object.assign(professional, {
@@ -690,7 +768,7 @@ class BarberShopService {
         if (passwordError) {
           return { error: passwordError };
         }
-        user.password = body.password;
+        user.password = hashPassword(body.password);
       }
     }
 
@@ -698,11 +776,15 @@ class BarberShopService {
     return professional;
   }
 
-  deleteProfessional(professionalId) {
+  deleteProfessional(professionalId, authUser) {
     const professional = state.professionals.find((item) => item.id === professionalId);
 
     if (!professional) {
       return { error: 'Profissional nao encontrado.' };
+    }
+
+    if (!canAccessBarbershop(authUser, professional.barbershopId)) {
+      return denyAccess();
     }
 
     if (professional.ownerUserId) {
@@ -728,11 +810,15 @@ class BarberShopService {
     }));
   }
 
-  updateUser(userId, body) {
+  updateUser(userId, body, authUser) {
     const user = state.users.find((item) => item.id === userId);
 
     if (!user) {
       return { error: 'Usuario nao encontrado.' };
+    }
+
+    if (!canAccessBarbershop(authUser, user.barbershopId)) {
+      return denyAccess();
     }
 
     if (body.password) {
@@ -740,7 +826,7 @@ class BarberShopService {
       if (passwordError) {
         return { error: passwordError };
       }
-      user.password = body.password;
+      user.password = hashPassword(body.password);
     }
 
     user.name = body.name || user.name;
@@ -784,10 +870,14 @@ class BarberShopService {
     return service;
   }
 
-  deleteService(serviceId) {
+  deleteService(serviceId, authUser) {
     const index = state.services.findIndex((item) => item.id === serviceId);
     if (index === -1) {
       return { error: 'Servico nao encontrado.' };
+    }
+
+    if (!canAccessBarbershop(authUser, state.services[index].barbershopId)) {
+      return denyAccess();
     }
 
     state.services.splice(index, 1);
@@ -795,20 +885,23 @@ class BarberShopService {
     return { ok: true };
   }
 
-  createAppointment(body) {
+  createAppointment(body, authUser) {
     const isOtherService = body.serviceId === 'other';
     let service = isOtherService
       ? null
       : state.services.find((item) => item.id === body.serviceId);
     const requestedProfessional = state.professionals.find((item) => item.id === body.professionalId);
     const requestedBarbershop = state.barbershops.find((item) => item.id === body.barbershopId);
-    let targetBarbershopId =
-      requestedProfessional?.barbershopId ||
-      service?.barbershopId ||
-      requestedBarbershop?.id ||
-      body.barbershopId ||
-      state.barbershop?.id ||
-      '';
+    let targetBarbershopId = authUser?.role === 'admin'
+      ? (
+        requestedProfessional?.barbershopId ||
+        service?.barbershopId ||
+        requestedBarbershop?.id ||
+        body.barbershopId ||
+        state.barbershop?.id ||
+        ''
+      )
+      : authUser?.barbershopId || '';
     if (!targetBarbershopId && state.barbershops.length === 1) {
       targetBarbershopId = state.barbershops[0].id;
     }
@@ -821,6 +914,9 @@ class BarberShopService {
     }
 
     const professional =
+      (authUser?.role === 'barber' && authUser.professionalId
+        ? state.professionals.find((item) => item.id === authUser.professionalId && item.barbershopId === targetBarbershopId)
+        : null) ||
       (requestedProfessional?.barbershopId === targetBarbershopId ? requestedProfessional : null) ||
       ensureOwnerProfessional(targetBarbershopId) ||
       state.professionals.find((item) => item.barbershopId === targetBarbershopId);
@@ -845,7 +941,8 @@ class BarberShopService {
     }
 
 
-    const paymentSettings = normalizePaymentSettings(requestedBarbershop?.paymentSettings);
+    const targetBarbershop = state.barbershops.find((item) => item.id === targetBarbershopId);
+    const paymentSettings = normalizePaymentSettings(targetBarbershop?.paymentSettings);
     const selectedPaymentSetting = paymentSettings[body.paymentMethod] || defaultPaymentSettings[body.paymentMethod];
     if (!selectedPaymentSetting?.enabled) {
       return { error: 'Forma de pagamento desativada nas configuracoes.' };
@@ -882,18 +979,22 @@ class BarberShopService {
     return appointment;
   }
 
-  listAppointments(barbershopId) {
+  listAppointments(barbershopId, user) {
     const targetBarbershopId = getTargetBarbershopId(barbershopId);
     return state.appointments
-      .filter((item) => item.barbershopId === targetBarbershopId)
+      .filter((item) => item.barbershopId === targetBarbershopId && (user?.role !== 'barber' || item.professionalId === user.professionalId))
       .slice()
       .reverse();
   }
 
-  deleteAppointment(appointmentId) {
-    const exists = state.appointments.some((item) => item.id === appointmentId);
-    if (!exists) {
+  deleteAppointment(appointmentId, authUser) {
+    const appointment = state.appointments.find((item) => item.id === appointmentId);
+    if (!appointment) {
       return { error: 'Atendimento nao encontrado.' };
+    }
+
+    if (!canAccessBarbershop(authUser, appointment.barbershopId)) {
+      return denyAccess();
     }
 
     state.appointments = state.appointments.filter((item) => item.id !== appointmentId);
@@ -901,18 +1002,23 @@ class BarberShopService {
     return { message: 'Atendimento excluido.' };
   }
 
-  listSchedules(barbershopId) {
+  listSchedules(barbershopId, user) {
     const targetBarbershopId = getTargetBarbershopId(barbershopId);
     return state.schedules
-      .filter((item) => item.barbershopId === targetBarbershopId)
+      .filter((item) => item.barbershopId === targetBarbershopId && (user?.role !== 'barber' || item.professionalId === user.professionalId))
       .slice()
       .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
   }
 
-  createSchedule(body) {
-    const targetBarbershopId = getTargetBarbershopId(body.barbershopId);
+  createSchedule(body, authUser) {
+    const targetBarbershopId = authUser?.role === 'admin'
+      ? getTargetBarbershopId(body.barbershopId)
+      : authUser?.barbershopId || '';
     const professional =
-      state.professionals.find((item) => item.id === body.professionalId) ||
+      (authUser?.role === 'barber' && authUser.professionalId
+        ? state.professionals.find((item) => item.id === authUser.professionalId && item.barbershopId === targetBarbershopId)
+        : null) ||
+      state.professionals.find((item) => item.id === body.professionalId && item.barbershopId === targetBarbershopId) ||
       ensureOwnerProfessional(targetBarbershopId);
 
     if (!professional) {
@@ -971,7 +1077,16 @@ class BarberShopService {
     return schedule;
   }
 
-  deleteSchedule(scheduleId) {
+  deleteSchedule(scheduleId, authUser) {
+    const schedule = state.schedules.find((item) => item.id === scheduleId);
+    if (!schedule) {
+      return { error: 'Agendamento nao encontrado.' };
+    }
+
+    if (!canAccessBarbershop(authUser, schedule.barbershopId)) {
+      return denyAccess();
+    }
+
     state.schedules = state.schedules.filter((item) => item.id !== scheduleId);
     schedulePersist();
     return { message: 'Agendamento removido.' };
@@ -1007,11 +1122,15 @@ class BarberShopService {
     return cost;
   }
 
-  updateCost(costId, body) {
+  updateCost(costId, body, authUser) {
     const cost = state.costs.find((item) => item.id === costId);
 
     if (!cost) {
       return { error: 'Custo nao encontrado.' };
+    }
+
+    if (!canAccessBarbershop(authUser, cost.barbershopId)) {
+      return denyAccess();
     }
 
     Object.assign(cost, {
@@ -1026,14 +1145,39 @@ class BarberShopService {
     return cost;
   }
 
-  deleteCost(costId) {
+  deleteCost(costId, authUser) {
+    const cost = state.costs.find((item) => item.id === costId);
+    if (!cost) {
+      return { error: 'Custo nao encontrado.' };
+    }
+
+    if (!canAccessBarbershop(authUser, cost.barbershopId)) {
+      return denyAccess();
+    }
+
     state.costs = state.costs.filter((item) => item.id !== costId);
     schedulePersist();
     return { message: 'Custo removido.' };
   }
 
-  getReport({ period, date, month }) {
+  getReport({ period, date, month, barbershopId, user }) {
+    const targetBarbershopId = user?.role === 'admin'
+      ? getTargetBarbershopId(barbershopId)
+      : user?.barbershopId || '';
+
+    if (!targetBarbershopId) {
+      return buildReport([]);
+    }
+
     const filtered = state.appointments.filter((appointment) => {
+      if (appointment.barbershopId !== targetBarbershopId) {
+        return false;
+      }
+
+      if (user?.role === 'barber' && appointment.professionalId !== user.professionalId) {
+        return false;
+      }
+
       if (period === 'daily') {
         const targetDate = date || new Date().toISOString().slice(0, 10);
         return appointmentDateKey(appointment) === targetDate;
@@ -1046,10 +1190,24 @@ class BarberShopService {
     return buildReport(filtered);
   }
 
-  getProfessionalCommission({ professionalId, month }) {
+  getProfessionalCommission({ professionalId, month, user }) {
+    const professional = state.professionals.find((item) => item.id === professionalId);
+    if (!professional) {
+      return { error: 'Profissional nao encontrado.' };
+    }
+
+    if (user?.role === 'barber' && user.professionalId !== professionalId) {
+      return denyAccess();
+    }
+
+    if (user?.role !== 'admin' && professional.barbershopId !== user?.barbershopId) {
+      return denyAccess();
+    }
+
     const targetMonth = month || new Date().toISOString().slice(0, 7);
     const appointments = state.appointments.filter(
       (appointment) =>
+        appointment.barbershopId === professional.barbershopId &&
         appointment.professionalId === professionalId &&
         appointmentDateKey(appointment).slice(0, 7) === targetMonth,
     );
@@ -1116,6 +1274,146 @@ function buildReport(appointments) {
 
 module.exports = { BarberShopService, initializePersistentState };
 
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET || '';
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET obrigatorio em producao.');
+  }
+  return secret || 'dev-secret-local-only';
+}
+
+function extractBearerToken(authHeader) {
+  const value = String(authHeader || '').trim();
+  if (!value.toLowerCase().startsWith('bearer ')) {
+    return '';
+  }
+  return value.slice(7).trim();
+}
+
+function isPasswordHash(password) {
+  return /^\$2[aby]\$/.test(String(password || ''));
+}
+
+function hashPassword(password) {
+  return bcrypt.hashSync(String(password || ''), 10);
+}
+
+function verifyPassword(password, storedPassword) {
+  const stored = String(storedPassword || '');
+  if (!stored) {
+    return false;
+  }
+
+  if (isPasswordHash(stored)) {
+    return bcrypt.compareSync(String(password || ''), stored);
+  }
+
+  return stored === String(password || '');
+}
+
+function migratePasswordHashes() {
+  let changed = false;
+  for (const user of state.users) {
+    if (user.password && !isPasswordHash(user.password)) {
+      user.password = hashPassword(user.password);
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
+function publicUser(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    professionalId: user.professionalId,
+    barbershopId: user.barbershopId,
+  };
+}
+
+function canAccessBarbershop(user, barbershopId) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  return Boolean(barbershopId) && user.barbershopId === barbershopId;
+}
+
+function denyAccess() {
+  return { error: 'Acesso nao autorizado.' };
+}
+function checkRateLimit(key, options) {
+  const now = Date.now();
+  cleanupRateLimitBuckets(now);
+  const limit = Number(options.limit || 10);
+  const windowMs = Number(options.windowMs || 60 * 1000);
+  const blockMs = Number(options.blockMs || windowMs);
+  const current = rateLimitBuckets.get(key) || { count: 0, resetAt: now + windowMs, blockedUntil: 0 };
+
+  if (current.blockedUntil && current.blockedUntil > now) {
+    return { error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' };
+  }
+
+  if (current.resetAt <= now) {
+    current.count = 0;
+    current.resetAt = now + windowMs;
+    current.blockedUntil = 0;
+  }
+
+  current.count += 1;
+  if (current.count > limit) {
+    current.blockedUntil = now + blockMs;
+    rateLimitBuckets.set(key, current);
+    return { error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' };
+  }
+
+  rateLimitBuckets.set(key, current);
+  return null;
+}
+
+function clearRateLimit(key) {
+  rateLimitBuckets.delete(key);
+}
+
+function cleanupRateLimitBuckets(now) {
+  for (const [key, bucket] of rateLimitBuckets.entries()) {
+    const expiredWindow = bucket.resetAt + rateLimitCleanupMs < now;
+    const expiredBlock = !bucket.blockedUntil || bucket.blockedUntil + rateLimitCleanupMs < now;
+    if (expiredWindow && expiredBlock) {
+      rateLimitBuckets.delete(key);
+    }
+  }
+}
+
+function addSecurityEvent(type, details = {}) {
+  if (!Array.isArray(state.securityEvents)) {
+    state.securityEvents = [];
+  }
+
+  state.securityEvents.push({
+    id: 'sec-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    type,
+    details,
+    createdAt: new Date().toISOString(),
+  });
+
+  if (state.securityEvents.length > 300) {
+    state.securityEvents = state.securityEvents.slice(-300);
+  }
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ''));
+}
+
+function normalizeText(value, maxLength = 120) {
+  return String(value || '')
+    .replace(/[<>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
