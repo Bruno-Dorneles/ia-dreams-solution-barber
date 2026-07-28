@@ -37,11 +37,13 @@ import {
   X,
   Wallet,
   LogOut,
+  FileCheck2,
   UserPlus,
   WalletCards,
 } from 'lucide-react';
 import barberproLoginHero from './assets/barberpro-login-hero.png';
 import barberproRegisterHero from './assets/barberpro-register-hero.png';
+import { findLegalDocument, legalDocumentVersion, legalDocuments, legalDocumentVersions } from './legalDocuments.js';
 import './styles.css';
 
 const api = axios.create({
@@ -105,6 +107,7 @@ const defaultPaymentSettings = {
 
 function App() {
   const publicBookingMatch = window.location.pathname.match(/^\/agendar\/([^/]+)/);
+  const publicLegalMatch = window.location.pathname.match(/^\/legal\/([^/]+)/);
   const [session, setSession] = useState(() => loadSavedSession());
 
   function handleAuthenticated(data, remember) {
@@ -139,6 +142,12 @@ function App() {
 
   if (publicBookingMatch) {
     return <PublicBookingPage slug={decodeURIComponent(publicBookingMatch[1])} />;
+  }
+
+  if (publicLegalMatch) {
+    const legalRouteMap = { contrato: 'contract', termos: 'terms', privacidade: 'privacy', cookies: 'cookies' };
+    const documentId = legalRouteMap[decodeURIComponent(publicLegalMatch[1])] || decodeURIComponent(publicLegalMatch[1]);
+    return <PublicLegalPage documentId={documentId} />;
   }
 
   if (!session?.user) {
@@ -2087,11 +2096,27 @@ function AdminWorkspace({ onLogout }) {
                 }
               />
               <span>{item.appointmentsCount}</span>
+              <span className={`admin-legal-status ${item.legalAcceptedVersion === legalDocumentVersion ? 'ok' : 'pending'}`}>
+                <strong>{item.legalAcceptedVersion || 'Pendente'}</strong>
+                <small>{item.legalAcceptedAt ? formatDateTime(item.legalAcceptedAt) : 'Aguardando aceite'}</small>
+                <small>{item.legalAcceptedByEmail || ''}</small>
+              </span>
               <input
                 defaultValue={item.adminNotes}
                 placeholder="Observação interna"
                 onBlur={(event) => updateClient(item, { adminNotes: event.target.value })}
               />
+              <button
+                type="button"
+                className="admin-force-legal-button"
+                onClick={() => {
+                  if (window.confirm(`Exigir novo aceite legal de ${item.name}?`)) {
+                    updateClient(item, { forceLegalAcceptance: true });
+                  }
+                }}
+              >
+                Novo aceite
+              </button>
             </div>
           ))}
         </div>
@@ -2100,6 +2125,167 @@ function AdminWorkspace({ onLogout }) {
   );
 }
 
+function LegalDocumentsViewer({ defaultDocumentId = 'contract', compact = false }) {
+  const [activeDocument, setActiveDocument] = useState(defaultDocumentId);
+  const currentDocument = findLegalDocument(activeDocument);
+
+  return (
+    <div className={`legal-docs-viewer ${compact ? 'compact' : ''}`}>
+      <div className="legal-tabs" role="tablist" aria-label="Documentos legais">
+        {legalDocuments.map((document) => (
+          <button
+            key={document.id}
+            type="button"
+            role="tab"
+            aria-selected={activeDocument === document.id}
+            className={activeDocument === document.id ? 'active' : ''}
+            onClick={() => setActiveDocument(document.id)}
+          >
+            {document.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="legal-document-frame">
+        <div className="legal-document-panel">
+        <div className="legal-document-title-row">
+          <div>
+            <h2>{currentDocument.title}</h2>
+            <span>Versão {legalDocumentVersion}</span>
+          </div>
+        </div>
+        <p>{currentDocument.intro}</p>
+
+        {currentDocument.sections.map(([title, content], index) => (
+          <section key={title}>
+            <h3>{index + 1}. {title}</h3>
+            <p>{content}</p>
+          </section>
+        ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PublicLegalPage({ documentId }) {
+  const document = findLegalDocument(documentId);
+
+  return (
+    <main className="public-legal-shell">
+      <section className="public-legal-frame">
+        <header className="public-legal-header">
+          <div className="public-booking-brand">
+            <BarberProLogoMark />
+            <div>
+              <strong>BarberPro</strong>
+              <span>IA DREAMS</span>
+            </div>
+          </div>
+          <a href="/" className="public-legal-back">Entrar no app</a>
+        </header>
+
+        <div className="public-legal-title">
+          <p>Documentos legais</p>
+          <h1>{document.title}</h1>
+          <span>Versão {legalDocumentVersion}</span>
+        </div>
+
+        <LegalDocumentsViewer defaultDocumentId={document.id} />
+      </section>
+    </main>
+  );
+}
+function LegalAcceptanceScreen({ user, barbershop, onLogout, onAccepted }) {
+  const [checked, setChecked] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const canAccept = user.role === 'owner' || user.role === 'admin';
+  const documentVersions = legalDocumentVersions();
+
+  async function handleAccept() {
+    if (!checked || !canAccept) return;
+    setSaving(true);
+    setError('');
+    try {
+      await onAccepted({
+        version: legalDocumentVersion,
+        documents: documentVersions,
+        userAgent: window.navigator?.userAgent || '',
+        acceptanceUrl: window.location.href,
+      });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Não foi possível registrar o aceite. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <main className="legal-gate">
+      <section className="legal-gate-frame">
+        <div className="legal-gate-brand">
+          <BarberProLogoMark />
+          <div>
+            <strong>BarberPro</strong>
+            <span>IA DREAMS</span>
+          </div>
+        </div>
+
+        <div className="legal-gate-card">
+          <div className="legal-gate-heading">
+            <span className="legal-gate-icon"><FileCheck2 size={24} /></span>
+            <p>Documentos legais obrigatórios</p>
+            <h1>Leia e aceite para continuar</h1>
+            <span>
+              O acesso da barbearia {barbershop?.name || 'cadastrada'} fica liberado somente após o aceite eletrônico dos documentos abaixo. Versão {legalDocumentVersion}.
+            </span>
+          </div>
+
+          <LegalDocumentsViewer />
+
+          <div className="legal-proof-box">
+            <strong>Registro do aceite</strong>
+            <span>Ao aceitar, salvaremos data e hora, usuário, email, barbearia, versão dos documentos, navegador e página de aceite para comprovação futura.</span>
+          </div>
+
+          {!canAccept && (
+            <div className="legal-gate-warning">
+              Apenas o responsável pela barbearia pode aceitar os documentos. Peça para o dono acessar a conta principal.
+            </div>
+          )}
+
+          {error && <div className="legal-gate-warning">{error}</div>}
+
+          <label className="legal-accept-check">
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(event) => setChecked(event.target.checked)}
+              disabled={!canAccept || saving}
+            />
+            <span>Li, entendi e aceito o Contrato de Adesão, os Termos de Uso, a Política de Privacidade e a Política de Cookies da BarberPro.</span>
+          </label>
+
+          <div className="legal-gate-actions">
+            <button type="button" className="legal-secondary-button" onClick={onLogout}>
+              Sair
+            </button>
+            <button
+              type="button"
+              className="legal-primary-button"
+              disabled={!checked || !canAccept || saving}
+              onClick={handleAccept}
+            >
+              <Check size={18} />
+              {saving ? 'Registrando...' : 'Li e aceito'}
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
 function Workspace({ session, onLogout }) {
   const { user } = session;
   const [screen, setScreen] = useState('management');
@@ -2207,6 +2393,24 @@ function Workspace({ session, onLogout }) {
       activeBarbershopId = null;
     };
   }, [user.barbershopId]);
+
+  if (barbershop && (!barbershop.legalAcceptedAt || barbershop.legalAcceptedVersion !== legalDocumentVersion)) {
+    return (
+      <LegalAcceptanceScreen
+        user={user}
+        barbershop={barbershop}
+        onLogout={onLogout}
+        onAccepted={async (acceptanceDetails) => {
+          const response = await api.post('/barbershop/legal-acceptance', {
+            accepted: true,
+            ...acceptanceDetails,
+          });
+          setBarbershop(response.data);
+          await loadData();
+        }}
+      />
+    );
+  }
 
   return (
     <main
@@ -4085,6 +4289,7 @@ function SettingsScreen({
         <button className={tab === 'services' ? 'active' : ''} onClick={() => setTab('services')}>Serviços</button>
         <button className={tab === 'payments' ? 'active' : ''} onClick={() => setTab('payments')}>Métodos</button>
         <button className={tab === 'schedule' ? 'active' : ''} onClick={() => setTab('schedule')}>Agendamento</button>
+        <button className={tab === 'legal' ? 'active' : ''} onClick={() => setTab('legal')}>Documentos legais</button>
       </div>
 
       {tab === 'company' && <CompanyEditor barbershop={barbershop} onSaved={onSaved} />}
@@ -4104,10 +4309,49 @@ function SettingsScreen({
       {tab === 'schedule' && (
         <ScheduleSettings barbershop={barbershop} onSaved={onSaved} />
       )}
+      {tab === 'legal' && <LegalSettingsPanel barbershop={barbershop} />}
     </div>
   );
 }
 
+function LegalSettingsPanel({ barbershop }) {
+  const acceptedAt = barbershop?.legalAcceptedAt ? formatDateTime(barbershop.legalAcceptedAt) : 'Ainda não aceito';
+  const acceptedVersion = barbershop?.legalAcceptedVersion || 'Pendente';
+  const acceptedEmail = barbershop?.legalAcceptedByEmail || 'Não registrado';
+  const publicLinks = [
+    ['Contrato', '/legal/contrato'],
+    ['Termos de Uso', '/legal/termos'],
+    ['Privacidade', '/legal/privacidade'],
+    ['Cookies', '/legal/cookies'],
+  ];
+
+  return (
+    <div className="settings-grid legal-settings-grid">
+      <section className="panel legal-settings-summary">
+        <SectionTitle eyebrow="Legal" title="Documentos aceitos" compact />
+        <div className="legal-acceptance-facts">
+          <span><strong>Versão atual</strong>{legalDocumentVersion}</span>
+          <span><strong>Versão aceita</strong>{acceptedVersion}</span>
+          <span><strong>Data do aceite</strong>{acceptedAt}</span>
+          <span><strong>Email do aceite</strong>{acceptedEmail}</span>
+        </div>
+        <p>
+          Sempre que a IA Dreams alterar a versão dos documentos, o app poderá solicitar um novo aceite antes de liberar o acesso.
+        </p>
+        <div className="legal-public-links">
+          {publicLinks.map(([label, href]) => (
+            <a key={href} href={href} target="_blank" rel="noreferrer">{label}</a>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel legal-settings-docs">
+        <SectionTitle eyebrow="Consulta" title="Documentos legais" compact />
+        <LegalDocumentsViewer compact />
+      </section>
+    </div>
+  );
+}
 function ProfileEditor({ user, onSaved }) {
   const [form, setForm] = useState({
     name: user.name,
@@ -5242,6 +5486,14 @@ function timeOnly(date) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(date));
+}
+
+function formatDateTime(value) {
+  if (!value) return 'Não registrado';
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
 }
 
 function money(cents) {

@@ -28,6 +28,7 @@ const validPartnerCodes = {
   },
 };
 const professionalColors = ['#f97316', '#2563eb', '#16a34a', '#a855f7', '#e11d48'];
+const legalDocumentVersion = '1.1';
 
 const state = {
   barbershop: null,
@@ -284,6 +285,12 @@ class BarberShopService {
         costsCount: costs.length,
         revenueCents,
         lastActivityAt: lastAppointment?.createdAt || null,
+        legalAcceptedAt: barbershop.legalAcceptedAt || null,
+        legalAcceptedByEmail: barbershop.legalAcceptedByEmail || '',
+        legalAcceptedVersion: barbershop.legalAcceptedVersion || null,
+        legalAcceptedUserAgent: barbershop.legalAcceptedUserAgent || '',
+        legalAcceptedIp: barbershop.legalAcceptedIp || '',
+        legalAcceptanceHistory: barbershop.legalAcceptanceHistory || [],
       };
     });
   }
@@ -314,6 +321,18 @@ class BarberShopService {
 
     if (body.adminNotes !== undefined) {
       barbershop.adminNotes = body.adminNotes;
+    }
+
+    if (body.forceLegalAcceptance === true) {
+      barbershop.legalAcceptedAt = null;
+      barbershop.legalAcceptedByUserId = null;
+      barbershop.legalAcceptedByEmail = null;
+      barbershop.legalAcceptedVersion = null;
+      barbershop.legalAcceptedDocuments = null;
+      barbershop.legalAcceptedUserAgent = null;
+      barbershop.legalAcceptedUrl = null;
+      barbershop.legalAcceptedIp = null;
+      addSecurityEvent('legal_acceptance_forced', { barbershopId: barbershop.id });
     }
 
     schedulePersist();
@@ -376,6 +395,15 @@ class BarberShopService {
       paymentDueDate: nextBillingDate(new Date()),
       adminNotes: '',
       monthlyPriceCents: partner?.monthlyPriceCents ?? 2990,
+      legalAcceptedAt: null,
+      legalAcceptedByUserId: null,
+      legalAcceptedByEmail: null,
+      legalAcceptedVersion: null,
+      legalAcceptedDocuments: null,
+      legalAcceptedUserAgent: null,
+      legalAcceptedUrl: null,
+      legalAcceptedIp: null,
+      legalAcceptanceHistory: [],
     };
 
     state.barbershop = barbershop;
@@ -653,6 +681,62 @@ class BarberShopService {
       service,
       professional,
     };
+  }
+  acceptLegalTerms(body, user) {
+    const barbershop = findBarbershop(user?.barbershopId || body?.barbershopId);
+    if (!barbershop) {
+      return { error: 'Barbearia nao encontrada.' };
+    }
+
+    if (user?.role === 'barber') {
+      return { error: 'Apenas o responsavel pela barbearia pode aceitar os termos.' };
+    }
+
+    const accepted = body?.accepted === true;
+    if (!accepted) {
+      return { error: 'Confirme que leu e aceitou os documentos.' };
+    }
+
+    const acceptedAt = new Date().toISOString();
+    const acceptedDocuments = {
+      contract: body?.documents?.contract || legalDocumentVersion,
+      terms: body?.documents?.terms || legalDocumentVersion,
+      privacy: body?.documents?.privacy || legalDocumentVersion,
+      cookies: body?.documents?.cookies || legalDocumentVersion,
+    };
+    const acceptanceRecord = {
+      acceptedAt,
+      userId: user.id,
+      userName: user.name,
+      email: user.email,
+      version: legalDocumentVersion,
+      documents: acceptedDocuments,
+      userAgent: String(body?.userAgent || '').slice(0, 500),
+      acceptanceUrl: String(body?.acceptanceUrl || '').slice(0, 500),
+      ip: String(body?.ip || '').split(',')[0].trim().slice(0, 120),
+    };
+
+    Object.assign(barbershop, {
+      legalAcceptedAt: acceptedAt,
+      legalAcceptedByUserId: user.id,
+      legalAcceptedByEmail: user.email,
+      legalAcceptedVersion: legalDocumentVersion,
+      legalAcceptedDocuments: acceptedDocuments,
+      legalAcceptedUserAgent: acceptanceRecord.userAgent,
+      legalAcceptedUrl: acceptanceRecord.acceptanceUrl,
+      legalAcceptedIp: acceptanceRecord.ip,
+      legalAcceptanceHistory: [...(barbershop.legalAcceptanceHistory || []), acceptanceRecord],
+    });
+
+    addSecurityEvent('legal_terms_accepted', {
+      barbershopId: barbershop.id,
+      userId: user.id,
+      email: user.email,
+      version: legalDocumentVersion,
+      documents: acceptedDocuments,
+    });
+    schedulePersist();
+    return barbershop;
   }
   updateBarberShop(body) {
     const barbershop = findBarbershop(body.barbershopId);
@@ -1272,7 +1356,7 @@ function buildReport(appointments) {
   return summary;
 }
 
-module.exports = { BarberShopService, initializePersistentState };
+module.exports = { BarberShopService, initializePersistentState, legalDocumentVersion };
 
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET || '';

@@ -103,6 +103,16 @@ class AppController {
     return this.barberShopService.updateBarberShop(this.scopedBody(body, user));
   }
 
+  acceptLegalTerms(body, authHeader, forwardedFor, realIp, userAgent) {
+    const user = this.getAuthenticatedUser(authHeader, ['admin', 'owner']);
+    if (user.error) return user;
+    return this.barberShopService.acceptLegalTerms(this.scopedBody({
+      ...body,
+      userAgent: body?.userAgent || userAgent || '',
+      ip: forwardedFor || realIp || '',
+    }, user), user);
+  }
+
   listProfessionals(barbershopId, authHeader) {
     const user = this.getAuthenticatedUser(authHeader);
     if (user.error) return user;
@@ -280,6 +290,12 @@ Headers('authorization')(AppController.prototype, 'getBarberShop', 1);
 Post('barbershop')(AppController.prototype, 'updateBarberShop', Object.getOwnPropertyDescriptor(AppController.prototype, 'updateBarberShop'));
 Body()(AppController.prototype, 'updateBarberShop', 0);
 Headers('authorization')(AppController.prototype, 'updateBarberShop', 1);
+Post('barbershop/legal-acceptance')(AppController.prototype, 'acceptLegalTerms', Object.getOwnPropertyDescriptor(AppController.prototype, 'acceptLegalTerms'));
+Body()(AppController.prototype, 'acceptLegalTerms', 0);
+Headers('authorization')(AppController.prototype, 'acceptLegalTerms', 1);
+Headers('x-forwarded-for')(AppController.prototype, 'acceptLegalTerms', 2);
+Headers('x-real-ip')(AppController.prototype, 'acceptLegalTerms', 3);
+Headers('user-agent')(AppController.prototype, 'acceptLegalTerms', 4);
 
 Get('professionals')(AppController.prototype, 'listProfessionals', Object.getOwnPropertyDescriptor(AppController.prototype, 'listProfessionals'));
 Query('barbershopId')(AppController.prototype, 'listProfessionals', 0);
