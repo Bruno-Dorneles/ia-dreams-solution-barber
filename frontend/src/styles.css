@@ -11784,3 +11784,47 @@ select option {
 .admin-master-shell .metric-panel small {
   color: #9a9ea6;
 }
+
+.app-error-fallback {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #050506;
+  color: #fff;
+}
+
+.app-error-fallback section {
+  width: min(100%, 420px);
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 28px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 22px;
+  background: #111214;
+  text-align: center;
+}
+
+.app-error-fallback h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+}
+
+.app-error-fallback p {
+  margin: 0;
+  color: #9a9ea6;
+  line-height: 1.5;
+}
+
+.app-error-fallback button {
+  min-height: 46px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  color: #050506;
+  font-weight: 800;
+  cursor: pointer;
+}

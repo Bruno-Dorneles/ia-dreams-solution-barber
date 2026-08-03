@@ -84,6 +84,8 @@ api.interceptors.request.use((config) => {
 
 const savedSessionKey = 'solution-barber-session';
 const temporarySessionKey = 'solution-barber-tab-session';
+const appVersionKey = 'barberpro-app-version';
+const appVersion = 'apps-barberpro-2026-08-03';
 
 const barberProBasePath = '/apps/barberpro';
 
@@ -98,7 +100,7 @@ function normalizeAppPath(pathname = window.location.pathname) {
 
 function barberProPath(path = '/') {
   const nextPath = String(path || '/');
-  if (nextPath === '/') return barberProBasePath;
+  if (nextPath === '/') return `${barberProBasePath}/`;
   return `${barberProBasePath}${nextPath.startsWith('/') ? nextPath : `/${nextPath}`}`;
 }
 
@@ -126,6 +128,48 @@ const defaultPaymentSettings = {
   debit_card: { enabled: true, feePercent: 2 },
 };
 
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    console.error('BarberPro render error', error);
+  }
+
+  resetApp() {
+    try {
+      localStorage.removeItem(savedSessionKey);
+      sessionStorage.removeItem(temporarySessionKey);
+      localStorage.setItem(appVersionKey, appVersion);
+    } catch {
+      // Ignora falhas de armazenamento local.
+    }
+    window.location.replace(barberProPath('/'));
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+
+    return (
+      <main className="app-error-fallback">
+        <section>
+          <BarberProLogoMark />
+          <h1>Nao foi possivel abrir o BarberPro</h1>
+          <p>Encontramos dados antigos do app no navegador. Clique no botao abaixo para limpar a sessao local e abrir o login novamente.</p>
+          <button type="button" onClick={() => this.resetApp()}>
+            Recarregar app
+          </button>
+        </section>
+      </main>
+    );
+  }
+}
 function App() {
   const appPath = normalizeAppPath(window.location.pathname);
   const publicBookingMatch = appPath.match(/^\/agendar\/([^/]+)/);
@@ -168,6 +212,7 @@ function App() {
   }
 
   activeSessionToken = masterSession?.token || session?.token || null;
+  activeBarbershopId = masterSession?.user?.barbershopId || (session?.user?.role !== 'admin' ? session?.user?.barbershopId || null : null);
 
   useEffect(() => {
     if (session?.user && session.user.role !== 'admin' && !session.user.barbershopId) {
@@ -2471,6 +2516,9 @@ function Workspace({ session, onLogout, onExitMaster }) {
   });
 
   async function loadData() {
+    const scopedRequestOptions = user.barbershopId
+      ? { params: { barbershopId: user.barbershopId } }
+      : undefined;
     const [
       barbershopResponse,
       usersResponse,
@@ -2480,13 +2528,13 @@ function Workspace({ session, onLogout, onExitMaster }) {
       schedulesResponse,
       costsResponse,
     ] = await Promise.all([
-      api.get('/barbershop'),
-      api.get('/users'),
-      api.get('/professionals'),
-      api.get('/services'),
-      api.get('/appointments'),
-      api.get('/schedules'),
-      api.get('/costs'),
+      api.get('/barbershop', scopedRequestOptions),
+      api.get('/users', scopedRequestOptions),
+      api.get('/professionals', scopedRequestOptions),
+      api.get('/services', scopedRequestOptions),
+      api.get('/appointments', scopedRequestOptions),
+      api.get('/schedules', scopedRequestOptions),
+      api.get('/costs', scopedRequestOptions),
     ]);
 
     setBarbershop(barbershopResponse.data);
@@ -3569,6 +3617,7 @@ function ManagementScreen({
     .sort((a, b) => b.localeCompare(a));
   const currentMonth = summaryMonth;
   const previousMonth = previousMonthKey(currentMonth);
+  const summaryComparison = getComparableMonthPeriod(currentMonth);
   const scopedSchedules = schedules.filter((schedule) => {
     if (user.role !== 'owner') {
       return schedule.professionalId === user.professionalId;
@@ -3586,11 +3635,23 @@ function ManagementScreen({
   const previousMonthAppointments = scopedAppointments.filter(
     (appointment) => localMonthKey(appointmentDateKey(appointment)) === previousMonth,
   );
+  const currentComparisonAppointments = currentMonthAppointments.filter(
+    (appointment) => appointmentDateKey(appointment) <= summaryComparison.currentEndDate,
+  );
+  const previousComparisonAppointments = previousMonthAppointments.filter(
+    (appointment) => appointmentDateKey(appointment) <= summaryComparison.previousEndDate,
+  );
   const currentMonthSchedules = scopedSchedules.filter(
     (schedule) => scheduleDateTimeKey(schedule.startsAt).slice(0, 7) === currentMonth,
   );
   const previousMonthSchedules = scopedSchedules.filter(
     (schedule) => scheduleDateTimeKey(schedule.startsAt).slice(0, 7) === previousMonth,
+  );
+  const currentComparisonSchedules = currentMonthSchedules.filter(
+    (schedule) => scheduleDateTimeKey(schedule.startsAt).slice(0, 10) <= summaryComparison.currentEndDate,
+  );
+  const previousComparisonSchedules = previousMonthSchedules.filter(
+    (schedule) => scheduleDateTimeKey(schedule.startsAt).slice(0, 10) <= summaryComparison.previousEndDate,
   );
   const currentRevenueCents = currentMonthAppointments.reduce(
     (sum, appointment) => sum + appointment.totalCents,
@@ -3606,29 +3667,43 @@ function ManagementScreen({
   const previousTicketCents = previousMonthAppointments.length
     ? Math.round(previousRevenueCents / previousMonthAppointments.length)
     : 0;
+  const currentComparisonRevenueCents = currentComparisonAppointments.reduce(
+    (sum, appointment) => sum + appointment.totalCents,
+    0,
+  );
+  const previousComparisonRevenueCents = previousComparisonAppointments.reduce(
+    (sum, appointment) => sum + appointment.totalCents,
+    0,
+  );
+  const currentComparisonTicketCents = currentComparisonAppointments.length
+    ? Math.round(currentComparisonRevenueCents / currentComparisonAppointments.length)
+    : 0;
+  const previousComparisonTicketCents = previousComparisonAppointments.length
+    ? Math.round(previousComparisonRevenueCents / previousComparisonAppointments.length)
+    : 0;
   const summaryItems = [
     {
       label: 'Agendamentos',
       value: currentMonthSchedules.length,
-      trend: percentageTrend(currentMonthSchedules.length, previousMonthSchedules.length),
+      trend: percentageTrend(currentComparisonSchedules.length, previousComparisonSchedules.length),
       icon: <CalendarClock size={24} />,
     },
     {
       label: 'Atendimentos',
       value: currentMonthAppointments.length,
-      trend: percentageTrend(currentMonthAppointments.length, previousMonthAppointments.length),
+      trend: percentageTrend(currentComparisonAppointments.length, previousComparisonAppointments.length),
       icon: <Users size={24} />,
     },
     {
       label: 'Faturamento',
       value: money(currentRevenueCents),
-      trend: percentageTrend(currentRevenueCents, previousRevenueCents),
+      trend: percentageTrend(currentComparisonRevenueCents, previousComparisonRevenueCents),
       icon: <CircleDollarSign size={24} />,
     },
     {
       label: 'Ticket Médio',
       value: money(currentTicketCents),
-      trend: percentageTrend(currentTicketCents, previousTicketCents),
+      trend: percentageTrend(currentComparisonTicketCents, previousComparisonTicketCents),
       icon: <BarChart3 size={24} />,
     },
   ];
@@ -5322,20 +5397,57 @@ function getPasswordIssues(password) {
   return issues;
 }
 
-function loadSavedSession() {
-  const raw =
-    localStorage.getItem(savedSessionKey) ||
-    sessionStorage.getItem(temporarySessionKey);
-  if (!raw) return null;
-
+function clearSavedSession() {
   try {
-    return JSON.parse(raw);
+    localStorage.removeItem(savedSessionKey);
+    sessionStorage.removeItem(temporarySessionKey);
   } catch {
+    // Ignora falhas de armazenamento local.
+  }
+}
+
+function isValidSession(session) {
+  return Boolean(
+    session &&
+    typeof session === 'object' &&
+    typeof session.token === 'string' &&
+    session.token.length > 20 &&
+    session.user &&
+    typeof session.user === 'object' &&
+    typeof session.user.role === 'string' &&
+    typeof session.user.email === 'string'
+  );
+}
+
+function loadSavedSession() {
+  try {
+    const currentVersion = localStorage.getItem(appVersionKey);
+    if (currentVersion !== appVersion) {
+      clearSavedSession();
+      localStorage.setItem(appVersionKey, appVersion);
+      return null;
+    }
+
+    const raw =
+      localStorage.getItem(savedSessionKey) ||
+      sessionStorage.getItem(temporarySessionKey);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!isValidSession(parsed)) {
+      clearSavedSession();
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    clearSavedSession();
     return null;
   }
 }
 
 function saveSession(session, remember) {
+  localStorage.setItem(appVersionKey, appVersion);
   const value = JSON.stringify(session);
   localStorage.removeItem(savedSessionKey);
   sessionStorage.removeItem(temporarySessionKey);
@@ -5675,6 +5787,24 @@ function previousMonthKey(monthKey) {
   return localMonthKey(new Date(year, month - 2, 1));
 }
 
+function getComparableMonthPeriod(monthKey) {
+  const [year, month] = String(monthKey).split('-').map(Number);
+  const todayDate = new Date();
+  const selectedMonthStart = new Date(year, month - 1, 1);
+  const selectedMonthLastDay = new Date(year, month, 0).getDate();
+  const isCurrentMonth = localMonthKey(todayDate) === monthKey;
+  const comparisonDay = isCurrentMonth
+    ? Math.min(todayDate.getDate(), selectedMonthLastDay)
+    : selectedMonthLastDay;
+  const previousMonthLastDay = new Date(year, month - 1, 0).getDate();
+  const previousComparisonDay = Math.min(comparisonDay, previousMonthLastDay);
+
+  return {
+    currentEndDate: localDateKey(new Date(selectedMonthStart.getFullYear(), selectedMonthStart.getMonth(), comparisonDay)),
+    previousEndDate: localDateKey(new Date(year, month - 2, previousComparisonDay)),
+  };
+}
+
 function formatMonthLabel(monthKey) {
   const [year, month] = String(monthKey).split('-').map(Number);
   if (!year || !month) return monthKey;
@@ -5866,7 +5996,7 @@ function getRevenueChartMaxCents(maxRevenueCents) {
   return chartMax * 100;
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(<AppErrorBoundary><App /></AppErrorBoundary>);
 
 
 
