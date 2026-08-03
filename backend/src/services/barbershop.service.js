@@ -268,6 +268,7 @@ class BarberShopService {
         id: barbershop.id,
         name: barbershop.name,
         ownerName: barbershop.ownerName,
+        publicSlug: barbershop.publicSlug || slugify(barbershop.name),
         contact: barbershop.contact,
         email: owner?.email || '',
         status: barbershop.status || 'active',
@@ -1655,10 +1656,21 @@ function migrateBarbershopPublicSlugs() {
 
     const currentSlug = slugify(barbershop.publicSlug || '');
     const technicalSlug = slugify(barbershop.id || '');
-    const shouldReplaceSlug = !currentSlug || currentSlug === technicalSlug || /^shop-\\d/.test(currentSlug);
+    const realName = bestBarbershopSlugSource(barbershop);
+    const realSlug = slugify(realName);
+    const genericSlug = /^barbearia(-\d+)?$/.test(currentSlug);
+    const technicalSlugPattern = /^shop-\d/.test(currentSlug);
+    const shouldReplaceSlug = Boolean(
+      realName &&
+      realSlug !== 'barbearia' &&
+      (!currentSlug || currentSlug === technicalSlug || technicalSlugPattern || genericSlug)
+    );
 
     if (shouldReplaceSlug) {
-      barbershop.publicSlug = uniqueBarbershopSlug(barbershop.name || barbershop.ownerName || barbershop.id, barbershop.id);
+      barbershop.publicSlug = uniqueBarbershopSlug(realName, barbershop.id);
+      changed = true;
+    } else if (!currentSlug) {
+      barbershop.publicSlug = uniqueBarbershopSlug(barbershop.id, barbershop.id);
       changed = true;
     } else if (barbershop.publicSlug !== currentSlug) {
       barbershop.publicSlug = uniqueBarbershopSlug(currentSlug, barbershop.id);
@@ -1668,6 +1680,25 @@ function migrateBarbershopPublicSlugs() {
 
   return changed;
 }
+
+function bestBarbershopSlugSource(barbershop) {
+  const owner = state.users.find((user) => user.role === 'owner' && user.barbershopId === barbershop.id);
+  const candidates = [
+    barbershop.name,
+    barbershop.barbershopName,
+    barbershop.companyName,
+    barbershop.tradeName,
+    owner?.barbershopName,
+    owner?.companyName,
+    barbershop.ownerName,
+    owner?.name,
+  ];
+
+  return candidates
+    .map((value) => normalizeText(value, 100))
+    .find((value) => value && slugify(value) !== 'barbearia') || '';
+}
+
 function uniqueBarbershopSlug(name, ignoreBarbershopId = null) {
   const baseSlug = slugify(name);
   let slug = baseSlug;
