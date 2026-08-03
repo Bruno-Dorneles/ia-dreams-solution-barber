@@ -3576,9 +3576,10 @@ function ManagementScreen({
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
   const [scopeProfessionalId, setScopeProfessionalId] = useState('all');
   const [summaryMonth, setSummaryMonth] = useState(localMonthKey(new Date()));
+  const canManageFinancials = user.role === 'owner' || user.role === 'admin' || user.masterMode;
 
   const scopedAppointments = useMemo(() => {
-    if (user.role !== 'owner') {
+    if (!canManageFinancials) {
       return appointments.filter((item) => item.professionalId === user.professionalId);
     }
 
@@ -3587,7 +3588,7 @@ function ManagementScreen({
     }
 
     return appointments.filter((item) => item.professionalId === scopeProfessionalId);
-  }, [appointments, scopeProfessionalId, user]);
+  }, [appointments, canManageFinancials, scopeProfessionalId, user]);
 
   const dayAppointments = scopedAppointments
     .filter((appointment) => appointmentDateKey(appointment) === selectedDate)
@@ -3619,7 +3620,7 @@ function ManagementScreen({
   const previousMonth = previousMonthKey(currentMonth);
   const summaryComparison = getComparableMonthPeriod(currentMonth);
   const scopedSchedules = schedules.filter((schedule) => {
-    if (user.role !== 'owner') {
+    if (!canManageFinancials) {
       return schedule.professionalId === user.professionalId;
     }
 
@@ -3715,7 +3716,7 @@ function ManagementScreen({
       <div className="management-top-row">
         <ManagementGreeting user={user} />
 
-        {user.role === 'owner' && (
+        {canManageFinancials && (
           <DropdownSelect
             className="scope-control"
             value={scopeProfessionalId}
@@ -3766,7 +3767,7 @@ function ManagementScreen({
         />
       </section>
 
-      {user.role === 'owner' && (
+      {canManageFinancials && (
         <div className="finance-actions">
           <CostsAccordion costs={costs} onSaved={onSaved} />
           <button className="closing-button" onClick={onOpenClosing}>
