@@ -83,6 +83,12 @@ class AppController {
     return this.barberShopService.updateAdminBarbershop(barbershopId, body);
   }
 
+  registerMasterAccess(barbershopId, authHeader) {
+    const user = this.getAuthenticatedUser(authHeader, ['admin']);
+    if (user.error) return user;
+    return this.barberShopService.registerMasterAccess(barbershopId, user);
+  }
+
   getPublicBookingPage(slug) {
     return this.barberShopService.getPublicBookingPage(slug);
   }
@@ -227,16 +233,16 @@ class AppController {
     return this.barberShopService.deleteCost(costId, user);
   }
 
-  getDailyReport(date, authHeader) {
+  getDailyReport(date, barbershopId, authHeader) {
     const user = this.getAuthenticatedUser(authHeader);
     if (user.error) return user;
-    return this.barberShopService.getReport({ period: 'daily', date, barbershopId: user.barbershopId, user });
+    return this.barberShopService.getReport({ period: 'daily', date, barbershopId: this.scopedBarbershopId(user, barbershopId), user });
   }
 
-  getMonthlyReport(month, authHeader) {
+  getMonthlyReport(month, barbershopId, authHeader) {
     const user = this.getAuthenticatedUser(authHeader);
     if (user.error) return user;
-    return this.barberShopService.getReport({ period: 'monthly', month, barbershopId: user.barbershopId, user });
+    return this.barberShopService.getReport({ period: 'monthly', month, barbershopId: this.scopedBarbershopId(user, barbershopId), user });
   }
 
   getProfessionalCommission(professionalId, month, authHeader) {
@@ -277,6 +283,9 @@ Post('admin/barbershops/:barbershopId')(AppController.prototype, 'updateAdminBar
 Param('barbershopId')(AppController.prototype, 'updateAdminBarbershop', 0);
 Body()(AppController.prototype, 'updateAdminBarbershop', 1);
 Headers('authorization')(AppController.prototype, 'updateAdminBarbershop', 2);
+Post('admin/barbershops/:barbershopId/master-access')(AppController.prototype, 'registerMasterAccess', Object.getOwnPropertyDescriptor(AppController.prototype, 'registerMasterAccess'));
+Param('barbershopId')(AppController.prototype, 'registerMasterAccess', 0);
+Headers('authorization')(AppController.prototype, 'registerMasterAccess', 1);
 
 Get('public/barbershops/:slug')(AppController.prototype, 'getPublicBookingPage', Object.getOwnPropertyDescriptor(AppController.prototype, 'getPublicBookingPage'));
 Param('slug')(AppController.prototype, 'getPublicBookingPage', 0);
@@ -365,11 +374,13 @@ Headers('authorization')(AppController.prototype, 'deleteCost', 1);
 
 Get('reports/daily')(AppController.prototype, 'getDailyReport', Object.getOwnPropertyDescriptor(AppController.prototype, 'getDailyReport'));
 Query('date')(AppController.prototype, 'getDailyReport', 0);
-Headers('authorization')(AppController.prototype, 'getDailyReport', 1);
+Query('barbershopId')(AppController.prototype, 'getDailyReport', 1);
+Headers('authorization')(AppController.prototype, 'getDailyReport', 2);
 
 Get('reports/monthly')(AppController.prototype, 'getMonthlyReport', Object.getOwnPropertyDescriptor(AppController.prototype, 'getMonthlyReport'));
 Query('month')(AppController.prototype, 'getMonthlyReport', 0);
-Headers('authorization')(AppController.prototype, 'getMonthlyReport', 1);
+Query('barbershopId')(AppController.prototype, 'getMonthlyReport', 1);
+Headers('authorization')(AppController.prototype, 'getMonthlyReport', 2);
 
 Get('professionals/:professionalId/commission')(AppController.prototype, 'getProfessionalCommission', Object.getOwnPropertyDescriptor(AppController.prototype, 'getProfessionalCommission'));
 Param('professionalId')(AppController.prototype, 'getProfessionalCommission', 0);

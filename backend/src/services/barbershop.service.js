@@ -295,6 +295,26 @@ class BarberShopService {
     });
   }
 
+  registerMasterAccess(barbershopId, authUser) {
+    if (!authUser || authUser.role !== 'admin') {
+      return denyAccess();
+    }
+
+    const barbershop = state.barbershops.find((item) => item.id === barbershopId);
+    if (!barbershop) {
+      return { error: 'Barbearia nao encontrada.' };
+    }
+
+    addSecurityEvent('master_access_started', {
+      barbershopId: barbershop.id,
+      barbershopName: barbershop.name,
+      adminUserId: authUser.id,
+      adminEmail: authUser.email,
+    });
+    schedulePersist();
+
+    return { ok: true, barbershopId: barbershop.id };
+  }
   updateAdminBarbershop(barbershopId, body) {
     const barbershop = state.barbershops.find((item) => item.id === barbershopId);
 

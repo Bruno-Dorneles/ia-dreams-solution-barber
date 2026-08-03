@@ -85,6 +85,27 @@ api.interceptors.request.use((config) => {
 const savedSessionKey = 'solution-barber-session';
 const temporarySessionKey = 'solution-barber-tab-session';
 
+const barberProBasePath = '/apps/barberpro';
+
+function normalizeAppPath(pathname = window.location.pathname) {
+  const cleanPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+  if (cleanPath === barberProBasePath) return '/';
+  if (cleanPath.startsWith(`${barberProBasePath}/`)) {
+    return cleanPath.slice(barberProBasePath.length) || '/';
+  }
+  return cleanPath || '/';
+}
+
+function barberProPath(path = '/') {
+  const nextPath = String(path || '/');
+  if (nextPath === '/') return barberProBasePath;
+  return `${barberProBasePath}${nextPath.startsWith('/') ? nextPath : `/${nextPath}`}`;
+}
+
+function barberProUrl(path = '/') {
+  return `${window.location.origin}${barberProPath(path)}`;
+}
+
 const paymentLabels = {
   cash: 'Dinheiro',
   pix: 'Pix',
@@ -106,9 +127,11 @@ const defaultPaymentSettings = {
 };
 
 function App() {
-  const publicBookingMatch = window.location.pathname.match(/^\/agendar\/([^/]+)/);
-  const publicLegalMatch = window.location.pathname.match(/^\/legal\/([^/]+)/);
+  const appPath = normalizeAppPath(window.location.pathname);
+  const publicBookingMatch = appPath.match(/^\/agendar\/([^/]+)/);
+  const publicLegalMatch = appPath.match(/^\/legal\/([^/]+)/);
   const [session, setSession] = useState(() => loadSavedSession());
+  const [masterSession, setMasterSession] = useState(null);
 
   function handleAuthenticated(data, remember) {
     activeSessionToken = data.token || null;
@@ -125,10 +148,26 @@ function App() {
     activeBarbershopId = null;
     localStorage.removeItem(savedSessionKey);
     sessionStorage.removeItem(temporarySessionKey);
+    setMasterSession(null);
     setSession(null);
   }
 
-  activeSessionToken = session?.token || null;
+  async function handleOpenMaster(barbershop) {
+    if (!session?.user || session.user.role !== 'admin' || !barbershop?.id) return;
+
+    await api.post('/admin/barbershops/' + barbershop.id + '/master-access');
+    setMasterSession({
+      token: session.token,
+      user: {
+        ...session.user,
+        barbershopId: barbershop.id,
+        masterMode: true,
+        masterBarbershopName: barbershop.name,
+      },
+    });
+  }
+
+  activeSessionToken = masterSession?.token || session?.token || null;
 
   useEffect(() => {
     if (session?.user && session.user.role !== 'admin' && !session.user.barbershopId) {
@@ -139,6 +178,15 @@ function App() {
       setSession(null);
     }
   }, [session]);
+
+  if (window.location.pathname === '/') {
+    window.history.replaceState(null, '', barberProPath('/') + window.location.search + window.location.hash);
+  }
+
+  if (window.location.pathname.match(/^\/(agendar|legal)\//)) {
+    window.location.replace(barberProPath(window.location.pathname) + window.location.search + window.location.hash);
+    return null;
+  }
 
   if (publicBookingMatch) {
     return <PublicBookingPage slug={decodeURIComponent(publicBookingMatch[1])} />;
@@ -154,8 +202,21 @@ function App() {
     return <AuthGateway onAuthenticated={handleAuthenticated} />;
   }
 
+  if (masterSession?.user) {
+    return (
+      <Workspace
+        session={masterSession}
+        onLogout={handleLogout}
+        onExitMaster={() => {
+          activeBarbershopId = null;
+          setMasterSession(null);
+        }}
+      />
+    );
+  }
+
   if (session.user.role === 'admin') {
-    return <AdminWorkspace onLogout={handleLogout} />;
+    return <AdminWorkspace onLogout={handleLogout} onOpenMaster={handleOpenMaster} />;
   }
 
   return <Workspace session={session} onLogout={handleLogout} />;
@@ -1961,10 +2022,14 @@ function DropdownSelect({ value, options, onChange, ariaLabel, className = '' })
   );
 }
 
-function AdminWorkspace({ onLogout }) {
+function AdminWorkspace({ onLogout, onOpenMaster }) {
   const [summary, setSummary] = useState(null);
   const [barbershops, setBarbershops] = useState([]);
   const [creatingClient, setCreatingClient] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState('');
+  const [search, setSearch] = useState('');
+  const [openingMaster, setOpeningMaster] = useState(false);
+  const [masterError, setMasterError] = useState('');
 
   async function loadAdminData() {
     const [summaryResponse, barbershopsResponse] = await Promise.all([
@@ -1980,6 +2045,12 @@ function AdminWorkspace({ onLogout }) {
     loadAdminData().catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!selectedClientId && barbershops[0]?.id) {
+      setSelectedClientId(barbershops[0].id);
+    }
+  }, [barbershops, selectedClientId]);
+
   async function updateClient(client, patch) {
     await api.post(`/admin/barbershops/${client.id}`, patch);
     await loadAdminData();
@@ -1988,6 +2059,20 @@ function AdminWorkspace({ onLogout }) {
   async function handleClientCreated() {
     setCreatingClient(false);
     await loadAdminData();
+  }
+
+  async function handleOpenSelectedClient() {
+    const client = selectedClient;
+    if (!client || openingMaster) return;
+    setOpeningMaster(true);
+    setMasterError('');
+    try {
+      await onOpenMaster(client);
+    } catch (err) {
+      setMasterError(err.response?.data?.error || 'Não foi possível acessar este cliente em modo Master.');
+    } finally {
+      setOpeningMaster(false);
+    }
   }
 
   if (creatingClient) {
@@ -1999,132 +2084,198 @@ function AdminWorkspace({ onLogout }) {
     );
   }
 
+  const filteredBarbershops = barbershops.filter((item) => {
+    const query = normalizeSearch(search);
+    if (!query) return true;
+    return [item.name, item.ownerName, item.email, item.partnerCode]
+      .map(normalizeSearch)
+      .some((value) => value.includes(query));
+  });
+  const selectedClient =
+    barbershops.find((item) => item.id === selectedClientId) || filteredBarbershops[0] || barbershops[0] || null;
+  const selectedLegalOk = selectedClient?.legalAcceptedVersion === legalDocumentVersion;
+
   return (
-    <main className="admin-shell">
-      <header className="admin-header">
-        <div>
-          <p className="eyebrow">IA Dreams</p>
-          <h1>Painel de controle</h1>
-        </div>
-        <div className="admin-header-actions">
-          <button className="admin-primary-button" type="button" onClick={() => setCreatingClient(true)}>
-            <UserPlus size={18} />
-            Novo Cliente
-          </button>
-          <button type="button" onClick={onLogout}>
-            <LogOut size={18} />
-            Sair
-          </button>
-        </div>
-      </header>
-
-      <section className="admin-metrics">
-        <MetricPanel title="Clientes" value={summary?.clientsCount || 0} />
-        <MetricPanel title="Ativos" value={summary?.activeClients || 0} />
-        <MetricPanel title="Em dia" value={summary?.paidClients || 0} />
-        <MetricPanel title="Vencidos" value={summary?.overdueClients || 0} />
-        <MetricPanel
-          title="Receita mensal"
-          value={money(summary?.monthlyRecurringRevenueCents || 0)}
-        />
-      </section>
-
-      {summary?.couponSummary?.length > 0 && (
-        <section className="admin-metrics coupon-metrics">
-          {summary.couponSummary.map((coupon) => (
-            <MetricPanel
-              key={coupon.code}
-              title={coupon.code}
-              value={`${coupon.count} barbearia${coupon.count === 1 ? '' : 's'}`}
-              hint={
-                coupon.partnerCommissionCents
-                  ? `${money(coupon.partnerCommissionCents)} por cliente ativo`
-                  : coupon.label
-              }
-            />
-          ))}
-        </section>
-      )}
-
-      <section className="panel">
-        <SectionTitle eyebrow="Clientes" title="Barbearias usando o app" compact />
-        <div className="admin-table">
-          <div className="admin-row admin-head-row">
-            <span>Barbearia</span>
-            <span>Dono</span>
-            <span>Cupom</span>
-            <span>Situação</span>
-            <span>Pagamento</span>
-            <span>Vencimento</span>
-            <span>Mensalidade</span>
-            <span>Atendimentos</span>
-            <span>Observações</span>
+    <main className="admin-master-shell">
+      <aside className="admin-master-sidebar">
+        <div className="nav-brand admin-master-brand">
+          <BarberProLogoMark size="sidebar" />
+          <div>
+            <strong>BarberPro</strong>
+            <span>IA Dreams</span>
           </div>
-          {barbershops.map((item) => (
-            <div className="admin-row" key={item.id}>
-              <strong>{item.name}</strong>
-              <span>{item.ownerName}</span>
-              <span>{item.partnerCode || 'Cliente próprio'}</span>
-              <select
-                value={item.status}
-                onChange={(event) => updateClient(item, { status: event.target.value })}
-              >
-                <option value="trial">Teste</option>
-                <option value="active">Ativo</option>
-                <option value="blocked">Bloqueado</option>
-                <option value="canceled">Cancelado</option>
-              </select>
-              <span className={`payment-dot ${item.paymentStatus}`}>
-                {paymentStatusLabel(item.paymentStatus)}
-              </span>
-              <input
-                type="date"
-                defaultValue={item.paymentDueDate || ''}
-                onBlur={(event) =>
-                  updateClient(item, { paymentDueDate: event.target.value })
-                }
-              />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                defaultValue={(item.monthlyPriceCents || 0) / 100}
-                onBlur={(event) =>
-                  updateClient(item, {
-                    monthlyPriceCents: Math.round(Number(event.target.value || 0) * 100),
-                  })
-                }
-              />
-              <span>{item.appointmentsCount}</span>
-              <span className={`admin-legal-status ${item.legalAcceptedVersion === legalDocumentVersion ? 'ok' : 'pending'}`}>
-                <strong>{item.legalAcceptedVersion || 'Pendente'}</strong>
-                <small>{item.legalAcceptedAt ? formatDateTime(item.legalAcceptedAt) : 'Aguardando aceite'}</small>
-                <small>{item.legalAcceptedByEmail || ''}</small>
-              </span>
-              <input
-                defaultValue={item.adminNotes}
-                placeholder="Observação interna"
-                onBlur={(event) => updateClient(item, { adminNotes: event.target.value })}
-              />
-              <button
-                type="button"
-                className="admin-force-legal-button"
-                onClick={() => {
-                  if (window.confirm(`Exigir novo aceite legal de ${item.name}?`)) {
-                    updateClient(item, { forceLegalAcceptance: true });
-                  }
-                }}
-              >
-                Novo aceite
-              </button>
+        </div>
+        <div className="admin-master-nav">
+          <button className="active" type="button"><Home size={20} /> Clientes</button>
+          <button type="button" onClick={() => setCreatingClient(true)}><UserPlus size={20} /> Novo cliente</button>
+          <button type="button" onClick={onLogout}><LogOut size={20} /> Sair</button>
+        </div>
+        <div className="admin-master-note">
+          <strong>Conta Master</strong>
+          <span>Acesso interno da IA Dreams com auditoria no backend.</span>
+        </div>
+      </aside>
+
+      <section className="admin-master-content">
+        <header className="admin-master-topbar">
+          <button type="button" className="admin-master-icon-button" aria-label="Menu">
+            <SlidersHorizontal size={20} />
+          </button>
+          <div className="admin-master-top-actions">
+            <button type="button" className="admin-master-icon-button" aria-label="Avisos"><Bell size={20} /></button>
+            <button type="button" className="admin-master-icon-button" onClick={onLogout} aria-label="Sair"><LogOut size={20} /></button>
+          </div>
+        </header>
+
+        <div className="admin-master-page">
+          <div className="admin-master-heading">
+            <div>
+              <h1>Painel Master</h1>
+              <p>Selecione um cliente para acompanhar, configurar ou acessar o app dele com segurança.</p>
             </div>
-          ))}
+            <button className="admin-master-primary" type="button" onClick={() => setCreatingClient(true)}>
+              <UserPlus size={18} /> Novo Cliente
+            </button>
+          </div>
+
+          <section className="admin-master-metrics">
+            <MetricPanel title="Clientes" value={summary?.clientsCount || 0} />
+            <MetricPanel title="Ativos" value={summary?.activeClients || 0} />
+            <MetricPanel title="Em dia" value={summary?.paidClients || 0} />
+            <MetricPanel title="Vencidos" value={summary?.overdueClients || 0} />
+            <MetricPanel title="Receita mensal" value={money(summary?.monthlyRecurringRevenueCents || 0)} />
+          </section>
+
+          <section className="admin-master-grid">
+            <div className="admin-master-card admin-master-list-card">
+              <div className="admin-master-card-header">
+                <div>
+                  <h2>Clientes</h2>
+                  <span>{filteredBarbershops.length} encontrado{filteredBarbershops.length === 1 ? '' : 's'}</span>
+                </div>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Buscar cliente"
+                />
+              </div>
+
+              <div className="admin-master-client-list">
+                {filteredBarbershops.map((item) => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className={selectedClient?.id === item.id ? 'active' : ''}
+                    onClick={() => setSelectedClientId(item.id)}
+                  >
+                    <span className="admin-client-avatar">{initials(item.name)}</span>
+                    <span>
+                      <strong>{item.name}</strong>
+                      <small>{item.ownerName || item.email}</small>
+                    </span>
+                    <em className={`payment-dot ${item.paymentStatus}`}>{paymentStatusLabel(item.paymentStatus)}</em>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="admin-master-card admin-master-detail-card">
+              {selectedClient ? (
+                <>
+                  <div className="admin-master-detail-head">
+                    <span className="admin-client-avatar large">{initials(selectedClient.name)}</span>
+                    <div>
+                      <h2>{selectedClient.name}</h2>
+                      <p>{selectedClient.ownerName} · {selectedClient.email || 'Sem email'}</p>
+                    </div>
+                  </div>
+
+                  <div className="admin-master-detail-stats">
+                    <span><strong>{selectedClient.professionalsCount}</strong>Profissionais</span>
+                    <span><strong>{selectedClient.appointmentsCount}</strong>Atendimentos</span>
+                    <span><strong>{money(selectedClient.revenueCents || 0)}</strong>Faturamento</span>
+                    <span><strong>{selectedLegalOk ? 'Aceito' : 'Pendente'}</strong>Legal</span>
+                  </div>
+
+                  <div className="admin-master-form-grid">
+                    <label>
+                      <span>Status</span>
+                      <select value={selectedClient.status} onChange={(event) => updateClient(selectedClient, { status: event.target.value })}>
+                        <option value="trial">Teste</option>
+                        <option value="active">Ativo</option>
+                        <option value="blocked">Bloqueado</option>
+                        <option value="canceled">Cancelado</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Vencimento</span>
+                      <input type="date" defaultValue={selectedClient.paymentDueDate || ''} onBlur={(event) => updateClient(selectedClient, { paymentDueDate: event.target.value })} />
+                    </label>
+                    <label>
+                      <span>Mensalidade</span>
+                      <input type="number" min="0" step="0.01" defaultValue={(selectedClient.monthlyPriceCents || 0) / 100} onBlur={(event) => updateClient(selectedClient, { monthlyPriceCents: Math.round(Number(event.target.value || 0) * 100) })} />
+                    </label>
+                    <label>
+                      <span>Cupom</span>
+                      <input defaultValue={selectedClient.partnerCode || ''} onBlur={(event) => updateClient(selectedClient, { partnerCode: event.target.value })} />
+                    </label>
+                  </div>
+
+                  <label className="admin-master-notes">
+                    <span>Observações internas</span>
+                    <textarea defaultValue={selectedClient.adminNotes || ''} placeholder="Anotações para suporte" onBlur={(event) => updateClient(selectedClient, { adminNotes: event.target.value })} />
+                  </label>
+
+                  {masterError && <div className="admin-master-error">{masterError}</div>}
+
+                  <div className="admin-master-actions">
+                    <button type="button" className="admin-master-primary" onClick={handleOpenSelectedClient} disabled={openingMaster}>
+                      <Eye size={18} /> {openingMaster ? 'Abrindo...' : 'Acessar app como Master'}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-master-secondary"
+                      onClick={() => {
+                        if (window.confirm(`Exigir novo aceite legal de ${selectedClient.name}?`)) {
+                          updateClient(selectedClient, { forceLegalAcceptance: true });
+                        }
+                      }}
+                    >
+                      <FileCheck2 size={18} /> Exigir novo aceite
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="admin-master-empty">Nenhum cliente cadastrado.</div>
+              )}
+            </div>
+          </section>
+
+          {summary?.couponSummary?.length > 0 && (
+            <section className="admin-master-card admin-master-coupons">
+              <div className="admin-master-card-header">
+                <div>
+                  <h2>Cupons</h2>
+                  <span>Controle de parceiros</span>
+                </div>
+              </div>
+              <div className="admin-master-coupon-grid">
+                {summary.couponSummary.map((coupon) => (
+                  <MetricPanel
+                    key={coupon.code}
+                    title={coupon.code}
+                    value={`${coupon.count} barbearia${coupon.count === 1 ? '' : 's'}`}
+                    hint={coupon.partnerCommissionCents ? `${money(coupon.partnerCommissionCents)} por cliente ativo` : coupon.label}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </section>
     </main>
   );
 }
-
 function LegalDocumentsViewer({ defaultDocumentId = 'contract', compact = false }) {
   const [activeDocument, setActiveDocument] = useState(defaultDocumentId);
   const currentDocument = findLegalDocument(activeDocument);
@@ -2182,7 +2333,7 @@ function PublicLegalPage({ documentId }) {
               <span>IA DREAMS</span>
             </div>
           </div>
-          <a href="/" className="public-legal-back">Entrar no app</a>
+          <a href={barberProPath('/')} className="public-legal-back">Entrar no app</a>
         </header>
 
         <div className="public-legal-title">
@@ -2286,7 +2437,20 @@ function LegalAcceptanceScreen({ user, barbershop, onLogout, onAccepted }) {
     </main>
   );
 }
-function Workspace({ session, onLogout }) {
+function MasterModeBanner({ barbershop, onExit }) {
+  return (
+    <div className="master-mode-banner" role="status">
+      <div>
+        <strong>Modo Master IA Dreams</strong>
+        <span>Acessando {barbershop?.name || 'cliente selecionado'} para suporte e manutenção.</span>
+      </div>
+      <button type="button" onClick={onExit}>
+        <ArrowLeft size={16} /> Voltar ao painel admin
+      </button>
+    </div>
+  );
+}
+function Workspace({ session, onLogout, onExitMaster }) {
   const { user } = session;
   const [screen, setScreen] = useState('management');
   const [professionals, setProfessionals] = useState([]);
@@ -2336,7 +2500,7 @@ function Workspace({ session, onLogout }) {
     const sessionProfessionalExists = professionalsResponse.data.some(
       (professional) => professional.id === user.professionalId,
     );
-    if (user.role !== 'owner' && !sessionProfessionalExists) {
+    if (user.role === 'barber' && !sessionProfessionalExists) {
       onLogout();
       return;
     }
@@ -2394,7 +2558,7 @@ function Workspace({ session, onLogout }) {
     };
   }, [user.barbershopId]);
 
-  if (barbershop && (!barbershop.legalAcceptedAt || barbershop.legalAcceptedVersion !== legalDocumentVersion)) {
+  if (!user.masterMode && barbershop && (!barbershop.legalAcceptedAt || barbershop.legalAcceptedVersion !== legalDocumentVersion)) {
     return (
       <LegalAcceptanceScreen
         user={user}
@@ -2453,6 +2617,13 @@ function Workspace({ session, onLogout }) {
           onMarkNotificationsRead={markNotificationsRead}
           onNavigate={setScreen}
         />
+
+        {user.masterMode && (
+          <MasterModeBanner
+            barbershop={barbershop}
+            onExit={onExitMaster || onLogout}
+          />
+        )}
 
         {screen === 'payments' && (
           <PaymentsScreenV2
@@ -2521,7 +2692,7 @@ function Workspace({ session, onLogout }) {
 }
 
 function PaymentsScreenV2({ user, barbershop, professionals, services, onSaved }) {
-  const canOwnerChoose = user.role === 'owner' && professionals.length > 1;
+  const canOwnerChoose = (user.role === 'owner' || user.role === 'admin') && professionals.length > 1;
   const firstProfessionalId = professionals[0]?.id || '';
   const userProfessionalExists = professionals.some((professional) => professional.id === user.professionalId);
   const defaultProfessionalId =
@@ -4264,65 +4435,230 @@ function SettingsScreen({
   initialTab = 'company',
   onSaved,
 }) {
-  const isOwner = user.role === 'owner';
+  const canManageSettings = user.role === 'owner' || user.role === 'admin';
   const [tab, setTab] = useState(initialTab);
+  const [mobileSectionOpen, setMobileSectionOpen] = useState(false);
 
   useEffect(() => {
     setTab(initialTab);
+    setMobileSectionOpen(false);
   }, [initialTab]);
 
-  if (!isOwner) {
+  if (!canManageSettings) {
     return (
-      <div className="screen-column">
-        <SectionTitle eyebrow="Perfil" title="Minha conta" />
-        <ProfileEditor user={user} onSaved={onSaved} />
+      <div className="screen-column settings-modern-shell">
+        <section className="settings-modern-content single">
+          <SettingsSectionHeader title="Minha conta" description="Atualize seus dados de acesso." />
+          <ProfileEditor user={user} onSaved={onSaved} />
+        </section>
       </div>
     );
   }
 
+  const sections = buildSettingsSections({ barbershop, professionals, services, users });
+  const activeSection = sections.find((section) => section.id === tab) || sections[0];
+  const activeContent = renderSettingsSection({
+    tab,
+    barbershop,
+    users,
+    professionals,
+    services,
+    onSaved,
+  });
+
   return (
-    <div className="screen-column">
-      <div className="settings-tabs">
-        <button className={tab === 'company' ? 'active' : ''} onClick={() => setTab('company')}>Empresa</button>
-        <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>Customização</button>
-        <button className={tab === 'team' ? 'active' : ''} onClick={() => setTab('team')}>Equipe</button>
-        <button className={tab === 'services' ? 'active' : ''} onClick={() => setTab('services')}>Serviços</button>
-        <button className={tab === 'payments' ? 'active' : ''} onClick={() => setTab('payments')}>Métodos</button>
-        <button className={tab === 'schedule' ? 'active' : ''} onClick={() => setTab('schedule')}>Agendamento</button>
-        <button className={tab === 'legal' ? 'active' : ''} onClick={() => setTab('legal')}>Documentos legais</button>
+    <div className={`settings-modern-shell ${mobileSectionOpen ? 'section-open' : ''}`}>
+      <div className="settings-mobile-list">
+        {sections.map((section) => (
+          <button
+            key={section.id}
+            type="button"
+            className="settings-mobile-card"
+            onClick={() => {
+              setTab(section.id);
+              setMobileSectionOpen(true);
+            }}
+          >
+            <span className="settings-section-icon">{section.icon}</span>
+            <span>
+              <strong>{section.label}</strong>
+              <small>{section.description}</small>
+            </span>
+            <em>{section.status}</em>
+            <ChevronRight size={18} />
+          </button>
+        ))}
       </div>
 
-      {tab === 'company' && <CompanyEditor barbershop={barbershop} onSaved={onSaved} />}
-      {tab === 'theme' && <ThemeEditor barbershop={barbershop} onSaved={onSaved} />}
-      {tab === 'team' && (
-        <div className="settings-grid">
-          <CreateProfessional onSaved={onSaved} />
-          <ProfessionalsEditor
-            professionals={professionals}
-            users={users}
-            onSaved={onSaved}
-          />
+      <aside className="settings-inner-sidebar">
+        <div className="settings-inner-sidebar-title">
+          <strong>Ajustes</strong>
+          <span>Escolha um setor</span>
         </div>
-      )}
-      {tab === 'services' && <ServicesEditor services={services} onSaved={onSaved} />}
-      {tab === 'payments' && <PaymentMethodsEditor barbershop={barbershop} onSaved={onSaved} />}
-      {tab === 'schedule' && (
-        <ScheduleSettings barbershop={barbershop} onSaved={onSaved} />
-      )}
-      {tab === 'legal' && <LegalSettingsPanel barbershop={barbershop} />}
+        <nav>
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              className={tab === section.id ? 'active' : ''}
+              onClick={() => setTab(section.id)}
+            >
+              <span className="settings-section-icon">{section.icon}</span>
+              <span>
+                <strong>{section.label}</strong>
+                <small>{section.status}</small>
+              </span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <section className="settings-modern-content">
+        <button
+          type="button"
+          className="settings-mobile-back"
+          onClick={() => setMobileSectionOpen(false)}
+        >
+          <ArrowLeft size={18} />
+          Configurações
+        </button>
+        <SettingsSectionHeader title={activeSection.label} description={activeSection.description} />
+        {activeContent}
+      </section>
     </div>
   );
 }
 
+function buildSettingsSections({ barbershop, professionals, services, users }) {
+  const paymentSettings = normalizePaymentSettings(barbershop?.paymentSettings);
+  const enabledPayments = Object.values(paymentSettings).filter((item) => item.enabled).length;
+  const legalOk = barbershop?.legalAcceptedVersion === legalDocumentVersion;
+
+  return [
+    {
+      id: 'company',
+      label: 'Empresa',
+      description: 'Dados da barbearia e link público.',
+      status: barbershop?.name ? 'Completo' : 'Pendente',
+      icon: <Store size={20} />,
+    },
+    {
+      id: 'account',
+      label: 'Conta do dono',
+      description: 'Nome, email e senha do responsável.',
+      status: users?.find((item) => item.role === 'owner')?.email || 'Conta principal',
+      icon: <UserRound size={20} />,
+    },
+    {
+      id: 'theme',
+      label: 'Aparência',
+      description: 'Logo e personalização visual.',
+      status: barbershop?.logoUrl ? 'Logo definida' : 'Padrão',
+      icon: <Pencil size={20} />,
+    },
+    {
+      id: 'team',
+      label: 'Equipe',
+      description: 'Profissionais e acessos.',
+      status: `${professionals.length} profissional${professionals.length === 1 ? '' : 'is'}`,
+      icon: <Users size={20} />,
+    },
+    {
+      id: 'services',
+      label: 'Serviços',
+      description: 'Serviços e valores cobrados.',
+      status: `${services.length} serviço${services.length === 1 ? '' : 's'}`,
+      icon: <Scissors size={20} />,
+    },
+    {
+      id: 'payments',
+      label: 'Métodos de pagamento',
+      description: 'Formas aceitas e taxas.',
+      status: `${enabledPayments} ativo${enabledPayments === 1 ? '' : 's'}`,
+      icon: <CreditCard size={20} />,
+    },
+    {
+      id: 'schedule',
+      label: 'Agendamento',
+      description: 'Horários e intervalos da agenda.',
+      status: `${barbershop?.scheduleStartHour ?? 8}:00 às ${barbershop?.scheduleEndHour ?? 18}:00`,
+      icon: <CalendarClock size={20} />,
+    },
+    {
+      id: 'legal',
+      label: 'Documentos legais',
+      description: 'Contrato, termos, privacidade e cookies.',
+      status: legalOk ? `Aceite v${legalDocumentVersion}` : 'Pendente',
+      icon: <FileCheck2 size={20} />,
+    },
+    {
+      id: 'security',
+      label: 'Segurança',
+      description: 'Senha e proteção da conta.',
+      status: 'Conta protegida',
+      icon: <Lock size={20} />,
+    },
+  ];
+}
+
+function renderSettingsSection({ tab, barbershop, users, professionals, services, onSaved }) {
+  const ownerUser = users?.find((item) => item.role === 'owner') || users?.[0];
+
+  if (tab === 'company') return <CompanyEditor barbershop={barbershop} onSaved={onSaved} />;
+  if (tab === 'account') return ownerUser ? <ProfileEditor user={ownerUser} onSaved={onSaved} /> : <div className="panel empty">Conta do dono não encontrada.</div>;
+  if (tab === 'theme') return <ThemeEditor barbershop={barbershop} onSaved={onSaved} />;
+  if (tab === 'team') {
+    return (
+      <div className="settings-grid">
+        <CreateProfessional onSaved={onSaved} />
+        <ProfessionalsEditor professionals={professionals} users={users} onSaved={onSaved} />
+      </div>
+    );
+  }
+  if (tab === 'services') return <ServicesEditor services={services} onSaved={onSaved} />;
+  if (tab === 'payments') return <PaymentMethodsEditor barbershop={barbershop} onSaved={onSaved} />;
+  if (tab === 'schedule') return <ScheduleSettings barbershop={barbershop} onSaved={onSaved} />;
+  if (tab === 'legal') return <LegalSettingsPanel barbershop={barbershop} />;
+  if (tab === 'security') return ownerUser ? <SecuritySettingsPanel user={ownerUser} barbershop={barbershop} onSaved={onSaved} /> : <div className="panel empty">Conta do dono não encontrada.</div>;
+  return null;
+}
+
+function SettingsSectionHeader({ title, description }) {
+  return (
+    <header className="settings-section-header">
+      <div>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+    </header>
+  );
+}
+
+function SecuritySettingsPanel({ user, barbershop, onSaved }) {
+  return (
+    <div className="settings-grid legal-settings-grid">
+      <section className="panel legal-settings-summary">
+        <SectionTitle eyebrow="Segurança" title="Proteção da conta" compact />
+        <div className="legal-acceptance-facts">
+          <span><strong>Email principal</strong>{user.email}</span>
+          <span><strong>Aceite legal</strong>{barbershop?.legalAcceptedVersion || 'Pendente'}</span>
+          <span><strong>Último aceite</strong>{barbershop?.legalAcceptedAt ? formatDateTime(barbershop.legalAcceptedAt) : 'Ainda não aceito'}</span>
+        </div>
+        <p>Use esta área para manter a conta principal segura. Sessões ativas e sair de todos os dispositivos podem entrar em uma próxima versão.</p>
+      </section>
+      <ProfileEditor user={user} onSaved={onSaved} />
+    </div>
+  );
+}
 function LegalSettingsPanel({ barbershop }) {
   const acceptedAt = barbershop?.legalAcceptedAt ? formatDateTime(barbershop.legalAcceptedAt) : 'Ainda não aceito';
   const acceptedVersion = barbershop?.legalAcceptedVersion || 'Pendente';
   const acceptedEmail = barbershop?.legalAcceptedByEmail || 'Não registrado';
   const publicLinks = [
-    ['Contrato', '/legal/contrato'],
-    ['Termos de Uso', '/legal/termos'],
-    ['Privacidade', '/legal/privacidade'],
-    ['Cookies', '/legal/cookies'],
+    ['Contrato', barberProPath('/legal/contrato')],
+    ['Termos de Uso', barberProPath('/legal/termos')],
+    ['Privacidade', barberProPath('/legal/privacidade')],
+    ['Cookies', barberProPath('/legal/cookies')],
   ];
 
   return (
@@ -4405,7 +4741,7 @@ function CompanyEditor({ barbershop, onSaved }) {
   });
   const [copied, setCopied] = useState(false);
   const bookingSlug = barbershop?.id || barbershop?.publicSlug || clientSlugify(barbershop?.name || form.name);
-  const bookingUrl = bookingSlug ? `${window.location.origin}/agendar/${bookingSlug}` : '';
+  const bookingUrl = bookingSlug ? barberProUrl(`/agendar/${bookingSlug}`) : '';
 
   useEffect(() => {
     setForm({
@@ -5458,6 +5794,13 @@ function capitalize(value) {
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
 }
 
+function normalizeSearch(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
 function initials(value) {
   const parts = String(value || '')
     .trim()
