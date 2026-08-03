@@ -360,6 +360,42 @@ class BarberShopService {
     return barbershop;
   }
 
+  deleteAdminBarbershop(barbershopId, body, authUser) {
+    const barbershop = state.barbershops.find((item) => item.id === barbershopId);
+    if (!barbershop) {
+      return { error: 'Barbearia nao encontrada.' };
+    }
+
+    const fullAdminUser = state.users.find((user) => user.id === authUser.id && user.role === 'admin');
+    if (!fullAdminUser || !body?.password || !verifyPassword(body.password, fullAdminUser.password)) {
+      addSecurityEvent('admin_delete_barbershop_failed', {
+        barbershopId,
+        adminUserId: authUser.id,
+        adminEmail: authUser.email,
+      });
+      return { error: 'Senha do Admin incorreta.' };
+    }
+
+    state.barbershops = state.barbershops.filter((item) => item.id !== barbershopId);
+    state.users = state.users.filter((user) => user.barbershopId !== barbershopId);
+    state.professionals = state.professionals.filter((professional) => professional.barbershopId !== barbershopId);
+    state.services = state.services.filter((service) => service.barbershopId !== barbershopId);
+    state.appointments = state.appointments.filter((appointment) => appointment.barbershopId !== barbershopId);
+    state.schedules = state.schedules.filter((schedule) => schedule.barbershopId !== barbershopId);
+    state.costs = state.costs.filter((cost) => cost.barbershopId !== barbershopId);
+    if (state.barbershop?.id === barbershopId) {
+      state.barbershop = state.barbershops[0] || null;
+    }
+
+    addSecurityEvent('admin_delete_barbershop_success', {
+      barbershopId,
+      barbershopName: barbershop.name,
+      adminUserId: authUser.id,
+      adminEmail: authUser.email,
+    });
+    schedulePersist();
+    return { message: 'Cliente excluido com sucesso.' };
+  }
   registerOwner(body) {
     const email = normalizeEmail(body.email);
     const partnerCode = normalizePartnerCode(body.partnerCode);

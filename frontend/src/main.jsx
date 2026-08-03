@@ -2074,6 +2074,9 @@ function AdminWorkspace({ onLogout, onOpenMaster }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [search, setSearch] = useState('');
   const [openingMaster, setOpeningMaster] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletingClient, setDeletingClient] = useState(false);
   const [masterError, setMasterError] = useState('');
 
   async function loadAdminData() {
@@ -2117,6 +2120,36 @@ function AdminWorkspace({ onLogout, onOpenMaster }) {
       setMasterError(err.response?.data?.error || 'Não foi possível acessar este cliente em modo Master.');
     } finally {
       setOpeningMaster(false);
+    }
+  }
+  function openDeleteClientModal(client) {
+    setClientToDelete(client);
+    setDeletePassword('');
+    setMasterError('');
+  }
+
+  async function confirmDeleteClient(event) {
+    event.preventDefault();
+    if (!clientToDelete || deletingClient) return;
+
+    setDeletingClient(true);
+    setMasterError('');
+    try {
+      const response = await api.post(`/admin/barbershops/${clientToDelete.id}/delete`, {
+        password: deletePassword,
+      });
+      if (response.data?.error) {
+        setMasterError(response.data.error);
+        return;
+      }
+      setClientToDelete(null);
+      setDeletePassword('');
+      setSelectedClientId('');
+      await loadAdminData();
+    } catch (err) {
+      setMasterError(err.response?.data?.error || 'Nao foi possivel excluir este cliente.');
+    } finally {
+      setDeletingClient(false);
     }
   }
 
@@ -2288,6 +2321,13 @@ function AdminWorkspace({ onLogout, onOpenMaster }) {
                     >
                       <FileCheck2 size={18} /> Exigir novo aceite
                     </button>
+                    <button
+                      type="button"
+                      className="admin-master-danger"
+                      onClick={() => openDeleteClientModal(selectedClient)}
+                    >
+                      <Trash2 size={18} /> Excluir cliente
+                    </button>
                   </div>
                 </>
               ) : (
@@ -2296,6 +2336,36 @@ function AdminWorkspace({ onLogout, onOpenMaster }) {
             </div>
           </section>
 
+          {clientToDelete && (
+            <div className="admin-delete-overlay" role="dialog" aria-modal="true" aria-label="Excluir cliente">
+              <form className="admin-delete-modal" onSubmit={confirmDeleteClient}>
+                <button type="button" className="admin-delete-close" onClick={() => setClientToDelete(null)} aria-label="Fechar">
+                  <X size={18} />
+                </button>
+                <span className="admin-delete-kicker">Acao permanente</span>
+                <h2>Excluir {clientToDelete.name}?</h2>
+                <p>Esta acao remove a conta do cliente e todos os dados vinculados: usuarios, profissionais, servicos, vendas, agendamentos e custos.</p>
+                <label>
+                  <span>Confirme sua senha Admin</span>
+                  <input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(event) => setDeletePassword(event.target.value)}
+                    placeholder="Digite sua senha"
+                    autoFocus
+                  />
+                </label>
+                <div className="admin-delete-actions">
+                  <button type="button" className="admin-master-secondary" onClick={() => setClientToDelete(null)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="admin-master-danger" disabled={!deletePassword || deletingClient}>
+                    <Trash2 size={18} /> {deletingClient ? 'Excluindo...' : 'Excluir definitivamente'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
           {summary?.couponSummary?.length > 0 && (
             <section className="admin-master-card admin-master-coupons">
               <div className="admin-master-card-header">

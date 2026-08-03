@@ -11958,3 +11958,129 @@ select option {
     font-size: 22px;
   }
 }
+
+.admin-master-danger {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(239, 68, 68, .38);
+  border-radius: 14px;
+  background: rgba(239, 68, 68, .12);
+  color: #fecaca;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-master-danger:hover {
+  background: rgba(239, 68, 68, .18);
+  color: #fff;
+}
+
+.admin-master-danger:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.admin-delete-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(0, 0, 0, .64);
+  backdrop-filter: blur(14px);
+}
+
+.admin-delete-modal {
+  position: relative;
+  width: min(100%, 460px);
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid rgba(239, 68, 68, .26);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(23, 24, 27, .98), rgba(11, 11, 13, .98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .52);
+  color: #fff;
+}
+
+.admin-delete-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .04);
+  color: #fff;
+  cursor: pointer;
+}
+
+.admin-delete-kicker {
+  width: fit-content;
+  padding: 7px 10px;
+  border: 1px solid rgba(239, 68, 68, .34);
+  border-radius: 999px;
+  background: rgba(239, 68, 68, .14);
+  color: #fecaca;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-delete-modal h2 {
+  margin: 0;
+  padding-right: 38px;
+  color: #fff;
+  font-size: 25px;
+  letter-spacing: -0.03em;
+}
+
+.admin-delete-modal p {
+  margin: 0;
+  color: #9a9ea6;
+  line-height: 1.55;
+}
+
+.admin-delete-modal label {
+  display: grid;
+  gap: 8px;
+  color: #fff;
+  font-weight: 800;
+}
+
+.admin-delete-modal input {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .04);
+  color: #fff;
+  outline: none;
+}
+
+.admin-delete-modal input:focus {
+  border-color: rgba(239, 68, 68, .62);
+}
+
+.admin-delete-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 767px) {
+  .admin-delete-overlay {
+    align-items: end;
+    padding: 14px;
+  }
+
+  .admin-delete-actions {
+    grid-template-columns: 1fr;
+  }
+}
