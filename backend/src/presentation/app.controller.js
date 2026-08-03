@@ -83,12 +83,6 @@ class AppController {
     return this.barberShopService.updateAdminBarbershop(barbershopId, body);
   }
 
-  deleteAdminBarbershop(barbershopId, body, authHeader) {
-    const user = this.getAuthenticatedUser(authHeader, ['admin']);
-    if (user.error) return user;
-    return this.barberShopService.deleteAdminBarbershop(barbershopId, body, user);
-  }
-
   registerMasterAccess(barbershopId, authHeader) {
     const user = this.getAuthenticatedUser(authHeader, ['admin']);
     if (user.error) return user;
@@ -289,10 +283,6 @@ Post('admin/barbershops/:barbershopId')(AppController.prototype, 'updateAdminBar
 Param('barbershopId')(AppController.prototype, 'updateAdminBarbershop', 0);
 Body()(AppController.prototype, 'updateAdminBarbershop', 1);
 Headers('authorization')(AppController.prototype, 'updateAdminBarbershop', 2);
-Post('admin/barbershops/:barbershopId/delete')(AppController.prototype, 'deleteAdminBarbershop', Object.getOwnPropertyDescriptor(AppController.prototype, 'deleteAdminBarbershop'));
-Param('barbershopId')(AppController.prototype, 'deleteAdminBarbershop', 0);
-Body()(AppController.prototype, 'deleteAdminBarbershop', 1);
-Headers('authorization')(AppController.prototype, 'deleteAdminBarbershop', 2);
 Post('admin/barbershops/:barbershopId/master-access')(AppController.prototype, 'registerMasterAccess', Object.getOwnPropertyDescriptor(AppController.prototype, 'registerMasterAccess'));
 Param('barbershopId')(AppController.prototype, 'registerMasterAccess', 0);
 Headers('authorization')(AppController.prototype, 'registerMasterAccess', 1);
