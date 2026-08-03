@@ -62,7 +62,6 @@ const rateLimitCleanupMs = 60 * 60 * 1000;
 async function initializePersistentState() {
   if (!process.env.DATABASE_URL || persistenceReady) {
     migratePasswordHashes();
-    migrateBarbershopPublicSlugs();
     persistenceReady = true;
     return;
   }
@@ -84,14 +83,11 @@ async function initializePersistentState() {
     const result = await pool.query('select data from app_state where key = $1', [persistenceKey]);
     if (result.rows[0]?.data) {
       Object.assign(state, result.rows[0].data);
-      const migratedPasswords = migratePasswordHashes();
-      const migratedSlugs = migrateBarbershopPublicSlugs();
-      if (migratedPasswords || migratedSlugs) {
+      if (migratePasswordHashes()) {
         await persistState();
       }
     } else {
       migratePasswordHashes();
-      migrateBarbershopPublicSlugs();
       await persistState();
     }
   } catch (error) {
@@ -1646,57 +1642,6 @@ function slugify(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'barbearia';
-}
-
-function migrateBarbershopPublicSlugs() {
-  let changed = false;
-
-  for (const barbershop of state.barbershops) {
-    if (!barbershop?.id) continue;
-
-    const currentSlug = slugify(barbershop.publicSlug || '');
-    const technicalSlug = slugify(barbershop.id || '');
-    const realName = bestBarbershopSlugSource(barbershop);
-    const realSlug = slugify(realName);
-    const genericSlug = /^barbearia(-\d+)?$/.test(currentSlug);
-    const technicalSlugPattern = /^shop-\d/.test(currentSlug);
-    const shouldReplaceSlug = Boolean(
-      realName &&
-      realSlug !== 'barbearia' &&
-      (!currentSlug || currentSlug === technicalSlug || technicalSlugPattern || genericSlug)
-    );
-
-    if (shouldReplaceSlug) {
-      barbershop.publicSlug = uniqueBarbershopSlug(realName, barbershop.id);
-      changed = true;
-    } else if (!currentSlug) {
-      barbershop.publicSlug = uniqueBarbershopSlug(barbershop.id, barbershop.id);
-      changed = true;
-    } else if (barbershop.publicSlug !== currentSlug) {
-      barbershop.publicSlug = uniqueBarbershopSlug(currentSlug, barbershop.id);
-      changed = true;
-    }
-  }
-
-  return changed;
-}
-
-function bestBarbershopSlugSource(barbershop) {
-  const owner = state.users.find((user) => user.role === 'owner' && user.barbershopId === barbershop.id);
-  const candidates = [
-    barbershop.name,
-    barbershop.barbershopName,
-    barbershop.companyName,
-    barbershop.tradeName,
-    owner?.barbershopName,
-    owner?.companyName,
-    barbershop.ownerName,
-    owner?.name,
-  ];
-
-  return candidates
-    .map((value) => normalizeText(value, 100))
-    .find((value) => value && slugify(value) !== 'barbearia') || '';
 }
 
 function uniqueBarbershopSlug(name, ignoreBarbershopId = null) {
