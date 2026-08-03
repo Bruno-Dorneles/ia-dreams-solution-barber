@@ -2506,6 +2506,7 @@ function Workspace({ session, onLogout, onExitMaster }) {
   const [schedules, setSchedules] = useState([]);
   const [costs, setCosts] = useState([]);
   const [settingsInitialTab, setSettingsInitialTab] = useState('company');
+  const [dismissedScheduleRequestIds, setDismissedScheduleRequestIds] = useState([]);
   const notificationStorageKey = `barberpro-notifications-read-${user.barbershopId || user.id}`;
   const [readNotificationIds, setReadNotificationIds] = useState(() => {
     try {
@@ -2570,9 +2571,50 @@ function Workspace({ session, onLogout, onExitMaster }) {
     () => buildAppNotifications({ barbershop, appointments, schedules }),
     [barbershop, appointments, schedules],
   );
+  const pendingScheduleRequests = useMemo(
+    () => schedules
+      .filter((schedule) => schedule.status === 'pending' && !dismissedScheduleRequestIds.includes(schedule.id))
+      .sort((a, b) => scheduleDateTimeKey(a.startsAt).localeCompare(scheduleDateTimeKey(b.startsAt))),
+    [dismissedScheduleRequestIds, schedules],
+  );
 
   function markNotificationsRead(ids) {
     setReadNotificationIds((current) => Array.from(new Set([...current, ...ids])));
+  }
+
+  async function answerScheduleRequest(schedule, answer) {
+    if (!schedule?.professionalId || !schedule?.startsAt) return;
+
+    const whatsappWindow = schedule.clientContact ? window.open('about:blank', '_blank') : null;
+    const accepted = answer === 'accepted';
+
+    await api.post('/schedules', {
+      barbershopId: user.barbershopId,
+      professionalId: schedule.professionalId,
+      startsAt: scheduleDateTimeKey(schedule.startsAt),
+      clientName: accepted ? schedule.clientName || '' : '',
+      clientContact: accepted ? schedule.clientContact || '' : '',
+      serviceName: accepted ? schedule.serviceName || '' : '',
+    });
+
+    openWhatsAppMessage(
+      schedule.clientContact,
+      buildScheduleWhatsAppMessage({
+        barbershop,
+        draft: schedule,
+        startsAt: scheduleDateTimeKey(schedule.startsAt),
+        status: accepted ? 'confirmed' : 'rejected',
+      }),
+      whatsappWindow,
+    );
+
+    setDismissedScheduleRequestIds((current) => Array.from(new Set([...current, schedule.id])));
+    markNotificationsRead([`schedule-${schedule.id}-${schedule.status}`]);
+    await loadData();
+  }
+
+  function closeScheduleRequestBox(scheduleId) {
+    setDismissedScheduleRequestIds((current) => Array.from(new Set([...current, scheduleId])));
   }
   useEffect(() => {
     activeBarbershopId = user.barbershopId;
@@ -2673,6 +2715,16 @@ function Workspace({ session, onLogout, onExitMaster }) {
           />
         )}
 
+        {pendingScheduleRequests.length > 0 && (
+          <ScheduleRequestBox
+            schedule={pendingScheduleRequests[0]}
+            barbershop={barbershop}
+            onAccept={() => answerScheduleRequest(pendingScheduleRequests[0], 'accepted')}
+            onReject={() => answerScheduleRequest(pendingScheduleRequests[0], 'rejected')}
+            onClose={() => closeScheduleRequestBox(pendingScheduleRequests[0].id)}
+          />
+        )}
+
         {screen === 'payments' && (
           <PaymentsScreenV2
             user={user}
@@ -2739,6 +2791,38 @@ function Workspace({ session, onLogout, onExitMaster }) {
   );
 }
 
+function ScheduleRequestBox({ schedule, barbershop, onAccept, onReject, onClose }) {
+  if (!schedule) return null;
+
+  const key = scheduleDateTimeKey(schedule.startsAt);
+  const [date, time] = key.split('T');
+
+  return (
+    <div className="schedule-request-overlay" role="dialog" aria-modal="true" aria-label="Novo pedido de agendamento">
+      <section className="schedule-request-card">
+        <button type="button" className="schedule-request-close" onClick={onClose} aria-label="Fechar pedido">
+          <X size={18} />
+        </button>
+        <span className="schedule-request-kicker">Novo pedido de agendamento</span>
+        <h2>{schedule.clientName || 'Cliente'}</h2>
+        <div className="schedule-request-details">
+          <span><CalendarClock size={16} /> {formatDate(date)} as {time}</span>
+          <span><Scissors size={16} /> {schedule.serviceName || 'Servico'}</span>
+          <span><Phone size={16} /> {schedule.clientContact || 'Contato nao informado'}</span>
+          <span><Store size={16} /> {barbershop?.name || 'Barbearia'}</span>
+        </div>
+        <div className="schedule-request-actions">
+          <button type="button" className="schedule-request-reject" onClick={onReject}>
+            <X size={17} /> Recusar
+          </button>
+          <button type="button" className="schedule-request-accept" onClick={onAccept}>
+            <Check size={17} /> Aceitar
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
 function PaymentsScreenV2({ user, barbershop, professionals, services, onSaved }) {
   const canOwnerChoose = (user.role === 'owner' || user.role === 'admin') && professionals.length > 1;
   const firstProfessionalId = professionals[0]?.id || '';
@@ -3069,8 +3153,8 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
     if (!professionalId) return;
 
     const draft = drafts[startsAt] || {};
-    const shouldNotifyRejection = draft.status === 'pending' && draft.clientContact;
-    const whatsappWindow = shouldNotifyRejection ? window.open('about:blank', '_blank') : null;
+    const shouldNotifyCancel = Boolean(draft.clientContact && (draft.clientName || draft.serviceName));
+    const whatsappWindow = shouldNotifyCancel ? window.open('about:blank', '_blank') : null;
 
     await api.post('/schedules', {
       professionalId,
@@ -3080,10 +3164,15 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
       serviceName: '',
     });
 
-    if (shouldNotifyRejection) {
+    if (shouldNotifyCancel) {
       openWhatsAppMessage(
         draft.clientContact,
-        buildScheduleWhatsAppMessage({ barbershop, draft, startsAt, accepted: false }),
+        buildScheduleWhatsAppMessage({
+          barbershop,
+          draft,
+          startsAt,
+          status: draft.status === 'pending' ? 'rejected' : 'canceled',
+        }),
         whatsappWindow,
       );
     }
@@ -4816,7 +4905,7 @@ function CompanyEditor({ barbershop, onSaved }) {
     contact: barbershop?.contact || '',
   });
   const [copied, setCopied] = useState(false);
-  const bookingSlug = barbershop?.id || barbershop?.publicSlug || clientSlugify(barbershop?.name || form.name);
+  const bookingSlug = barbershop?.publicSlug || clientSlugify(barbershop?.name || form.name) || barbershop?.id;
   const bookingUrl = bookingSlug ? barberProUrl(`/agendar/${bookingSlug}`) : '';
 
   useEffect(() => {
@@ -5691,17 +5780,21 @@ function formatWhatsAppInput(value) {
   return `(${ddd}) ${rest.slice(0, 5)}-${rest.slice(5, 9)}`;
 }
 
-function buildScheduleWhatsAppMessage({ barbershop, draft, startsAt, accepted }) {
+function buildScheduleWhatsAppMessage({ barbershop, draft, startsAt, accepted, status }) {
   const [date, time] = String(startsAt || '').split('T');
   const shopName = barbershop?.name || 'BarberPro';
   const clientName = draft?.clientName || 'tudo bem';
-  const serviceName = draft?.serviceName || 'serviço';
+  const serviceName = draft?.serviceName || 'servico';
 
-  if (accepted) {
-    return `Olá, ${clientName}! Seu agendamento na ${shopName} foi confirmado para ${formatDate(date)} às ${time}. Serviço: ${serviceName}. Até lá!`;
+  if (accepted || status === 'confirmed') {
+    return `Ola, ${clientName}! Seu agendamento na ${shopName} foi confirmado para ${formatDate(date)} as ${time}. Servico: ${serviceName}. Ate la!`;
   }
 
-  return `Olá, ${clientName}! Infelizmente não conseguimos confirmar seu agendamento na ${shopName} para ${formatDate(date)} às ${time}. Pode nos chamar por aqui para escolher outro horário?`;
+  if (status === 'canceled') {
+    return `Ola, ${clientName}! Seu agendamento na ${shopName} para ${formatDate(date)} as ${time} foi cancelado. Se quiser remarcar, pode nos chamar por aqui.`;
+  }
+
+  return `Ola, ${clientName}! Infelizmente nao conseguimos confirmar seu agendamento na ${shopName} para ${formatDate(date)} as ${time}. Pode nos chamar por aqui para escolher outro horario?`;
 }
 function buildAppNotifications({ barbershop, appointments, schedules }) {
   const items = [];

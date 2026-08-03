@@ -62,6 +62,7 @@ const rateLimitCleanupMs = 60 * 60 * 1000;
 async function initializePersistentState() {
   if (!process.env.DATABASE_URL || persistenceReady) {
     migratePasswordHashes();
+    migrateBarbershopPublicSlugs();
     persistenceReady = true;
     return;
   }
@@ -83,11 +84,14 @@ async function initializePersistentState() {
     const result = await pool.query('select data from app_state where key = $1', [persistenceKey]);
     if (result.rows[0]?.data) {
       Object.assign(state, result.rows[0].data);
-      if (migratePasswordHashes()) {
+      const migratedPasswords = migratePasswordHashes();
+      const migratedSlugs = migrateBarbershopPublicSlugs();
+      if (migratedPasswords || migratedSlugs) {
         await persistState();
       }
     } else {
       migratePasswordHashes();
+      migrateBarbershopPublicSlugs();
       await persistState();
     }
   } catch (error) {
@@ -389,6 +393,10 @@ class BarberShopService {
 
     if (state.users.some((user) => normalizeEmail(user.email) === email)) {
       return { error: 'Este e-mail ja esta cadastrado.' };
+    }
+
+    if (barbershopNameAlreadyExists(barbershopName)) {
+      return { error: 'Ja existe uma barbearia com este nome. Use um nome mais especifico.' };
     }
 
     if (partnerCode && !validPartnerCodes[partnerCode]) {
@@ -764,8 +772,17 @@ class BarberShopService {
       return { error: 'Barbearia nao encontrada.' };
     }
 
+    const nextName = body.name ? normalizeText(body.name, 100) : barbershop.name;
+    if (body.name && barbershopNameAlreadyExists(nextName, barbershop.id)) {
+      return { error: 'Ja existe uma barbearia com este nome. Use um nome mais especifico.' };
+    }
+
+    const nextPublicSlug = barbershop.publicSlug || uniqueBarbershopSlug(nextName, barbershop.id);
+
     Object.assign(barbershop, {
       ...body,
+      name: nextName,
+      publicSlug: nextPublicSlug,
       paymentSettings: body.paymentSettings
         ? normalizePaymentSettings(body.paymentSettings)
         : normalizePaymentSettings(barbershop.paymentSettings),
@@ -1630,17 +1647,43 @@ function slugify(value) {
     .replace(/^-+|-+$/g, '') || 'barbearia';
 }
 
-function uniqueBarbershopSlug(name) {
+function migrateBarbershopPublicSlugs() {
+  let changed = false;
+
+  for (const barbershop of state.barbershops) {
+    if (!barbershop?.id) continue;
+
+    const currentSlug = slugify(barbershop.publicSlug || '');
+    const technicalSlug = slugify(barbershop.id || '');
+    const shouldReplaceSlug = !currentSlug || currentSlug === technicalSlug || /^shop-\\d/.test(currentSlug);
+
+    if (shouldReplaceSlug) {
+      barbershop.publicSlug = uniqueBarbershopSlug(barbershop.name || barbershop.ownerName || barbershop.id, barbershop.id);
+      changed = true;
+    } else if (barbershop.publicSlug !== currentSlug) {
+      barbershop.publicSlug = uniqueBarbershopSlug(currentSlug, barbershop.id);
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+function uniqueBarbershopSlug(name, ignoreBarbershopId = null) {
   const baseSlug = slugify(name);
   let slug = baseSlug;
   let counter = 2;
 
-  while (state.barbershops.some((item) => (item.publicSlug || slugify(item.name)) === slug)) {
+  while (state.barbershops.some((item) => item.id !== ignoreBarbershopId && (item.publicSlug || slugify(item.name)) === slug)) {
     slug = `${baseSlug}-${counter}`;
     counter += 1;
   }
 
   return slug;
+}
+
+function barbershopNameAlreadyExists(name, ignoreBarbershopId = null) {
+  const normalizedName = slugify(name);
+  return state.barbershops.some((item) => item.id !== ignoreBarbershopId && slugify(item.name) === normalizedName);
 }
 
 function findBarbershopBySlug(slug) {

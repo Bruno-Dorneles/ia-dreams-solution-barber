@@ -11828,3 +11828,133 @@ select option {
   font-weight: 800;
   cursor: pointer;
 }
+
+.schedule-request-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(0, 0, 0, .58);
+  backdrop-filter: blur(14px);
+}
+
+.schedule-request-card {
+  position: relative;
+  width: min(100%, 430px);
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(23, 24, 27, .98), rgba(11, 11, 13, .98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .48), 0 0 0 1px rgba(37, 99, 235, .12);
+  color: #fff;
+}
+
+.schedule-request-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .04);
+  color: #fff;
+  cursor: pointer;
+}
+
+.schedule-request-kicker {
+  width: fit-content;
+  padding: 7px 10px;
+  border: 1px solid rgba(37, 99, 235, .34);
+  border-radius: 999px;
+  background: rgba(37, 99, 235, .14);
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.schedule-request-card h2 {
+  margin: 0;
+  padding-right: 36px;
+  color: #fff;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+}
+
+.schedule-request-details {
+  display: grid;
+  gap: 10px;
+}
+
+.schedule-request-details span {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .035);
+  color: #d1d5db;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.schedule-request-details svg {
+  color: #3b82f6;
+  flex: 0 0 auto;
+}
+
+.schedule-request-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.schedule-request-actions button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.schedule-request-reject {
+  background: rgba(239, 68, 68, .14);
+  color: #fecaca;
+  border: 1px solid rgba(239, 68, 68, .35) !important;
+}
+
+.schedule-request-accept {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(34, 197, 94, .2);
+}
+
+@media (max-width: 767px) {
+  .schedule-request-overlay {
+    align-items: end;
+    padding: 14px;
+  }
+
+  .schedule-request-card {
+    width: 100%;
+    padding: 20px;
+    border-radius: 22px;
+  }
+
+  .schedule-request-card h2 {
+    font-size: 22px;
+  }
+}
