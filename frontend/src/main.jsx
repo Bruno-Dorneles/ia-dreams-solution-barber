@@ -1729,21 +1729,35 @@ function RegisterPasswordField({ label, placeholder, value, visible, onToggle, o
   );
 }
 
-function PageTitle({ title }) {
-  return <h1 className="page-title">{title}</h1>;
+function AppPageHeader({ title, subtitle, action, className = '' }) {
+  const classes = ['app-page-header', !subtitle ? 'no-subtitle' : '', className].filter(Boolean).join(' ');
+
+  return (
+    <section className={classes}>
+      <div>
+        <h1>{title}</h1>
+        {subtitle ? <p>{subtitle}</p> : null}
+      </div>
+      {action ? <div className="app-page-header-action">{action}</div> : null}
+    </section>
+  );
+}
+
+function PageTitle({ title, subtitle, action }) {
+  return <AppPageHeader title={title} subtitle={subtitle} action={action} className="page-title" />;
 }
 
 function ManagementGreeting({ user }) {
   const firstName = String(user?.name || 'Joao').trim().split(' ')[0] || 'Joao';
 
   return (
-    <section className="management-greeting">
-      <h1>Olá, {firstName}! <span aria-hidden="true">{'\uD83D\uDC4B'}</span></h1>
-      <p>Aqui está um resumo da sua barbearia.</p>
-    </section>
+    <AppPageHeader
+      className="management-greeting"
+      title={<>Olá, {firstName}! <span aria-hidden="true">{'\uD83D\uDC4B'}</span></>}
+      subtitle="Aqui está um resumo da sua barbearia."
+    />
   );
 }
-
 function AppHeader({ onBack, onLogout, notifications = [], readNotificationIds = [], onMarkNotificationsRead, onNavigate }) {
   const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -2914,10 +2928,11 @@ function PaymentsScreenV2({ user, barbershop, professionals, services, onSaved }
 
   return (
     <div className="barberpro-payments">
-      <section className="payments-heading">
-        <h1>Registrar atendimento</h1>
-        <p>Selecione o serviço e a forma de pagamento.</p>
-      </section>
+      <AppPageHeader
+        className="payments-heading"
+        title="Registrar atendimento"
+        subtitle="Selecione o serviço e a forma de pagamento."
+      />
 
       <form className="payments-form" onSubmit={handleSubmit}>
         <div className="payments-main-column">
@@ -3051,17 +3066,17 @@ function PaymentsScreenV2({ user, barbershop, professionals, services, onSaved }
 function ComingSoonScreen({ title }) {
   return (
     <div className="coming-soon-screen">
+      <PageTitle title={title} />
       <section className="coming-soon-card">
         <div>
           <Lock size={32} />
         </div>
-        <h1>{title}</h1>
-        <p>Em breve</p>
+        <h2>Em breve</h2>
+        <p>Area em desenvolvimento.</p>
       </section>
     </div>
   );
 }
-
 function ScheduleScreenV2({ professionals, services = [], schedules, barbershop, onSaved }) {
   const [selectedDate, setSelectedDate] = useState(today());
   const [professionalId, setProfessionalId] = useState(professionals[0]?.id || '');
@@ -3233,16 +3248,17 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
   return (
     <div className="barberpro-schedule">
       <header className="schedule-hero">
-        <div className="schedule-title-row">
-          <div>
-            <h2>Agendamentos</h2>
-            <p>Gerencie os agendamentos da sua barbearia.</p>
-          </div>
-          <button type="button" className="new-schedule-button">
-            <Plus size={18} />
-            Novo agendamento
-          </button>
-        </div>
+        <AppPageHeader
+          className="schedule-title-row"
+          title="Agendamentos"
+          subtitle="Gerencie os agendamentos da sua barbearia."
+          action={(
+            <button type="button" className="new-schedule-button">
+              <Plus size={18} />
+              Novo agendamento
+            </button>
+          )}
+        />
       </header>
 
       <section className="schedule-workspace">
@@ -4464,9 +4480,7 @@ function ClosingScreen({ appointments, professionals, costs, onBack }) {
 
   return (
     <div className="screen-column closing-screen">
-      <SectionTitle
-        title="Fechamento de Caixa"
-      />
+      <PageTitle title="Fechamento de Caixa" />
       <div className="reports-grid">
         <MetricPanel title="Lucro total" value={money(profitCents)} />
         <MetricPanel title="Salários a pagar" value={money(report.commissionCents)} />
@@ -4620,7 +4634,7 @@ function SettingsScreen({
     );
   }
 
-  const sections = buildSettingsSections({ barbershop, professionals, services, users });
+  const sections = buildSettingsSections({ barbershop, professionals, services, users, user });
   const activeSection = sections.find((section) => section.id === tab) || sections[0];
   const activeContent = renderSettingsSection({
     tab,
@@ -4640,6 +4654,10 @@ function SettingsScreen({
             type="button"
             className="settings-mobile-card"
             onClick={() => {
+              if (section.href) {
+                window.open(section.href, '_blank', 'noopener,noreferrer');
+                return;
+              }
               setTab(section.id);
               setMobileSectionOpen(true);
             }}
@@ -4666,7 +4684,13 @@ function SettingsScreen({
               key={section.id}
               type="button"
               className={tab === section.id ? 'active' : ''}
-              onClick={() => setTab(section.id)}
+              onClick={() => {
+                if (section.href) {
+                  window.open(section.href, '_blank', 'noopener,noreferrer');
+                  return;
+                }
+                setTab(section.id);
+              }}
             >
               <span className="settings-section-icon">{section.icon}</span>
               <span>
@@ -4694,10 +4718,11 @@ function SettingsScreen({
   );
 }
 
-function buildSettingsSections({ barbershop, professionals, services, users }) {
+function buildSettingsSections({ barbershop, professionals, services, users, user }) {
   const paymentSettings = normalizePaymentSettings(barbershop?.paymentSettings);
   const enabledPayments = Object.values(paymentSettings).filter((item) => item.enabled).length;
   const legalOk = barbershop?.legalAcceptedVersion === legalDocumentVersion;
+  const supportMessage = buildSupportWhatsAppMessage(user, barbershop);
 
   return [
     {
@@ -4757,11 +4782,12 @@ function buildSettingsSections({ barbershop, professionals, services, users }) {
       icon: <FileCheck2 size={20} />,
     },
     {
-      id: 'security',
-      label: 'Segurança',
-      description: 'Senha e proteção da conta.',
-      status: 'Conta protegida',
-      icon: <Lock size={20} />,
+      id: 'support',
+      label: 'Suporte',
+      description: 'Fale com a IA Dreams pelo WhatsApp.',
+      status: 'WhatsApp',
+      icon: <Phone size={20} />,
+      href: buildWhatsAppUrl('51997932297', supportMessage),
     },
   ];
 }
@@ -4784,7 +4810,6 @@ function renderSettingsSection({ tab, barbershop, users, professionals, services
   if (tab === 'payments') return <PaymentMethodsEditor barbershop={barbershop} onSaved={onSaved} />;
   if (tab === 'schedule') return <ScheduleSettings barbershop={barbershop} onSaved={onSaved} />;
   if (tab === 'legal') return <LegalSettingsPanel barbershop={barbershop} />;
-  if (tab === 'security') return ownerUser ? <SecuritySettingsPanel user={ownerUser} barbershop={barbershop} onSaved={onSaved} /> : <div className="panel empty">Conta do dono não encontrada.</div>;
   return null;
 }
 
@@ -4799,22 +4824,6 @@ function SettingsSectionHeader({ title, description }) {
   );
 }
 
-function SecuritySettingsPanel({ user, barbershop, onSaved }) {
-  return (
-    <div className="settings-grid legal-settings-grid">
-      <section className="panel legal-settings-summary">
-        <SectionTitle eyebrow="Segurança" title="Proteção da conta" compact />
-        <div className="legal-acceptance-facts">
-          <span><strong>Email principal</strong>{user.email}</span>
-          <span><strong>Aceite legal</strong>{barbershop?.legalAcceptedVersion || 'Pendente'}</span>
-          <span><strong>Último aceite</strong>{barbershop?.legalAcceptedAt ? formatDateTime(barbershop.legalAcceptedAt) : 'Ainda não aceito'}</span>
-        </div>
-        <p>Use esta área para manter a conta principal segura. Sessões ativas e sair de todos os dispositivos podem entrar em uma próxima versão.</p>
-      </section>
-      <ProfileEditor user={user} onSaved={onSaved} />
-    </div>
-  );
-}
 function LegalSettingsPanel({ barbershop }) {
   const acceptedAt = barbershop?.legalAcceptedAt ? formatDateTime(barbershop.legalAcceptedAt) : 'Ainda não aceito';
   const acceptedVersion = barbershop?.legalAcceptedVersion || 'Pendente';
@@ -5721,6 +5730,11 @@ function notifyScheduleRequestCreated(barbershopId) {
   } catch {
     // Ignora quando o navegador não permite armazenamento local.
   }
+}
+function buildSupportWhatsAppMessage(user, barbershop) {
+  const name = String(user?.name || 'cliente').trim() || 'cliente';
+  const shopName = String(barbershop?.name || 'minha barbearia').trim() || 'minha barbearia';
+  return `Ola, aqui e ${name} da barbearia ${shopName}. Preciso de suporte para o aplicativo BarberPro.`;
 }
 function openWhatsAppMessage(contact, message, targetWindow = null) {
   const url = buildWhatsAppUrl(contact, message);
