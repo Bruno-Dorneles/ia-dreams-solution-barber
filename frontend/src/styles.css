@@ -12084,3 +12084,784 @@ select option {
     width: 36px;
   }
 }
+
+
+/* Reserved schedule intervals */
+.schedule-settings-redesign {
+  display: grid;
+  gap: 18px;
+}
+
+.schedule-config-card {
+  background: linear-gradient(180deg, rgba(23, 24, 27, 0.98), rgba(17, 18, 20, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  color: #ffffff;
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.schedule-config-card-header {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 40px minmax(0, 1fr);
+}
+
+.schedule-config-card-header.with-action {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+}
+
+.schedule-config-icon,
+.blocked-interval-avatar {
+  align-items: center;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  color: #d4d7dd;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.schedule-config-card-header h3 {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.schedule-config-card-header p {
+  color: #9a9ea6;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 5px 0 0;
+}
+
+.schedule-default-form,
+.blocked-interval-form {
+  display: grid;
+  gap: 12px;
+}
+
+.schedule-default-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.schedule-save-row {
+  display: flex;
+  grid-column: 2;
+  justify-content: center;
+}
+
+.blocked-interval-form {
+  background: rgba(5, 5, 6, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.blocked-period-options {
+  border: 1px solid #2a2c31;
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.blocked-period-options button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-right: 1px solid #2a2c31;
+  color: #9a9ea6;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 650;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 10px;
+}
+
+.blocked-period-options button:last-child {
+  border-right: 0;
+}
+
+.blocked-period-options button.active {
+  background: rgba(37, 99, 235, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.86);
+  color: #dbe7ff;
+}
+
+.blocked-interval-fields,
+.blocked-date-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.blocked-interval-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.blocked-date-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.schedule-default-form label,
+.blocked-interval-form label {
+  background: rgba(5, 5, 6, 0.25);
+  border: 1px solid #2a2c31;
+  border-radius: 14px;
+  color: #9a9ea6;
+  display: grid;
+  font-size: 12px;
+  gap: 6px;
+  min-height: 72px;
+  min-width: 0;
+  padding: 11px 12px;
+}
+
+.schedule-default-form label > span,
+.blocked-interval-form label > span {
+  color: #9a9ea6;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.schedule-default-form .dropdown-select-button,
+.blocked-interval-form input {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+}
+
+.schedule-default-form .dropdown-select-button {
+  justify-content: space-between;
+}
+
+.schedule-outline-action,
+.schedule-subtle-save {
+  align-items: center;
+  background: transparent !important;
+  border: 1px solid rgba(37, 99, 235, 0.58) !important;
+  border-radius: 12px !important;
+  color: #dbe7ff !important;
+  display: inline-flex;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  gap: 8px;
+  justify-content: center;
+  min-height: 42px !important;
+  padding: 0 14px !important;
+  white-space: nowrap;
+}
+
+.schedule-outline-action.active {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.schedule-subtle-save {
+  justify-self: center;
+  min-width: 170px;
+}
+
+.blocked-interval-list {
+  display: grid;
+  gap: 10px;
+}
+
+.blocked-interval-row {
+  align-items: center;
+  background: rgba(5, 5, 6, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 40px minmax(0, 1fr) auto 38px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.blocked-interval-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.blocked-interval-info strong {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blocked-interval-info small {
+  color: #9a9ea6;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.blocked-interval-row em {
+  color: #ffffff;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.blocked-interval-row button {
+  align-items: center;
+  background: rgba(255, 77, 79, 0.08) !important;
+  border: 1px solid rgba(255, 77, 79, 0.22) !important;
+  border-radius: 12px !important;
+  color: #ff8587 !important;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  padding: 0 !important;
+  width: 38px;
+}
+
+.schedule-appointment-card.reserved::before {
+  background: #f5a524;
+}
+
+.schedule-avatar-open.reserved {
+  color: #f5a524;
+}
+
+.schedule-available-label.reserved {
+  align-items: start;
+  display: grid;
+  gap: 3px;
+}
+
+.schedule-available-label.reserved strong {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.schedule-available-label.reserved small {
+  color: #9a9ea6;
+  font-size: 13px;
+}
+
+.schedule-status-dot.reserved i {
+  background: #f5a524;
+  box-shadow: 0 0 12px rgba(245, 165, 36, 0.48);
+}
+
+@media (max-width: 1180px) {
+  .schedule-config-card-header.with-action {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .schedule-outline-action {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .schedule-default-form,
+  .blocked-interval-fields,
+  .blocked-date-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .schedule-save-row {
+    grid-column: 1 / -1;
+  }
+
+  .blocked-period-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .schedule-settings-redesign {
+    gap: 14px;
+  }
+
+  .schedule-config-card {
+    border-radius: 16px;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .schedule-config-card-header,
+  .schedule-config-card-header.with-action {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .schedule-config-icon,
+  .blocked-interval-avatar {
+    border-radius: 12px;
+    height: 34px;
+    width: 34px;
+  }
+
+  .schedule-config-card-header h3 {
+    font-size: 16px;
+  }
+
+  .schedule-config-card-header p {
+    font-size: 12px;
+  }
+
+  .schedule-default-form,
+  .blocked-interval-fields,
+  .blocked-date-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .blocked-period-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .blocked-period-options button {
+    font-size: 11px;
+    min-height: 42px;
+    padding: 0 6px;
+  }
+
+  .schedule-default-form label,
+  .blocked-interval-form label {
+    min-height: 64px;
+    padding: 10px 11px;
+  }
+
+  .blocked-interval-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto 34px;
+    gap: 9px;
+    padding: 10px;
+  }
+
+  .blocked-interval-row em {
+    font-size: 12px;
+  }
+
+  .blocked-interval-row button {
+    height: 34px;
+    width: 34px;
+  }
+
+  .schedule-card-grid.reserved .schedule-status-dot {
+    justify-self: end;
+  }
+}
+
+/* Settings sections follow the schedule settings visual system */
+.settings-screen-shell .settings-modern-content > .panel,
+.settings-screen-shell .settings-modern-content .settings-grid > .panel,
+.settings-screen-shell .settings-company-layout > .panel,
+.settings-screen-shell .legal-settings-summary,
+.settings-screen-shell .legal-settings-docs {
+  background: linear-gradient(180deg, rgba(23, 24, 27, 0.98), rgba(17, 18, 20, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  color: #ffffff;
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: 22px;
+}
+
+.settings-screen-shell .settings-modern-content .settings-grid,
+.settings-screen-shell .settings-company-layout {
+  gap: 18px;
+}
+
+.settings-screen-shell .settings-modern-content .section-title,
+.settings-screen-shell .settings-modern-content .panel .section-title {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 0;
+  padding-bottom: 14px;
+}
+
+.settings-screen-shell .settings-modern-content .section-title h2,
+.settings-screen-shell .settings-modern-content .panel .section-title h2,
+.settings-screen-shell .settings-modern-content .panel h2 {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.settings-screen-shell .settings-modern-content .section-title .eyebrow,
+.settings-screen-shell .settings-modern-content .eyebrow {
+  color: #9a9ea6;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0 0 5px;
+  text-transform: none;
+}
+
+.settings-screen-shell .stack-form,
+.settings-screen-shell .editable-list,
+.settings-screen-shell .services-list,
+.settings-screen-shell .payment-methods-form,
+.settings-screen-shell .legal-public-links,
+.settings-screen-shell .legal-acceptance-facts {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-screen-shell .stack-form {
+  margin: 0;
+}
+
+.settings-screen-shell .stack-form input,
+.settings-screen-shell .stack-form select,
+.settings-screen-shell .editable-row input,
+.settings-screen-shell .editable-row select,
+.settings-screen-shell .percent-field,
+.settings-screen-shell .public-link-box {
+  background: rgba(5, 5, 6, 0.25);
+  border: 1px solid #2a2c31;
+  border-radius: 14px;
+  color: #ffffff;
+  min-height: 56px;
+}
+
+.settings-screen-shell .stack-form input,
+.settings-screen-shell .stack-form select,
+.settings-screen-shell .editable-row input,
+.settings-screen-shell .editable-row select {
+  font-size: 15px;
+  font-weight: 600;
+  outline: none;
+  padding: 0 14px;
+}
+
+.settings-screen-shell .stack-form input:focus,
+.settings-screen-shell .stack-form select:focus,
+.settings-screen-shell .editable-row input:focus,
+.settings-screen-shell .editable-row select:focus,
+.settings-screen-shell .percent-field:focus-within,
+.settings-screen-shell .public-link-box:focus-within {
+  border-color: rgba(37, 99, 235, 0.92);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.settings-screen-shell .stack-form label,
+.settings-screen-shell .editable-row label,
+.settings-screen-shell .theme-grid label,
+.settings-screen-shell .payment-method-fee {
+  color: #9a9ea6;
+  display: grid;
+  font-size: 12px;
+  font-weight: 500;
+  gap: 7px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.settings-screen-shell .stack-form button,
+.settings-screen-shell .button-row button,
+.settings-screen-shell .public-link-actions button,
+.settings-screen-shell .payment-methods-save {
+  align-items: center;
+  background: transparent !important;
+  border: 1px solid rgba(37, 99, 235, 0.58) !important;
+  border-radius: 12px !important;
+  color: #dbe7ff !important;
+  display: inline-flex;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  gap: 8px;
+  justify-content: center;
+  min-height: 42px !important;
+  padding: 0 14px !important;
+  white-space: nowrap;
+}
+
+.settings-screen-shell .stack-form button:hover,
+.settings-screen-shell .button-row button:hover,
+.settings-screen-shell .public-link-actions button:hover,
+.settings-screen-shell .payment-methods-save:hover {
+  background: rgba(37, 99, 235, 0.08) !important;
+  border-color: rgba(37, 99, 235, 0.9) !important;
+}
+
+.settings-screen-shell .secondary-button {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.settings-screen-shell .button-row,
+.settings-screen-shell .public-link-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.settings-screen-shell .theme-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.settings-screen-shell .theme-grid input[type="color"],
+.settings-screen-shell input[type="color"] {
+  background: rgba(5, 5, 6, 0.25);
+  border: 1px solid #2a2c31;
+  border-radius: 14px;
+  height: 56px;
+  min-height: 56px;
+  padding: 7px;
+  width: 100%;
+}
+
+.settings-screen-shell .editable-row,
+.settings-screen-shell .service-row,
+.settings-screen-shell .payment-method-row,
+.settings-screen-shell .legal-acceptance-facts span {
+  background: rgba(5, 5, 6, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+}
+
+.settings-screen-shell .editable-row {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) 38px;
+  padding: 12px;
+}
+
+.settings-screen-shell .service-row {
+  min-height: 58px;
+  padding: 10px 12px 10px 14px;
+}
+
+.settings-screen-shell .payment-method-row {
+  grid-template-columns: minmax(0, 1fr) 112px 132px;
+  min-height: 74px;
+  padding: 12px;
+}
+
+.settings-screen-shell .payment-method-name i {
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  color: #d4d7dd;
+  height: 40px;
+  width: 40px;
+}
+
+.settings-screen-shell .payment-method-toggle {
+  background: rgba(5, 5, 6, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 10px;
+}
+
+.settings-screen-shell .percent-field {
+  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 42px;
+  padding: 0 11px;
+}
+
+.settings-screen-shell .percent-field input {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 0;
+  padding: 0;
+}
+
+.settings-screen-shell .danger-icon,
+.settings-screen-shell .service-remove-button {
+  align-items: center;
+  background: rgba(255, 77, 79, 0.08) !important;
+  border: 1px solid rgba(255, 77, 79, 0.22) !important;
+  border-radius: 12px !important;
+  color: #ff8587 !important;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  padding: 0 !important;
+  width: 38px;
+}
+
+.settings-screen-shell .public-link-panel p,
+.settings-screen-shell .legal-settings-summary p {
+  color: #9a9ea6;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.settings-screen-shell .public-link-box {
+  align-items: center;
+  display: flex;
+  overflow: hidden;
+  padding: 0 14px;
+}
+
+.settings-screen-shell .legal-acceptance-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-screen-shell .legal-acceptance-facts span {
+  color: #d4d7dd;
+  display: grid;
+  font-size: 13px;
+  gap: 5px;
+  padding: 13px;
+}
+
+.settings-screen-shell .legal-acceptance-facts strong {
+  color: #9a9ea6;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.settings-screen-shell .legal-public-links {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-screen-shell .legal-public-links a {
+  align-items: center;
+  background: transparent;
+  border: 1px solid rgba(37, 99, 235, 0.58);
+  border-radius: 12px;
+  color: #dbe7ff;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 650;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+@media (max-width: 1180px) {
+  .settings-screen-shell .settings-company-layout,
+  .settings-screen-shell .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-screen-shell .editable-row,
+  .settings-screen-shell .payment-method-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .settings-screen-shell .editable-row .danger-icon {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .settings-screen-shell .settings-modern-content > .panel,
+  .settings-screen-shell .settings-modern-content .settings-grid > .panel,
+  .settings-screen-shell .settings-company-layout > .panel,
+  .settings-screen-shell .legal-settings-summary,
+  .settings-screen-shell .legal-settings-docs {
+    border-radius: 16px;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .settings-screen-shell .settings-modern-content .section-title,
+  .settings-screen-shell .settings-modern-content .panel .section-title {
+    padding-bottom: 12px;
+  }
+
+  .settings-screen-shell .settings-modern-content .section-title h2,
+  .settings-screen-shell .settings-modern-content .panel .section-title h2,
+  .settings-screen-shell .settings-modern-content .panel h2 {
+    font-size: 16px;
+  }
+
+  .settings-screen-shell .theme-grid,
+  .settings-screen-shell .button-row,
+  .settings-screen-shell .public-link-actions,
+  .settings-screen-shell .legal-acceptance-facts,
+  .settings-screen-shell .legal-public-links,
+  .settings-screen-shell .editable-row,
+  .settings-screen-shell .payment-method-row {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-screen-shell .stack-form input,
+  .settings-screen-shell .stack-form select,
+  .settings-screen-shell .editable-row input,
+  .settings-screen-shell .editable-row select,
+  .settings-screen-shell .theme-grid input[type="color"],
+  .settings-screen-shell input[type="color"] {
+    min-height: 50px;
+  }
+}
+
+/* Align payment method status and fee controls */
+.settings-screen-shell .payment-method-row {
+  align-items: center !important;
+}
+
+.settings-screen-shell .payment-method-toggle,
+.settings-screen-shell .payment-method-fee {
+  align-self: center !important;
+}
+
+.settings-screen-shell .payment-method-fee {
+  justify-content: center;
+}
+
+.settings-screen-shell .payment-method-fee .percent-field {
+  align-self: center;
+}
+
+/* Keep payment fee label from pushing the percent field down */
+.settings-screen-shell .payment-method-fee {
+  align-items: center !important;
+  display: flex !important;
+  font-size: 0 !important;
+  min-height: 42px;
+  position: relative;
+}
+
+.settings-screen-shell .payment-method-fee::before {
+  color: #9a9ea6;
+  content: "Taxa";
+  font-size: 11px;
+  font-weight: 600;
+  left: 2px;
+  line-height: 1;
+  position: absolute;
+  top: -16px;
+}
+
+.settings-screen-shell .payment-method-fee .percent-field {
+  font-size: 15px !important;
+  width: 100%;
+}

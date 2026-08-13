@@ -415,6 +415,7 @@ class BarberShopService {
       scheduleStartHour: 8,
       scheduleEndHour: 18,
       scheduleSlotMinutes: 60,
+      scheduleBlockedIntervals: [],
       paymentSettings: normalizePaymentSettings(),
       status: 'trial',
       paymentDueDate: nextBillingDate(new Date()),
@@ -605,6 +606,7 @@ class BarberShopService {
         scheduleStartHour: barbershop.scheduleStartHour ?? 8,
         scheduleEndHour: barbershop.scheduleEndHour ?? 18,
         scheduleSlotMinutes: barbershop.scheduleSlotMinutes ?? 60,
+        scheduleBlockedIntervals: normalizeScheduleBlockedIntervals(barbershop.scheduleBlockedIntervals),
       },
       professionals: state.professionals
         .filter((item) => item.barbershopId === barbershop.id && item.active !== false)
@@ -677,7 +679,7 @@ class BarberShopService {
       (item) => item.professionalId === professional.id && item.startsAt === startsAt,
     );
 
-    if (isTaken) {
+    if (isTaken || isScheduleSlotBlocked(startsAt, page.barbershop)) {
       return { error: 'Este horario acabou de ser ocupado. Escolha outro horario.' };
     }
 
@@ -783,6 +785,9 @@ class BarberShopService {
       paymentSettings: body.paymentSettings
         ? normalizePaymentSettings(body.paymentSettings)
         : normalizePaymentSettings(barbershop.paymentSettings),
+      scheduleBlockedIntervals: Array.isArray(body.scheduleBlockedIntervals)
+        ? normalizeScheduleBlockedIntervals(body.scheduleBlockedIntervals)
+        : normalizeScheduleBlockedIntervals(barbershop.scheduleBlockedIntervals),
       partnerCode: body.partnerCode ? normalizePartnerCode(body.partnerCode) : barbershop.partnerCode,
     });
 
@@ -1153,6 +1158,11 @@ class BarberShopService {
         item.startsAt === body.startsAt,
     );
     const isOpen = !body.clientName && !body.clientContact && !body.serviceName && !body.notes;
+    const targetBarbershop = findBarbershop(professional.barbershopId || targetBarbershopId);
+
+    if (!isOpen && isScheduleSlotBlocked(body.startsAt, targetBarbershop)) {
+      return { error: 'Este horario esta reservado nas configuracoes da agenda.' };
+    }
 
     if (existing) {
       if (isOpen) {
@@ -1787,6 +1797,85 @@ function validateStrongPassword(password) {
 
   return '';
 }
+function normalizeScheduleBlockedIntervals(intervals = []) {
+  if (!Array.isArray(intervals)) return [];
+  return intervals.map(normalizeBlockedInterval).filter(Boolean);
+}
+
+function normalizeBlockedInterval(interval) {
+  const scope = ['daily', 'single', 'range'].includes(interval?.scope) ? interval.scope : 'single';
+  const startTime = normalizeTimeValue(interval?.startTime);
+  const endTime = normalizeTimeValue(interval?.endTime);
+  if (!startTime || !endTime || timeToMinutes(endTime) <= timeToMinutes(startTime)) return null;
+
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const startDate = isDateKey(interval?.startDate) ? interval.startDate : todayKey;
+  const endDate = isDateKey(interval?.endDate) ? interval.endDate : startDate;
+  const rangeStart = startDate <= endDate ? startDate : endDate;
+  const rangeEnd = startDate <= endDate ? endDate : startDate;
+
+  return {
+    id: String(interval?.id || `block-${Date.now()}`),
+    scope,
+    startDate: scope === 'daily' ? '' : rangeStart,
+    endDate: scope === 'range' ? rangeEnd : scope === 'single' ? rangeStart : '',
+    startTime,
+    endTime,
+    note: String(interval?.note || 'Intervalo reservado').slice(0, 80),
+    createdAt: interval?.createdAt || new Date().toISOString(),
+  };
+}
+
+function isScheduleSlotBlocked(startsAt, barbershop) {
+  const slotKey = scheduleDateTimeKey(startsAt);
+  const date = slotKey.slice(0, 10);
+  const time = slotKey.slice(11, 16);
+  const slotStart = timeToMinutes(time);
+  if (!date || Number.isNaN(slotStart)) return false;
+
+  const slotMinutes = [15, 30, 45, 60].includes(Number(barbershop?.scheduleSlotMinutes))
+    ? Number(barbershop.scheduleSlotMinutes)
+    : 60;
+  const slotEnd = slotStart + slotMinutes;
+
+  return normalizeScheduleBlockedIntervals(barbershop?.scheduleBlockedIntervals).some((interval) => {
+    if (!blockedIntervalMatchesDate(interval, date)) return false;
+    const blockStart = timeToMinutes(interval.startTime);
+    const blockEnd = timeToMinutes(interval.endTime);
+    return slotStart < blockEnd && slotEnd > blockStart;
+  });
+}
+
+function blockedIntervalMatchesDate(interval, date) {
+  if (interval.scope === 'daily') return true;
+  if (interval.scope === 'single') return interval.startDate === date;
+  return interval.startDate <= date && date <= interval.endDate;
+}
+
+function normalizeTimeValue(value) {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return '';
+  const hour = Math.min(23, Math.max(0, Number(match[1])));
+  const minute = Math.min(59, Math.max(0, Number(match[2])));
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function timeToMinutes(value) {
+  const [hour, minute] = String(value || '').split(':').map(Number);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return NaN;
+  return hour * 60 + minute;
+}
+
+function isDateKey(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+}
+
+function scheduleDateTimeKey(value) {
+  const text = String(value || '');
+  if (text.length >= 16) return text.slice(0, 16);
+  return text;
+}
+
 function normalizePaymentSettings(settings = {}) {
   return paymentMethods.reduce((acc, method) => {
     const current = settings?.[method] || {};

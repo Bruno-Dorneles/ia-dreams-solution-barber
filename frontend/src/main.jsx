@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -375,7 +375,10 @@ function PublicBookingPage({ slug }) {
       .filter((item) => item.professionalId === selectedProfessionalId)
       .map((item) => scheduleDateTimeKey(item.startsAt)),
   );
-  const availableSlots = slots.filter((slot) => !occupiedTimes.has(`${selectedDate}T${slot}`));
+  const availableSlots = slots.filter((slot) => {
+    const startsAt = `${selectedDate}T${slot}`;
+    return !occupiedTimes.has(startsAt) && !getBlockedIntervalForSlot(`${startsAt}:00`, barbershop);
+  });
 
   function changeDate(offset) {
     const date = new Date(`${selectedDate}T12:00:00`);
@@ -1944,14 +1947,13 @@ const DESKTOP_NAV_ITEMS = [
   { id: 'payments', label: 'Pagamentos', icon: <WalletCards size={22} /> },
   { id: 'management', label: 'Financeiro', icon: <Home size={22} /> },
   { id: 'schedule', label: 'Agendamentos', icon: <CalendarClock size={22} /> },
-  { id: 'professionals', label: 'Profissionais', icon: <UserCog size={22} /> },
   { id: 'closing', label: 'Relatórios', icon: <BarChart3 size={22} /> },
   { id: 'inventory', label: 'Estoque', icon: <Store size={22} /> },
   { id: 'settings', label: 'Configurações', icon: <SettingsIcon size={22} /> },
 ];
 
 function AppNavigation({ currentScreen, onNavigate, barbershop, user }) {
-  const currentNavId = currentScreen === 'professionals' ? 'settings' : currentScreen;
+  const currentNavId = currentScreen;
 
   return (
     <nav className="app-nav" aria-label="Navegação principal">
@@ -3332,15 +3334,17 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
             {scheduleSlots.map((slot, index) => {
               const startsAt = `${selectedDate}T${slot}`;
               const draft = drafts[startsAt] || {};
+              const reservedInterval = getBlockedIntervalForSlot(`${startsAt}:00`, barbershop);
+              const isReserved = Boolean(reservedInterval);
               const isClosed = Boolean(
                 draft.clientName || draft.clientContact || draft.serviceName,
               );
-              const isEditing = editingSlot === startsAt;
+              const isEditing = !isReserved && editingSlot === startsAt;
               const isPending = draft.status === 'pending';
-              const statusClass = isClosed ? (isPending ? 'pending' : 'confirmed') : 'open';
+              const statusClass = isReserved ? 'reserved' : isClosed ? (isPending ? 'pending' : 'confirmed') : 'open';
               const hiddenByStatus =
-                (statusFilter === 'open' && isClosed) ||
-                (statusFilter === 'scheduled' && !isClosed);
+                (statusFilter === 'open' && (isClosed || isReserved)) ||
+                (statusFilter === 'scheduled' && (!isClosed || isReserved));
               const hiddenByService =
                 serviceFilter !== 'all' &&
                 (!isClosed || draft.serviceName !== serviceFilter);
@@ -3358,12 +3362,17 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
                         {initials(draft.clientName || selectedProfessional?.name || 'BP')}
                       </div>
                     ) : (
-                      <div className="schedule-avatar schedule-avatar-open">
+                      <div className={`schedule-avatar schedule-avatar-open ${isReserved ? 'reserved' : ''}`}>
                         <CalendarClock size={22} />
                       </div>
                     )}
-                    <div className={`schedule-card-grid ${!isClosed && !isEditing ? 'available' : ''} ${isEditing ? 'editing' : ''} ${isClosed ? 'closed' : 'open-slot'}`}>
-                      {!isClosed && !isEditing ? (
+                    <div className={`schedule-card-grid ${!isClosed && !isEditing ? 'available' : ''} ${isEditing ? 'editing' : ''} ${isClosed ? 'closed' : 'open-slot'} ${isReserved ? 'reserved' : ''}`}>
+                      {isReserved ? (
+                        <div className="schedule-available-label reserved">
+                          <strong>Horário reservado</strong>
+                          <small>{reservedInterval?.note || 'Intervalo ocupado'}</small>
+                        </div>
+                      ) : !isClosed && !isEditing ? (
                         <div className="schedule-available-label">Horário disponível</div>
                       ) : isPending ? (
                         <>
@@ -3444,13 +3453,13 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
                       )}
                       <span
                         className={`schedule-status-dot ${statusClass}`}
-                        title={isPending ? 'Pendente' : isClosed ? 'Confirmado' : 'Aberto'}
+                        title={isReserved ? 'Reservado' : isPending ? 'Pendente' : isClosed ? 'Confirmado' : 'Aberto'}
                       >
                         <i />
-                        {isPending ? 'Pendente' : isClosed ? 'Confirmado' : 'Aberto'}
+                        {isReserved ? 'Reservado' : isPending ? 'Pendente' : isClosed ? 'Confirmado' : 'Aberto'}
                       </span>
                       <div className="schedule-action-cell">
-                        {isPending ? (
+                        {isReserved ? null : isPending ? (
                           <div className="schedule-pending-actions">
                             <button
                               type="button"
@@ -5142,6 +5151,13 @@ function ScheduleSettings({ barbershop, onSaved }) {
     scheduleEndHour: barbershop?.scheduleEndHour ?? 18,
     scheduleSlotMinutes: barbershop?.scheduleSlotMinutes ?? 60,
   });
+  const [blockedForm, setBlockedForm] = useState(defaultBlockedIntervalForm());
+  const [showBlockedForm, setShowBlockedForm] = useState(false);
+  const blockedIntervals = normalizeScheduleBlockedIntervals(barbershop?.scheduleBlockedIntervals);
+  const agendaChanged =
+    Number(form.scheduleStartHour) !== Number(barbershop?.scheduleStartHour ?? 8) ||
+    Number(form.scheduleEndHour) !== Number(barbershop?.scheduleEndHour ?? 18) ||
+    Number(form.scheduleSlotMinutes) !== Number(barbershop?.scheduleSlotMinutes ?? 60);
 
   useEffect(() => {
     setForm({
@@ -5151,23 +5167,56 @@ function ScheduleSettings({ barbershop, onSaved }) {
     });
   }, [barbershop]);
 
+  async function saveAgenda(payload) {
+    await api.post('/barbershop', payload);
+    onSaved();
+  }
+
   async function submit(event) {
     event.preventDefault();
-    await api.post('/barbershop', {
+    await saveAgenda({
       scheduleStartHour: Number(form.scheduleStartHour),
       scheduleEndHour: Number(form.scheduleEndHour),
       scheduleSlotMinutes: Number(form.scheduleSlotMinutes),
     });
-    onSaved();
+  }
+
+  async function addBlockedInterval(event) {
+    event.preventDefault();
+    const nextInterval = normalizeBlockedInterval({
+      ...blockedForm,
+      id: `block-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    });
+
+    if (!nextInterval) return;
+
+    await saveAgenda({
+      scheduleBlockedIntervals: [...blockedIntervals, nextInterval],
+    });
+    setBlockedForm(defaultBlockedIntervalForm());
+    setShowBlockedForm(false);
+  }
+
+  async function removeBlockedInterval(intervalId) {
+    await saveAgenda({
+      scheduleBlockedIntervals: blockedIntervals.filter((interval) => interval.id !== intervalId),
+    });
   }
 
   return (
-    <div className="panel">
-      <SectionTitle eyebrow="Agenda" title="Horário padrão" compact />
-      <form className="stack-form" onSubmit={submit}>
-        <div className="three-columns">
+    <div className="schedule-settings-redesign">
+      <section className="schedule-config-card schedule-default-card">
+        <div className="schedule-config-card-header">
+          <span className="schedule-config-icon"><CalendarClock size={18} /></span>
+          <div>
+            <h3>Horário de atendimento</h3>
+            <p>Defina quando a barbearia fica disponível para agendamentos.</p>
+          </div>
+        </div>
+        <form className={`schedule-default-form ${agendaChanged ? 'changed' : ''}`} onSubmit={submit}>
           <label>
-            Inicio
+            <span>Início</span>
             <DropdownSelect
               value={form.scheduleStartHour}
               options={Array.from({ length: 24 }, (_, hour) => ({
@@ -5181,7 +5230,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
             />
           </label>
           <label>
-            Final
+            <span>Final</span>
             <DropdownSelect
               value={form.scheduleEndHour}
               options={Array.from({ length: 24 }, (_, hour) => ({
@@ -5195,7 +5244,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
             />
           </label>
           <label>
-            Intervalo
+            <span>Duração</span>
             <DropdownSelect
               value={form.scheduleSlotMinutes}
               options={[15, 30, 45, 60].map((minutes) => ({
@@ -5205,12 +5254,125 @@ function ScheduleSettings({ barbershop, onSaved }) {
               onChange={(scheduleSlotMinutes) =>
                 setForm({ ...form, scheduleSlotMinutes })
               }
-              ariaLabel="Selecionar intervalo"
+              ariaLabel="Selecionar duração"
             />
           </label>
+          {agendaChanged && (
+            <div className="schedule-save-row">
+              <button type="submit" className="schedule-subtle-save">Salvar alterações</button>
+            </div>
+          )}
+        </form>
+      </section>
+
+      <section className="schedule-config-card blocked-intervals-section">
+        <div className="schedule-config-card-header with-action">
+          <span className="schedule-config-icon"><CalendarPlus size={18} /></span>
+          <div>
+            <h3>Intervalos reservados</h3>
+            <p>Bloqueie almoço, folgas, reuniões ou qualquer horário ocupado.</p>
+          </div>
+          <button
+            type="button"
+            className={`schedule-outline-action ${showBlockedForm ? 'active' : ''}`}
+            onClick={() => setShowBlockedForm((current) => !current)}
+          >
+            {showBlockedForm ? <X size={15} /> : <Plus size={15} />}
+            {showBlockedForm ? 'Fechar' : 'Adicionar intervalo'}
+          </button>
         </div>
-        <button>Salvar agenda</button>
-      </form>
+
+        {showBlockedForm && (
+          <form className="blocked-interval-form" onSubmit={addBlockedInterval}>
+            <div className="blocked-period-options">
+              {[
+                { value: 'daily', label: 'Todos os dias' },
+                { value: 'single', label: 'Somente esse dia' },
+                { value: 'range', label: 'Período de dias' },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={blockedForm.scope === option.value ? 'active' : ''}
+                  onClick={() => setBlockedForm({ ...blockedForm, scope: option.value })}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <div className="blocked-interval-fields">
+              <label>
+                <span>Das</span>
+                <input
+                  type="time"
+                  value={blockedForm.startTime}
+                  onChange={(event) => setBlockedForm({ ...blockedForm, startTime: event.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                <span>Até</span>
+                <input
+                  type="time"
+                  value={blockedForm.endTime}
+                  onChange={(event) => setBlockedForm({ ...blockedForm, endTime: event.target.value })}
+                  required
+                />
+              </label>
+              <label>
+                <span>Descrição</span>
+                <input
+                  value={blockedForm.note}
+                  onChange={(event) => setBlockedForm({ ...blockedForm, note: event.target.value })}
+                  placeholder="Ex: almoço, reunião, folga"
+                />
+              </label>
+            </div>
+            {blockedForm.scope !== 'daily' && (
+              <div className="blocked-date-fields">
+                <label>
+                  <span>Data inicial</span>
+                  <input
+                    type="date"
+                    value={blockedForm.startDate}
+                    onChange={(event) => setBlockedForm({ ...blockedForm, startDate: event.target.value })}
+                    required
+                  />
+                </label>
+                {blockedForm.scope === 'range' && (
+                  <label>
+                    <span>Data final</span>
+                    <input
+                      type="date"
+                      value={blockedForm.endDate}
+                      onChange={(event) => setBlockedForm({ ...blockedForm, endDate: event.target.value })}
+                      required
+                    />
+                  </label>
+                )}
+              </div>
+            )}
+            <button type="submit" className="schedule-subtle-save">Salvar intervalo</button>
+          </form>
+        )}
+
+        <div className="blocked-interval-list">
+          {blockedIntervals.length === 0 && <p className="empty">Nenhum intervalo reservado.</p>}
+          {blockedIntervals.map((interval) => (
+            <article key={interval.id} className="blocked-interval-row">
+              <span className="blocked-interval-avatar"><CalendarClock size={16} /></span>
+              <span className="blocked-interval-info">
+                <strong>{interval.note || 'Intervalo reservado'}</strong>
+                <small>{blockedIntervalPeriodLabel(interval)}</small>
+              </span>
+              <em>{interval.startTime} - {interval.endTime}</em>
+              <button type="button" onClick={() => removeBlockedInterval(interval.id)} aria-label="Remover intervalo">
+                <Trash2 size={17} />
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
@@ -5864,6 +6026,110 @@ function businessSlots(barbershop) {
   return slots;
 }
 
+function defaultBlockedIntervalForm() {
+  const currentDate = today();
+  return {
+    scope: 'daily',
+    startDate: currentDate,
+    endDate: currentDate,
+    startTime: '12:00',
+    endTime: '13:00',
+    note: 'Intervalo reservado',
+  };
+}
+
+function normalizeScheduleBlockedIntervals(intervals = []) {
+  if (!Array.isArray(intervals)) return [];
+  return intervals.map(normalizeBlockedInterval).filter(Boolean);
+}
+
+function normalizeBlockedInterval(interval) {
+  const scope = ['daily', 'single', 'range'].includes(interval?.scope) ? interval.scope : 'single';
+  const startTime = normalizeTimeValue(interval?.startTime);
+  const endTime = normalizeTimeValue(interval?.endTime);
+  if (!startTime || !endTime || timeToMinutes(endTime) <= timeToMinutes(startTime)) return null;
+
+  const startDate = isDateKey(interval?.startDate) ? interval.startDate : today();
+  const endDate = isDateKey(interval?.endDate) ? interval.endDate : startDate;
+  const rangeStart = startDate <= endDate ? startDate : endDate;
+  const rangeEnd = startDate <= endDate ? endDate : startDate;
+
+  return {
+    id: String(interval?.id || `block-${Date.now()}`),
+    scope,
+    startDate: scope === 'daily' ? '' : rangeStart,
+    endDate: scope === 'range' ? rangeEnd : scope === 'single' ? rangeStart : '',
+    startTime,
+    endTime,
+    note: String(interval?.note || 'Intervalo reservado').slice(0, 80),
+    createdAt: interval?.createdAt || new Date().toISOString(),
+  };
+}
+
+function getBlockedIntervalForSlot(startsAt, barbershop) {
+  const slotKey = scheduleDateTimeKey(startsAt);
+  const date = slotKey.slice(0, 10);
+  const time = slotKey.slice(11, 16);
+  const slotStart = timeToMinutes(time);
+  if (!date || Number.isNaN(slotStart)) return null;
+
+  const slotMinutes = [15, 30, 45, 60].includes(Number(barbershop?.scheduleSlotMinutes))
+    ? Number(barbershop.scheduleSlotMinutes)
+    : 60;
+  const slotEnd = slotStart + slotMinutes;
+
+  return normalizeScheduleBlockedIntervals(barbershop?.scheduleBlockedIntervals).find((interval) => {
+    if (!blockedIntervalMatchesDate(interval, date)) return false;
+    const blockStart = timeToMinutes(interval.startTime);
+    const blockEnd = timeToMinutes(interval.endTime);
+    return slotStart < blockEnd && slotEnd > blockStart;
+  }) || null;
+}
+
+function blockedIntervalMatchesDate(interval, date) {
+  if (interval.scope === 'daily') return true;
+  if (interval.scope === 'single') return interval.startDate === date;
+  return interval.startDate <= date && date <= interval.endDate;
+}
+
+function blockedIntervalScopeLabel(interval) {
+  return {
+    daily: 'Todos os dias',
+    single: 'Somente esse dia',
+    range: 'Período de dias',
+  }[interval.scope] || 'Intervalo';
+}
+
+function blockedIntervalPeriodLabel(interval) {
+  if (interval.scope === 'daily') return 'Todos os dias';
+  if (interval.scope === 'single') return `${formatShortDate(interval.startDate)} - Somente esse dia`;
+  return `${formatShortDate(interval.startDate)} até ${formatShortDate(interval.endDate)} - Período de dias`;
+}
+
+function normalizeTimeValue(value) {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return '';
+  const hour = clamp(Number(match[1]), 0, 23);
+  const minute = clamp(Number(match[2]), 0, 59);
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function timeToMinutes(value) {
+  const [hour, minute] = String(value || '').split(':').map(Number);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return NaN;
+  return hour * 60 + minute;
+}
+
+function isDateKey(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+}
+
+function formatShortDate(dateKey) {
+  if (!isDateKey(dateKey)) return '';
+  const [year, month, day] = dateKey.split('-');
+  return `${day}/${month}/${year}`;
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -6105,6 +6371,7 @@ function getRevenueChartMaxCents(maxRevenueCents) {
 }
 
 createRoot(document.getElementById('root')).render(<AppErrorBoundary><App /></AppErrorBoundary>);
+
 
 
 
