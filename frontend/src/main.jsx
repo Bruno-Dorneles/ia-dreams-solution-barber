@@ -1952,8 +1952,20 @@ const DESKTOP_NAV_ITEMS = [
   { id: 'settings', label: 'Configurações', icon: <SettingsIcon size={22} /> },
 ];
 
-function AppNavigation({ currentScreen, onNavigate, barbershop, user }) {
+const SETTINGS_SIDEBAR_ITEMS = [
+  { id: 'company', label: 'Empresa', icon: <Store size={17} /> },
+  { id: 'account', label: 'Conta do dono', icon: <UserRound size={17} /> },
+  { id: 'theme', label: 'Aparência', icon: <Pencil size={17} /> },
+  { id: 'team', label: 'Equipe', icon: <Users size={17} /> },
+  { id: 'services', label: 'Serviços', icon: <Scissors size={17} /> },
+  { id: 'payments', label: 'Métodos de pagamento', icon: <CreditCard size={17} /> },
+  { id: 'schedule', label: 'Agendamento', icon: <CalendarClock size={17} /> },
+  { id: 'legal', label: 'Documentos legais', icon: <FileCheck2 size={17} /> },
+];
+
+function AppNavigation({ currentScreen, currentSettingsTab = 'company', settingsMenuOpen = false, onNavigate, barbershop, user }) {
   const currentNavId = currentScreen;
+  const supportMessage = buildSupportWhatsAppMessage(user, barbershop);
 
   return (
     <nav className="app-nav" aria-label="Navegação principal">
@@ -1967,18 +1979,45 @@ function AppNavigation({ currentScreen, onNavigate, barbershop, user }) {
 
       <div className="nav-items nav-items-desktop">
         {DESKTOP_NAV_ITEMS.map((item) => (
-          <button
-            key={item.id}
-            className={currentNavId === item.id ? 'active' : ''}
-            onClick={() => onNavigate(item.id)}
-            title={item.label}
-            aria-label={item.label}
-            aria-current={currentNavId === item.id ? 'page' : undefined}
-            type="button"
-          >
-            {item.icon}
-            <span className="nav-label">{item.label}</span>
-          </button>
+          <React.Fragment key={item.id}>
+            <button
+              className={currentNavId === item.id ? 'active' : ''}
+              onClick={() => onNavigate(item.id)}
+              title={item.label}
+              aria-label={item.label}
+              aria-current={currentNavId === item.id ? 'page' : undefined}
+              type="button"
+            >
+              {item.icon}
+              <span className="nav-label">{item.label}</span>
+            </button>
+            {item.id === 'settings' && currentScreen === 'settings' && settingsMenuOpen && (
+              <div className="nav-settings-submenu">
+                {SETTINGS_SIDEBAR_ITEMS.map((section) => (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className={currentSettingsTab === section.id ? 'active' : ''}
+                    onClick={() => onNavigate('settings', section.id)}
+                    title={section.label}
+                    aria-label={section.label}
+                  >
+                    {section.icon}
+                    <span className="nav-label">{section.label}</span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => window.open(buildWhatsAppUrl('51997932297', supportMessage), '_blank', 'noopener,noreferrer')}
+                  title="Suporte"
+                  aria-label="Suporte"
+                >
+                  <Phone size={17} />
+                  <span className="nav-label">Suporte</span>
+                </button>
+              </div>
+            )}
+          </React.Fragment>
         ))}
       </div>
 
@@ -2522,6 +2561,7 @@ function Workspace({ session, onLogout, onExitMaster }) {
   const [schedules, setSchedules] = useState([]);
   const [costs, setCosts] = useState([]);
   const [settingsInitialTab, setSettingsInitialTab] = useState('company');
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [dismissedScheduleRequestIds, setDismissedScheduleRequestIds] = useState([]);
   const notificationStorageKey = `barberpro-notifications-read-${user.barbershopId || user.id}`;
   const [readNotificationIds, setReadNotificationIds] = useState(() => {
@@ -2693,19 +2733,24 @@ function Workspace({ session, onLogout, onExitMaster }) {
     >
       <AppNavigation
         currentScreen={screen}
+        currentSettingsTab={settingsInitialTab}
+        settingsMenuOpen={settingsMenuOpen}
         barbershop={barbershop}
         user={user}
-        onNavigate={(nextScreen) => {
-          if (nextScreen === 'professionals') {
-            setSettingsInitialTab('team');
+        onNavigate={(nextScreen, settingsTab) => {
+          if (nextScreen === 'settings') {
+            if (settingsTab) {
+              setSettingsInitialTab(settingsTab);
+              setSettingsMenuOpen(true);
+            } else {
+              setSettingsInitialTab('company');
+              setSettingsMenuOpen((current) => (screen === 'settings' ? !current : true));
+            }
             setScreen('settings');
             return;
           }
 
-          if (nextScreen === 'settings') {
-            setSettingsInitialTab('company');
-          }
-
+          setSettingsMenuOpen(false);
           setScreen(nextScreen);
         }}
       />
@@ -4655,7 +4700,7 @@ function SettingsScreen({
   });
 
   return (
-    <div className={`settings-modern-shell ${mobileSectionOpen ? 'section-open' : ''}`}>
+    <div className={`settings-modern-shell no-inner-sidebar ${mobileSectionOpen ? 'section-open' : ''}`}>
       <div className="settings-mobile-list">
         {sections.map((section) => (
           <button
@@ -4682,34 +4727,6 @@ function SettingsScreen({
         ))}
       </div>
 
-      <aside className="settings-inner-sidebar">
-        <div className="settings-inner-sidebar-title">
-          <strong>Ajustes</strong>
-          <span>Escolha um setor</span>
-        </div>
-        <nav>
-          {sections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              className={tab === section.id ? 'active' : ''}
-              onClick={() => {
-                if (section.href) {
-                  window.open(section.href, '_blank', 'noopener,noreferrer');
-                  return;
-                }
-                setTab(section.id);
-              }}
-            >
-              <span className="settings-section-icon">{section.icon}</span>
-              <span>
-                <strong>{section.label}</strong>
-                <small>{section.status}</small>
-              </span>
-            </button>
-          ))}
-        </nav>
-      </aside>
 
       <section className="settings-modern-content">
         <button

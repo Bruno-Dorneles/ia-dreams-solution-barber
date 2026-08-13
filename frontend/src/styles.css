@@ -12865,3 +12865,50 @@ select option {
   font-size: 15px !important;
   width: 100%;
 }
+
+/* Settings submenu in the main sidebar */
+@media (min-width: 761px) {
+  .app-nav .nav-settings-submenu {
+    border-left: 1px solid rgba(47, 124, 255, 0.2);
+    display: grid;
+    gap: 4px;
+    margin: -2px 0 4px 22px;
+    padding: 4px 0 4px 12px;
+  }
+
+  .app-nav .nav-items-desktop .nav-settings-submenu button {
+    border-radius: 10px;
+    color: #8f96a3;
+    font-size: 12px;
+    gap: 10px;
+    height: 34px;
+    padding: 0 10px;
+  }
+
+  .app-nav .nav-items-desktop .nav-settings-submenu button svg {
+    height: 17px;
+    width: 17px;
+  }
+
+  .app-nav .nav-items-desktop .nav-settings-submenu button.active {
+    background: rgba(47, 124, 255, 0.12);
+    color: #2f7cff;
+  }
+
+  .app-nav .nav-items-desktop .nav-settings-submenu .nav-label {
+    font-size: 12px;
+  }
+
+  .settings-modern-shell.no-inner-sidebar {
+    display: block;
+  }
+
+  .settings-modern-shell.no-inner-sidebar .settings-inner-sidebar {
+    display: none;
+  }
+
+  .settings-modern-shell.no-inner-sidebar .settings-modern-content {
+    min-height: 560px;
+    width: 100%;
+  }
+}
