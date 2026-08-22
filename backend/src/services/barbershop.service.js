@@ -28,6 +28,7 @@ const validPartnerCodes = {
   },
 };
 const professionalColors = ['#f97316', '#2563eb', '#16a34a', '#a855f7', '#e11d48'];
+const scheduleWeekConfig = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const legalDocumentVersion = '1.1';
 
 const state = {
@@ -415,6 +416,7 @@ class BarberShopService {
       scheduleStartHour: 8,
       scheduleEndHour: 18,
       scheduleSlotMinutes: 60,
+      scheduleWeeklyHours: defaultScheduleWeeklyHours({ scheduleStartHour: 8, scheduleEndHour: 18 }),
       scheduleBlockedIntervals: [],
       paymentSettings: normalizePaymentSettings(),
       status: 'trial',
@@ -606,6 +608,7 @@ class BarberShopService {
         scheduleStartHour: barbershop.scheduleStartHour ?? 8,
         scheduleEndHour: barbershop.scheduleEndHour ?? 18,
         scheduleSlotMinutes: barbershop.scheduleSlotMinutes ?? 60,
+        scheduleWeeklyHours: normalizeScheduleWeeklyHours(barbershop.scheduleWeeklyHours, barbershop),
         scheduleBlockedIntervals: normalizeScheduleBlockedIntervals(barbershop.scheduleBlockedIntervals),
       },
       professionals: state.professionals
@@ -678,6 +681,10 @@ class BarberShopService {
     const isTaken = state.schedules.some(
       (item) => item.professionalId === professional.id && item.startsAt === startsAt,
     );
+
+    if (!isScheduleSlotWithinBusinessHours(startsAt, page.barbershop)) {
+      return { error: 'Este horario nao esta disponivel para este dia.' };
+    }
 
     if (isTaken || isScheduleSlotBlocked(startsAt, page.barbershop)) {
       return { error: 'Este horario acabou de ser ocupado. Escolha outro horario.' };
@@ -785,6 +792,9 @@ class BarberShopService {
       paymentSettings: body.paymentSettings
         ? normalizePaymentSettings(body.paymentSettings)
         : normalizePaymentSettings(barbershop.paymentSettings),
+      scheduleWeeklyHours: body.scheduleWeeklyHours
+        ? normalizeScheduleWeeklyHours(body.scheduleWeeklyHours, barbershop)
+        : normalizeScheduleWeeklyHours(barbershop.scheduleWeeklyHours, barbershop),
       scheduleBlockedIntervals: Array.isArray(body.scheduleBlockedIntervals)
         ? normalizeScheduleBlockedIntervals(body.scheduleBlockedIntervals)
         : normalizeScheduleBlockedIntervals(barbershop.scheduleBlockedIntervals),
@@ -1159,6 +1169,10 @@ class BarberShopService {
     );
     const isOpen = !body.clientName && !body.clientContact && !body.serviceName && !body.notes;
     const targetBarbershop = findBarbershop(professional.barbershopId || targetBarbershopId);
+
+    if (!isOpen && !isScheduleSlotWithinBusinessHours(body.startsAt, targetBarbershop)) {
+      return { error: 'Este horario nao esta dentro do atendimento configurado.' };
+    }
 
     if (!isOpen && isScheduleSlotBlocked(body.startsAt, targetBarbershop)) {
       return { error: 'Este horario esta reservado nas configuracoes da agenda.' };
@@ -1796,6 +1810,61 @@ function validateStrongPassword(password) {
   }
 
   return '';
+}
+function defaultScheduleWeeklyHours(barbershop = {}) {
+  const startHour = Math.min(23, Math.max(0, Number(barbershop?.scheduleStartHour ?? 8)));
+  const endHour = Math.min(23, Math.max(0, Number(barbershop?.scheduleEndHour ?? 18)));
+
+  return scheduleWeekConfig.reduce((acc, day) => {
+    acc[day] = {
+      enabled: true,
+      startTime: `${String(startHour).padStart(2, '0')}:00`,
+      endTime: `${String(endHour).padStart(2, '0')}:00`,
+    };
+    return acc;
+  }, {});
+}
+
+function normalizeScheduleWeeklyHours(value, barbershop = {}) {
+  const fallback = defaultScheduleWeeklyHours(barbershop);
+  const source = value && typeof value === 'object' ? value : {};
+
+  return scheduleWeekConfig.reduce((acc, day) => {
+    const current = source[day] || fallback[day];
+    const startTime = normalizeTimeValue(current?.startTime) || fallback[day].startTime;
+    const endTime = normalizeTimeValue(current?.endTime) || fallback[day].endTime;
+    const validRange = timeToMinutes(endTime) > timeToMinutes(startTime);
+
+    acc[day] = {
+      enabled: current?.enabled === undefined ? fallback[day].enabled : Boolean(current.enabled),
+      startTime: validRange ? startTime : fallback[day].startTime,
+      endTime: validRange ? endTime : fallback[day].endTime,
+    };
+    return acc;
+  }, {});
+}
+
+function scheduleDayKey(dateKey) {
+  const dayIndex = new Date(`${dateKey || new Date().toISOString().slice(0, 10)}T12:00:00`).getDay();
+  return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayIndex] || 'monday';
+}
+
+function getBusinessHoursForDate(barbershop, dateKey) {
+  const weeklyHours = normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop);
+  return weeklyHours[scheduleDayKey(dateKey)] || defaultScheduleWeeklyHours(barbershop).monday;
+}
+
+function isScheduleSlotWithinBusinessHours(startsAt, barbershop) {
+  const slotKey = scheduleDateTimeKey(startsAt);
+  const date = slotKey.slice(0, 10);
+  const time = slotKey.slice(11, 16);
+  const slotStart = timeToMinutes(time);
+  if (!date || Number.isNaN(slotStart)) return false;
+
+  const dayHours = getBusinessHoursForDate(barbershop, date);
+  if (!dayHours.enabled) return false;
+
+  return slotStart >= timeToMinutes(dayHours.startTime) && slotStart <= timeToMinutes(dayHours.endTime);
 }
 function normalizeScheduleBlockedIntervals(intervals = []) {
   if (!Array.isArray(intervals)) return [];

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import axios from 'axios';
 import { motion } from 'framer-motion';
@@ -367,15 +367,24 @@ function PublicBookingPage({ slug }) {
   const schedules = page?.schedules || [];
   const selectedProfessional = professionals.find((item) => item.id === selectedProfessionalId);
   const selectedService = services.find((item) => item.id === selectedServiceId);
+  const currentDateKey = today();
+  const currentTime = new Date();
+  const currentTimeMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+  const selectedDateIsPast = selectedDate < currentDateKey;
+  const selectedDateIsToday = selectedDate === currentDateKey;
   const weekDays = scheduleWeekDays(selectedDate);
   const dateLabel = formatLongDate(new Date(`${selectedDate}T12:00:00`));
-  const slots = useMemo(() => businessSlots(barbershop), [barbershop]);
+  const selectedDayHours = getBusinessHoursForDate(barbershop, selectedDate);
+  const selectedDateIsClosed = !selectedDayHours.enabled;
+  const slots = useMemo(() => businessSlots(barbershop, selectedDate), [barbershop, selectedDate]);
   const occupiedTimes = new Set(
     schedules
       .filter((item) => item.professionalId === selectedProfessionalId)
       .map((item) => scheduleDateTimeKey(item.startsAt)),
   );
   const availableSlots = slots.filter((slot) => {
+    if (selectedDateIsPast) return false;
+    if (selectedDateIsToday && timeToMinutes(slot) <= currentTimeMinutes) return false;
     const startsAt = `${selectedDate}T${slot}`;
     return !occupiedTimes.has(startsAt) && !getBlockedIntervalForSlot(`${startsAt}:00`, barbershop);
   });
@@ -383,7 +392,9 @@ function PublicBookingPage({ slug }) {
   function changeDate(offset) {
     const date = new Date(`${selectedDate}T12:00:00`);
     date.setDate(date.getDate() + offset);
-    setSelectedDate(toInputDate(date));
+    const nextDate = toInputDate(date);
+    if (nextDate < today()) return;
+    setSelectedDate(nextDate);
     setSelectedTime('');
     setResult(null);
   }
@@ -531,7 +542,12 @@ function PublicBookingPage({ slug }) {
           <section className="public-booking-step">
             <h2><span>3</span> Data e horário</h2>
             <div className="public-date-row">
-              <button type="button" onClick={() => changeDate(-1)} aria-label="Dia anterior">
+              <button
+                type="button"
+                onClick={() => changeDate(-1)}
+                aria-label="Dia anterior"
+                disabled={selectedDate <= currentDateKey}
+              >
                 <ArrowLeft size={18} />
               </button>
               <strong>{dateLabel}</strong>
@@ -540,24 +556,30 @@ function PublicBookingPage({ slug }) {
               </button>
             </div>
             <div className="public-week-strip">
-              {weekDays.map((day) => (
-                <button
-                  key={day.date}
-                  type="button"
-                  className={day.date === selectedDate ? 'active' : ''}
-                  onClick={() => {
-                    setSelectedDate(day.date);
-                    setSelectedTime('');
-                    setResult(null);
-                  }}
-                >
-                  <span>{day.weekday}</span>
-                  <strong>{day.day}</strong>
-                </button>
-              ))}
+              {weekDays.map((day) => {
+                const isPastDay = day.date < currentDateKey;
+                return (
+                  <button
+                    key={day.date}
+                    type="button"
+                    className={`${day.date === selectedDate ? 'active' : ''} ${isPastDay ? 'past' : ''}`}
+                    disabled={isPastDay}
+                    aria-disabled={isPastDay}
+                    onClick={() => {
+                      if (isPastDay) return;
+                      setSelectedDate(day.date);
+                      setSelectedTime('');
+                      setResult(null);
+                    }}
+                  >
+                    <span>{day.weekday}</span>
+                    <strong>{day.day}</strong>
+                  </button>
+                );
+              })}
             </div>
             <div className="public-time-grid">
-              {availableSlots.length === 0 && <p>Nenhum horário disponivel para esta data.</p>}
+              {availableSlots.length === 0 && <p>{selectedDateIsPast ? 'Esse dia já passou.' : selectedDateIsClosed ? 'A barbearia não atende neste dia.' : 'Nenhum horário disponível para esta data.'}</p>}
               {availableSlots.map((slot) => (
                 <button
                   key={slot}
@@ -3138,7 +3160,7 @@ function ScheduleScreenV2({ professionals, services = [], schedules, barbershop,
   const selectedDateObj = new Date(`${selectedDate}T12:00:00`);
   const weekDays = scheduleWeekDays(selectedDate);
   const selectedProfessional = professionals.find((item) => item.id === professionalId);
-  const scheduleSlots = useMemo(() => businessSlots(barbershop), [barbershop]);
+  const scheduleSlots = useMemo(() => businessSlots(barbershop, selectedDate), [barbershop, selectedDate]);
 
   useEffect(() => {
     const currentExists = professionals.some((professional) => professional.id === professionalId);
@@ -5163,23 +5185,27 @@ function PaymentMethodsEditor({ barbershop, onSaved }) {
   );
 }
 function ScheduleSettings({ barbershop, onSaved }) {
-  const [form, setForm] = useState({
-    scheduleStartHour: barbershop?.scheduleStartHour ?? 8,
-    scheduleEndHour: barbershop?.scheduleEndHour ?? 18,
+  const [form, setForm] = useState(() => ({
+    scheduleWeeklyHours: normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop),
     scheduleSlotMinutes: barbershop?.scheduleSlotMinutes ?? 60,
-  });
+  }));
   const [blockedForm, setBlockedForm] = useState(defaultBlockedIntervalForm());
   const [showBlockedForm, setShowBlockedForm] = useState(false);
+  const [showWeeklyHours, setShowWeeklyHours] = useState(false);
+  const [lastEditedScheduleDay, setLastEditedScheduleDay] = useState('monday');
   const blockedIntervals = normalizeScheduleBlockedIntervals(barbershop?.scheduleBlockedIntervals);
+  const normalizedCurrentWeeklyHours = normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop);
   const agendaChanged =
-    Number(form.scheduleStartHour) !== Number(barbershop?.scheduleStartHour ?? 8) ||
-    Number(form.scheduleEndHour) !== Number(barbershop?.scheduleEndHour ?? 18) ||
+    JSON.stringify(form.scheduleWeeklyHours) !== JSON.stringify(normalizedCurrentWeeklyHours) ||
     Number(form.scheduleSlotMinutes) !== Number(barbershop?.scheduleSlotMinutes ?? 60);
+  const timeOptions = Array.from({ length: 24 }, (_, hour) => ({
+    value: `${String(hour).padStart(2, '0')}:00`,
+    label: `${String(hour).padStart(2, '0')}:00`,
+  }));
 
   useEffect(() => {
     setForm({
-      scheduleStartHour: barbershop?.scheduleStartHour ?? 8,
-      scheduleEndHour: barbershop?.scheduleEndHour ?? 18,
+      scheduleWeeklyHours: normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop),
       scheduleSlotMinutes: barbershop?.scheduleSlotMinutes ?? 60,
     });
   }, [barbershop]);
@@ -5189,11 +5215,58 @@ function ScheduleSettings({ barbershop, onSaved }) {
     onSaved();
   }
 
+  function updateDay(dayKey, patch) {
+    setLastEditedScheduleDay(dayKey);
+    setForm((current) => ({
+      ...current,
+      scheduleWeeklyHours: {
+        ...current.scheduleWeeklyHours,
+        [dayKey]: {
+          ...current.scheduleWeeklyHours[dayKey],
+          ...patch,
+        },
+      },
+    }));
+  }
+
+  function copySourceDay() {
+    return form.scheduleWeeklyHours[lastEditedScheduleDay] || form.scheduleWeeklyHours.monday;
+  }
+
+  function applyLastEditedToAll() {
+    const sourceDay = copySourceDay();
+    setForm((current) => ({
+      ...current,
+      scheduleWeeklyHours: scheduleWeekConfig.reduce((acc, day) => {
+        acc[day.key] = { ...sourceDay };
+        return acc;
+      }, {}),
+    }));
+  }
+
+  function applyLastEditedToWeekdays() {
+    const sourceDay = copySourceDay();
+    setForm((current) => ({
+      ...current,
+      scheduleWeeklyHours: scheduleWeekConfig.reduce((acc, day) => {
+        acc[day.key] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(day.key)
+          ? { ...sourceDay }
+          : current.scheduleWeeklyHours[day.key];
+        return acc;
+      }, {}),
+    }));
+  }
+
   async function submit(event) {
     event.preventDefault();
+    const scheduleWeeklyHours = normalizeScheduleWeeklyHours(form.scheduleWeeklyHours, barbershop);
+    const openDays = Object.values(scheduleWeeklyHours).filter((day) => day.enabled);
+    const firstOpenDay = openDays[0] || { startTime: '08:00', endTime: '18:00' };
+
     await saveAgenda({
-      scheduleStartHour: Number(form.scheduleStartHour),
-      scheduleEndHour: Number(form.scheduleEndHour),
+      scheduleWeeklyHours,
+      scheduleStartHour: Number(firstOpenDay.startTime.slice(0, 2)),
+      scheduleEndHour: Number(firstOpenDay.endTime.slice(0, 2)),
       scheduleSlotMinutes: Number(form.scheduleSlotMinutes),
     });
   }
@@ -5221,65 +5294,108 @@ function ScheduleSettings({ barbershop, onSaved }) {
     });
   }
 
+  function toggleWeeklyHours() {
+    setShowWeeklyHours((current) => !current);
+  }
+
   return (
     <div className="schedule-settings-redesign">
-      <section className="schedule-config-card schedule-default-card">
-        <div className="schedule-config-card-header">
+      <section className={`schedule-config-card schedule-default-card ${showWeeklyHours ? 'expanded' : 'collapsed'}`}>
+        <div
+          className="schedule-config-card-header with-action schedule-toggle-header"
+          role="button"
+          tabIndex={0}
+          onClick={toggleWeeklyHours}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              toggleWeeklyHours();
+            }
+          }}
+        >
           <span className="schedule-config-icon"><CalendarClock size={18} /></span>
           <div>
             <h3>Horário de atendimento</h3>
-            <p>Defina quando a barbearia fica disponível para agendamentos.</p>
+            <p>{showWeeklyHours ? 'Defina horários diferentes para cada dia da semana.' : scheduleWeeklySummary(form.scheduleWeeklyHours)}</p>
           </div>
+          <span className="schedule-toggle-indicator">
+            {showWeeklyHours ? 'Ocultar' : 'Editar'}
+            <ChevronRight size={16} />
+          </span>
         </div>
-        <form className={`schedule-default-form ${agendaChanged ? 'changed' : ''}`} onSubmit={submit}>
-          <label>
-            <span>Início</span>
-            <DropdownSelect
-              value={form.scheduleStartHour}
-              options={Array.from({ length: 24 }, (_, hour) => ({
-                value: hour,
-                label: `${String(hour).padStart(2, '0')}:00`,
-              }))}
-              onChange={(scheduleStartHour) =>
-                setForm({ ...form, scheduleStartHour })
-              }
-              ariaLabel="Selecionar horário inicial"
-            />
-          </label>
-          <label>
-            <span>Final</span>
-            <DropdownSelect
-              value={form.scheduleEndHour}
-              options={Array.from({ length: 24 }, (_, hour) => ({
-                value: hour,
-                label: `${String(hour).padStart(2, '0')}:00`,
-              }))}
-              onChange={(scheduleEndHour) =>
-                setForm({ ...form, scheduleEndHour })
-              }
-              ariaLabel="Selecionar horário final"
-            />
-          </label>
-          <label>
-            <span>Duração</span>
-            <DropdownSelect
-              value={form.scheduleSlotMinutes}
-              options={[15, 30, 45, 60].map((minutes) => ({
-                value: minutes,
-                label: `${minutes} min`,
-              }))}
-              onChange={(scheduleSlotMinutes) =>
-                setForm({ ...form, scheduleSlotMinutes })
-              }
-              ariaLabel="Selecionar duração"
-            />
-          </label>
-          {agendaChanged && (
-            <div className="schedule-save-row">
-              <button type="submit" className="schedule-subtle-save">Salvar alterações</button>
+
+        {showWeeklyHours && (
+          <form className={`schedule-week-form ${agendaChanged ? 'changed' : ''}`} onSubmit={submit}>
+            <div className="schedule-week-copybar">
+              <span>Copiar último horário alterado: <strong>{scheduleWeekConfig.find((day) => day.key === lastEditedScheduleDay)?.label || 'Segunda-feira'}</strong></span>
+              <div className="schedule-week-actions">
+                <button type="button" className="schedule-outline-action" onClick={applyLastEditedToWeekdays}>Aplicar aos dias úteis</button>
+                <button type="button" className="schedule-outline-action" onClick={applyLastEditedToAll}>Aplicar a todos</button>
+              </div>
             </div>
-          )}
-        </form>
+            <div className="schedule-week-list">
+              {scheduleWeekConfig.map((day) => {
+                const dayConfig = form.scheduleWeeklyHours[day.key];
+                return (
+                  <article key={day.key} className={`schedule-week-row ${dayConfig.enabled ? 'open' : 'closed'}`}>
+                    <div className="schedule-week-day">
+                      <strong>{day.label}</strong>
+                      <small>{dayConfig.enabled ? `${dayConfig.startTime} às ${dayConfig.endTime}` : 'Fechado'}</small>
+                    </div>
+                    <button
+                      type="button"
+                      className={`schedule-day-toggle ${dayConfig.enabled ? 'active' : ''}`}
+                      onClick={() => updateDay(day.key, { enabled: !dayConfig.enabled })}
+                    >
+                      {dayConfig.enabled ? 'Aberto' : 'Fechado'}
+                    </button>
+                    {dayConfig.enabled && (
+                      <>
+                        <label className="schedule-time-field start">
+                          <span>Início</span>
+                          <DropdownSelect
+                            value={dayConfig.startTime}
+                            options={timeOptions}
+                            onChange={(startTime) => updateDay(day.key, { startTime })}
+                            ariaLabel={`Selecionar início de ${day.label}`}
+                          />
+                        </label>
+                        <label className="schedule-time-field end">
+                          <span>Final</span>
+                          <DropdownSelect
+                            value={dayConfig.endTime}
+                            options={timeOptions}
+                            onChange={(endTime) => updateDay(day.key, { endTime })}
+                            ariaLabel={`Selecionar final de ${day.label}`}
+                          />
+                        </label>
+                      </>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+            <label className="schedule-duration-field">
+              <span>Duração dos horários</span>
+              <DropdownSelect
+                value={form.scheduleSlotMinutes}
+                options={[15, 30, 45, 60].map((minutes) => ({
+                  value: minutes,
+                  label: `${minutes} min`,
+                }))}
+                onChange={(scheduleSlotMinutes) =>
+                  setForm({ ...form, scheduleSlotMinutes })
+                }
+                ariaLabel="Selecionar duração"
+              />
+            </label>
+            {agendaChanged && (
+              <div className="schedule-save-row">
+                <button type="submit" className="schedule-subtle-save">Salvar alterações</button>
+              </div>
+            )}
+          </form>
+        )}
       </section>
 
       <section className="schedule-config-card blocked-intervals-section">
@@ -5393,7 +5509,6 @@ function ScheduleSettings({ barbershop, onSaved }) {
     </div>
   );
 }
-
 function CreateProfessional({ onSaved }) {
   const [professional, setProfessional] = useState({
     name: '',
@@ -6024,14 +6139,89 @@ function tomorrow() {
   return toInputDate(date);
 }
 
-function businessSlots(barbershop) {
+const scheduleWeekConfig = [
+  { key: 'monday', label: 'Segunda-feira', shortLabel: 'Seg' },
+  { key: 'tuesday', label: 'Terça-feira', shortLabel: 'Ter' },
+  { key: 'wednesday', label: 'Quarta-feira', shortLabel: 'Qua' },
+  { key: 'thursday', label: 'Quinta-feira', shortLabel: 'Qui' },
+  { key: 'friday', label: 'Sexta-feira', shortLabel: 'Sex' },
+  { key: 'saturday', label: 'Sábado', shortLabel: 'Sáb' },
+  { key: 'sunday', label: 'Domingo', shortLabel: 'Dom' },
+];
+
+function defaultScheduleWeeklyHours(barbershop = {}) {
   const startHour = clamp(Number(barbershop?.scheduleStartHour ?? 8), 0, 23);
   const endHour = clamp(Number(barbershop?.scheduleEndHour ?? 18), 0, 23);
+
+  return scheduleWeekConfig.reduce((acc, day) => {
+    acc[day.key] = {
+      enabled: true,
+      startTime: `${String(startHour).padStart(2, '0')}:00`,
+      endTime: `${String(endHour).padStart(2, '0')}:00`,
+    };
+    return acc;
+  }, {});
+}
+
+function normalizeScheduleWeeklyHours(value, barbershop = {}) {
+  const fallback = defaultScheduleWeeklyHours(barbershop);
+  const source = value && typeof value === 'object' ? value : {};
+
+  return scheduleWeekConfig.reduce((acc, day) => {
+    const current = source[day.key] || fallback[day.key];
+    const startTime = normalizeTimeValue(current?.startTime) || fallback[day.key].startTime;
+    const endTime = normalizeTimeValue(current?.endTime) || fallback[day.key].endTime;
+    const validRange = timeToMinutes(endTime) > timeToMinutes(startTime);
+
+    acc[day.key] = {
+      enabled: current?.enabled === undefined ? fallback[day.key].enabled : Boolean(current.enabled),
+      startTime: validRange ? startTime : fallback[day.key].startTime,
+      endTime: validRange ? endTime : fallback[day.key].endTime,
+    };
+    return acc;
+  }, {});
+}
+
+function scheduleDayKey(dateKey) {
+  const dayIndex = new Date(`${dateKey || today()}T12:00:00`).getDay();
+  return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][dayIndex] || 'monday';
+}
+
+function getBusinessHoursForDate(barbershop, dateKey) {
+  const weeklyHours = normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop);
+  return weeklyHours[scheduleDayKey(dateKey)] || defaultScheduleWeeklyHours(barbershop).monday;
+}
+
+function scheduleWeeklySummary(weeklyHours) {
+  const normalized = normalizeScheduleWeeklyHours(weeklyHours);
+  const openDays = scheduleWeekConfig.filter((day) => normalized[day.key]?.enabled);
+  if (openDays.length === 0) return 'Todos os dias fechados.';
+
+  const first = normalized[openDays[0].key];
+  const sameHours = openDays.every((day) => {
+    const current = normalized[day.key];
+    return current.startTime === first.startTime && current.endTime === first.endTime;
+  });
+
+  if (openDays.length === 7 && sameHours) {
+    return `Todos os dias, ${first.startTime} às ${first.endTime}.`;
+  }
+
+  if (sameHours) {
+    return `${openDays.map((day) => day.shortLabel).join(', ')} - ${first.startTime} às ${first.endTime}.`;
+  }
+
+  return `${openDays.length} dias configurados com horários diferentes.`;
+}
+function businessSlots(barbershop, dateKey = today()) {
+  const dayHours = getBusinessHoursForDate(barbershop, dateKey);
+  if (!dayHours.enabled) return [];
+
+  const start = timeToMinutes(dayHours.startTime);
+  const end = Math.max(start, timeToMinutes(dayHours.endTime));
   const slotMinutes = [15, 30, 45, 60].includes(Number(barbershop?.scheduleSlotMinutes))
     ? Number(barbershop.scheduleSlotMinutes)
     : 60;
-  const start = startHour * 60;
-  const end = Math.max(start, endHour * 60);
   const slots = [];
 
   for (let minutes = start; minutes <= end; minutes += slotMinutes) {
