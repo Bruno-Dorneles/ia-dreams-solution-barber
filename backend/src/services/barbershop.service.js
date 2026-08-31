@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
 const { Injectable } = require('@nestjs/common');
@@ -29,7 +30,11 @@ const validPartnerCodes = {
 };
 const professionalColors = ['#f97316', '#2563eb', '#16a34a', '#a855f7', '#e11d48'];
 const scheduleWeekConfig = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const publicBookingDefaultAccentColor = '#2563eb';
 const legalDocumentVersion = '1.1';
+const authAccessTokenTtl = '8h';
+const refreshTokenTtlMs = 30 * 24 * 60 * 60 * 1000;
+const refreshTokenIdleTtlMs = 7 * 24 * 60 * 60 * 1000;
 
 const state = {
   barbershop: null,
@@ -155,6 +160,13 @@ class BarberShopService {
     }
   }
 
+  refreshSession({ refreshToken }) {
+    const result = rotateRefreshSession(refreshToken);
+    if (result.error) return result;
+
+    return issueAuthSession(result.user);
+  }
+
   login({ email, password }) {
     const normalizedEmail = normalizeEmail(email);
     const rateLimitKey = 'login:' + (normalizedEmail || 'unknown');
@@ -187,28 +199,7 @@ class BarberShopService {
       schedulePersist();
     }
 
-    const userBarbershop = user.barbershopId
-      ? state.barbershops.find((item) => item.id === user.barbershopId)
-      : null;
-    if (userBarbershop && ['blocked', 'canceled'].includes(userBarbershop.status)) {
-      return { error: 'Conta bloqueada. Entre em contato com a IA Dreams.' };
-    }
-
-    const token = jwt.sign(
-      {
-        sub: user.id,
-        role: user.role,
-        professionalId: user.professionalId,
-        barbershopId: user.barbershopId,
-      },
-      getJwtSecret(),
-      { expiresIn: '8h' },
-    );
-
-    return {
-      token,
-      user: publicUser(user),
-    };
+    return issueAuthSession(user);
   }
   getAdminSummary() {
     const barbershops = this.listAdminBarbershops();
@@ -410,6 +401,12 @@ class BarberShopService {
       contact,
       partnerCode: partner?.code || null,
       logoUrl: '',
+      bookingLogoUrl: '',
+      bookingMobileLogoUrl: '',
+      bookingDisplayName: '',
+      bookingSlogan: '',
+      bookingPlans: [],
+      bookingAccentColor: publicBookingDefaultAccentColor,
       panelColor: '#ffffff',
       textColor: '#111827',
       accentColor: '#111827',
@@ -604,6 +601,12 @@ class BarberShopService {
         name: barbershop.name,
         ownerName: barbershop.ownerName,
         logoUrl: barbershop.logoUrl || '',
+        bookingLogoUrl: barbershop.bookingLogoUrl || barbershop.logoUrl || '',
+        bookingMobileLogoUrl: barbershop.bookingMobileLogoUrl || '',
+        bookingDisplayName: barbershop.bookingDisplayName || barbershop.name || '',
+        bookingSlogan: barbershop.bookingSlogan || 'Agende seu horário em poucos segundos',
+        bookingPlans: normalizeBookingPlans(barbershop.bookingPlans),
+        bookingAccentColor: normalizeHexColor(barbershop.bookingAccentColor, publicBookingDefaultAccentColor),
         publicSlug: barbershop.publicSlug || slugify(barbershop.name),
         scheduleStartHour: barbershop.scheduleStartHour ?? 8,
         scheduleEndHour: barbershop.scheduleEndHour ?? 18,
@@ -789,6 +792,12 @@ class BarberShopService {
       ...body,
       name: nextName,
       publicSlug: nextPublicSlug,
+      bookingLogoUrl: body.bookingLogoUrl !== undefined ? normalizeImageValue(body.bookingLogoUrl) : barbershop.bookingLogoUrl || '',
+      bookingMobileLogoUrl: body.bookingMobileLogoUrl !== undefined ? normalizeImageValue(body.bookingMobileLogoUrl) : barbershop.bookingMobileLogoUrl || '',
+      bookingDisplayName: body.bookingDisplayName !== undefined ? normalizeText(body.bookingDisplayName, 100) : barbershop.bookingDisplayName || '',
+      bookingSlogan: body.bookingSlogan !== undefined ? normalizeText(body.bookingSlogan, 160) : barbershop.bookingSlogan || '',
+      bookingPlans: body.bookingPlans !== undefined ? normalizeBookingPlans(body.bookingPlans) : normalizeBookingPlans(barbershop.bookingPlans),
+      bookingAccentColor: body.bookingAccentColor !== undefined ? normalizeHexColor(body.bookingAccentColor, publicBookingDefaultAccentColor) : normalizeHexColor(barbershop.bookingAccentColor, publicBookingDefaultAccentColor),
       paymentSettings: body.paymentSettings
         ? normalizePaymentSettings(body.paymentSettings)
         : normalizePaymentSettings(barbershop.paymentSettings),
@@ -954,16 +963,40 @@ class BarberShopService {
       return denyAccess();
     }
 
+    const nextEmail = body.email ? normalizeEmail(body.email) : user.email;
+    if (nextEmail && state.users.some((item) => item.id !== user.id && normalizeEmail(item.email) === nextEmail)) {
+      return { error: 'Este e-mail ja esta cadastrado em outra conta.' };
+    }
+
     if (body.password) {
       const passwordError = validateStrongPassword(body.password);
       if (passwordError) {
         return { error: passwordError };
       }
+
+      if (body.password !== body.confirmPassword) {
+        return { error: 'As senhas nao conferem.' };
+      }
+
+      if (authUser.role === 'admin') {
+        const admin = state.users.find((item) => item.id === authUser.id && item.role === 'admin');
+        if (!admin || !verifyPassword(body.adminPassword, admin.password)) {
+          addSecurityEvent('admin_password_change_denied', { targetUserId: user.id, adminId: authUser.id });
+          return { error: 'Informe a senha do admin para alterar a senha deste cliente.' };
+        }
+      } else if (authUser.id !== user.id && user.role === 'owner') {
+        return denyAccess();
+      } else if (!verifyPassword(body.currentPassword, user.password)) {
+        addSecurityEvent('user_password_change_denied', { targetUserId: user.id, authUserId: authUser.id });
+        return { error: 'Senha atual incorreta.' };
+      }
+
       user.password = hashPassword(body.password);
+      addSecurityEvent('user_password_changed', { targetUserId: user.id, authUserId: authUser.id });
     }
 
     user.name = body.name || user.name;
-    user.email = body.email ? normalizeEmail(body.email) : user.email;
+    user.email = nextEmail;
 
     const professional = state.professionals.find((item) => item.id === user.professionalId);
     if (professional) {
@@ -982,7 +1015,6 @@ class BarberShopService {
       barbershopId: user.barbershopId,
     };
   }
-
   listServices(barbershopId) {
     const targetBarbershopId = getTargetBarbershopId(barbershopId);
     ensureDefaultServices(targetBarbershopId);
@@ -1424,6 +1456,89 @@ function getJwtSecret() {
   return secret || 'dev-secret-local-only';
 }
 
+function signAuthToken(user) {
+  return jwt.sign(
+    {
+      sub: user.id,
+      role: user.role,
+      professionalId: user.professionalId,
+      barbershopId: user.barbershopId,
+    },
+    getJwtSecret(),
+    { expiresIn: authAccessTokenTtl },
+  );
+}
+
+function hashRefreshToken(token) {
+  return crypto.createHash('sha256').update(String(token || '')).digest('hex');
+}
+
+function createRefreshToken() {
+  return crypto.randomBytes(48).toString('base64url');
+}
+
+function cleanupUserRefreshSessions(user) {
+  const now = Date.now();
+  user.refreshSessions = Array.isArray(user.refreshSessions)
+    ? user.refreshSessions.filter((session) => {
+      if (!session?.tokenHash || !session?.expiresAt || !session?.lastUsedAt) return false;
+      if (now > Number(session.expiresAt)) return false;
+      if (now - Number(session.lastUsedAt) > refreshTokenIdleTtlMs) return false;
+      return true;
+    })
+    : [];
+}
+
+function issueAuthSession(user) {
+  cleanupUserRefreshSessions(user);
+  const refreshToken = createRefreshToken();
+  const now = Date.now();
+
+  user.refreshSessions.push({
+    tokenHash: hashRefreshToken(refreshToken),
+    createdAt: now,
+    lastUsedAt: now,
+    expiresAt: now + refreshTokenTtlMs,
+  });
+  user.refreshSessions = user.refreshSessions.slice(-5);
+  schedulePersist();
+
+  return {
+    token: signAuthToken(user),
+    refreshToken,
+    user: publicUser(user),
+  };
+}
+
+function rotateRefreshSession(refreshToken) {
+  const tokenHash = hashRefreshToken(refreshToken);
+  if (!refreshToken || !tokenHash) {
+    return { error: 'Sessao expirada. Faça login novamente.' };
+  }
+
+  const user = state.users.find((item) => Array.isArray(item.refreshSessions) && item.refreshSessions.some((session) => session.tokenHash === tokenHash));
+  if (!user) {
+    return { error: 'Sessao expirada. Faça login novamente.' };
+  }
+
+  cleanupUserRefreshSessions(user);
+  const session = user.refreshSessions.find((item) => item.tokenHash === tokenHash);
+  if (!session) {
+    schedulePersist();
+    return { error: 'Sessao expirada. Faça login novamente.' };
+  }
+
+  const userBarbershop = user.barbershopId
+    ? state.barbershops.find((item) => item.id === user.barbershopId)
+    : null;
+  if (userBarbershop && ['blocked', 'canceled'].includes(userBarbershop.status)) {
+    return { error: 'Conta bloqueada. Entre em contato com a IA Dreams.' };
+  }
+
+  user.refreshSessions = user.refreshSessions.filter((item) => item.tokenHash !== tokenHash);
+  schedulePersist();
+  return { user };
+}
 function extractBearerToken(authHeader) {
   const value = String(authHeader || '').trim();
   if (!value.toLowerCase().startsWith('bearer ')) {
@@ -1555,6 +1670,36 @@ function normalizeText(value, maxLength = 120) {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, maxLength);
+}
+
+function normalizeBookingPlans(plans = []) {
+  if (!Array.isArray(plans)) return [];
+
+  return plans
+    .map((plan, index) => ({
+      id: normalizeText(plan?.id, 80) || `plan-${Date.now()}-${index}`,
+      title: normalizeText(plan?.title, 80),
+      description: normalizeText(plan?.description, 180),
+      priceText: normalizeText(plan?.priceText, 60),
+    }))
+    .filter((plan) => plan.title)
+    .slice(0, 8);
+}
+function normalizeHexColor(value, fallback = '#2563eb') {
+  const text = String(value || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(text) ? text.toLowerCase() : fallback;
+}
+function normalizeImageValue(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+
+  if (text.startsWith('data:image/')) {
+    const validImage = /^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/.test(text);
+    if (!validImage || text.length > 4200000) return '';
+    return text;
+  }
+
+  return normalizeText(text, 500);
 }
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -1956,3 +2101,10 @@ function normalizePaymentSettings(settings = {}) {
     return acc;
   }, {});
 }
+
+
+
+
+
+
+

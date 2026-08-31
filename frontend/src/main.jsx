@@ -10,6 +10,7 @@ import {
   CalendarClock,
   CalendarPlus,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleDollarSign,
   CreditCard,
@@ -31,6 +32,7 @@ import {
   Store,
   Tag,
   Trash2,
+  Upload,
   UserCog,
   UserRound,
   Users,
@@ -43,6 +45,7 @@ import {
 } from 'lucide-react';
 import barberproLoginHero from './assets/barberpro-login-hero.png';
 import barberproRegisterHero from './assets/barberpro-register-hero.png';
+import barberproDefaultLogo from './assets/barberpro-default-logo.svg';
 import { findLegalDocument, legalDocumentVersion, legalDocuments, legalDocumentVersions } from './legalDocuments.js';
 import './styles.css';
 
@@ -86,6 +89,7 @@ const savedSessionKey = 'solution-barber-session';
 const temporarySessionKey = 'solution-barber-tab-session';
 const appVersionKey = 'barberpro-app-version';
 const appVersion = 'apps-barberpro-2026-08-03';
+const publicBookingDefaultAccentColor = '#2563eb';
 
 const barberProBasePath = '/apps/barberpro';
 
@@ -182,6 +186,7 @@ function App() {
     const nextSession = {
       token: data.token,
       user: data.user,
+      refreshToken: data.refreshToken,
     };
     setSession(nextSession);
     saveSession(nextSession, remember);
@@ -223,6 +228,41 @@ function App() {
       setSession(null);
     }
   }, [session]);
+  useEffect(() => {
+    if (!session?.refreshToken) return undefined;
+
+    let cancelled = false;
+
+    async function refreshOpenSession() {
+      try {
+        const response = await api.post('/auth/refresh', { refreshToken: session.refreshToken });
+        if (cancelled || response.data?.error || !response.data?.token) return;
+
+        const nextSession = {
+          token: response.data.token,
+          refreshToken: response.data.refreshToken || session.refreshToken,
+          user: response.data.user || session.user,
+        };
+
+        activeSessionToken = nextSession.token;
+        setSession(nextSession);
+        setMasterSession((current) => (current ? { ...current, token: nextSession.token } : current));
+        saveSession(nextSession, Boolean(localStorage.getItem(savedSessionKey)));
+      } catch {
+        // Mantem o app aberto; a proxima tentativa renova novamente.
+      }
+    }
+
+    const interval = window.setInterval(refreshOpenSession, 30 * 60 * 1000);
+    window.addEventListener('focus', refreshOpenSession);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshOpenSession);
+    };
+  }, [session?.refreshToken]);
+
 
   if (window.location.pathname === '/') {
     window.history.replaceState(null, '', barberProPath('/') + window.location.search + window.location.hash);
@@ -279,6 +319,7 @@ function PublicBookingPage({ slug }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPublicPlans, setShowPublicPlans] = useState(false);
   const railDragRef = useRef({ active: false, startX: 0, startLeft: 0, moved: false });
   const ignoreRailClickRef = useRef(false);
 
@@ -367,6 +408,12 @@ function PublicBookingPage({ slug }) {
   const schedules = page?.schedules || [];
   const selectedProfessional = professionals.find((item) => item.id === selectedProfessionalId);
   const selectedService = services.find((item) => item.id === selectedServiceId);
+  const bookingLogoUrl = barbershop?.bookingLogoUrl || barbershop?.logoUrl || '';
+  const bookingMobileLogoUrl = barbershop?.bookingMobileLogoUrl || bookingLogoUrl;
+  const bookingDisplayName = barbershop?.bookingDisplayName || barbershop?.name || 'Barbearia';
+  const bookingSlogan = barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos';
+  const bookingPlans = Array.isArray(barbershop?.bookingPlans) ? barbershop.bookingPlans.filter((plan) => plan?.title) : [];
+  const bookingAccentColor = normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor);
   const currentDateKey = today();
   const currentTime = new Date();
   const currentTimeMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
@@ -467,9 +514,12 @@ function PublicBookingPage({ slug }) {
   }
 
   return (
-    <main className="public-booking-shell">
+    <main className="public-booking-shell" style={{ '--booking-accent-color': bookingAccentColor }}>
       <section className="public-booking-frame">
-        <aside className="public-booking-hero">
+        <aside
+          className="public-booking-hero"
+          style={bookingLogoUrl ? { backgroundImage: `linear-gradient(90deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.78)), url("${bookingLogoUrl}")` } : undefined}
+        >
           <div className="public-booking-brand">
             <BarberProLogoMark />
             <div>
@@ -478,17 +528,23 @@ function PublicBookingPage({ slug }) {
             </div>
           </div>
           <div className="public-booking-hero-copy">
-            <h1>{barbershop?.name || 'Barbearia'}</h1>
-            <p>Agende seu horário em poucos segundos</p>
+            <h1>{bookingDisplayName}</h1>
+            <p>{bookingSlogan}</p>
           </div>
           <div className="public-booking-powered">Powered by BarberPro IA DREAMS</div>
         </aside>
 
         <form className="public-booking-panel" onSubmit={submitBooking}>
-          <div className="public-booking-mobile-brand">
-            <BarberProWordmark />
-            <h1>{barbershop?.name || 'Barbearia'}</h1>
-            <p>Agende seu horário em poucos segundos</p>
+          <div className="public-booking-mobile-brand shop-cover">
+            <div className={`public-shop-cover-logo ${bookingMobileLogoUrl ? 'has-image' : 'no-logo'}`}>
+              {bookingMobileLogoUrl ? (
+                <img src={bookingMobileLogoUrl} alt={`Logo ${bookingDisplayName}`} />
+              ) : (
+                <img className="public-shop-cover-default-image" src={barberproDefaultLogo} alt="BarberPro IA Dreams" />
+              )}
+            </div>
+            <h1>{bookingDisplayName}</h1>
+            <p>{bookingSlogan}</p>
           </div>
 
           <section className="public-booking-step">
@@ -538,6 +594,36 @@ function PublicBookingPage({ slug }) {
               ))}
             </div>
           </section>
+
+          {bookingPlans.length > 0 && (
+            <section className={`public-booking-plans-box ${showPublicPlans ? 'open' : ''}`}>
+              <button
+                type="button"
+                className="public-booking-plans-toggle"
+                onClick={() => setShowPublicPlans((current) => !current)}
+              >
+                <span>
+                  <Tag size={17} />
+                  Planos da barbearia
+                </span>
+                <ChevronRight size={17} />
+              </button>
+
+              {showPublicPlans && (
+                <div className="public-booking-plans-list">
+                  {bookingPlans.map((plan) => (
+                    <article key={plan.id || plan.title}>
+                      <div>
+                        <strong>{plan.title}</strong>
+                        {plan.description && <small>{plan.description}</small>}
+                      </div>
+                      {plan.priceText && <span>{plan.priceText}</span>}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="public-booking-step">
             <h2><span>3</span> Data e horário</h2>
@@ -1772,8 +1858,10 @@ function PageTitle({ title, subtitle, action }) {
   return <AppPageHeader title={title} subtitle={subtitle} action={action} className="page-title" />;
 }
 
-function ManagementGreeting({ user }) {
-  const firstName = String(user?.name || 'Joao').trim().split(' ')[0] || 'Joao';
+function ManagementGreeting({ user, users = [] }) {
+  const ownerUser = users.find((item) => item.role === 'owner') || null;
+  const greetingUser = user?.masterMode || user?.role === 'admin' ? ownerUser || user : user;
+  const firstName = String(greetingUser?.name || 'Joao').trim().split(' ')[0] || 'Joao';
 
   return (
     <AppPageHeader
@@ -2834,6 +2922,7 @@ function Workspace({ session, onLogout, onExitMaster }) {
               user={user}
               barbershop={barbershop}
               professionals={professionals}
+              users={users}
               appointments={appointments}
               schedules={schedules}
               costs={costs}
@@ -3743,6 +3832,7 @@ function ManagementScreen({
   user,
   barbershop,
   professionals,
+  users = [],
   appointments,
   schedules,
   costs,
@@ -3895,7 +3985,7 @@ function ManagementScreen({
   return (
     <div className="screen-column management-screen">
       <div className="management-top-row">
-        <ManagementGreeting user={user} />
+        <ManagementGreeting user={user} users={users} />
 
         {canManageFinancials && (
           <DropdownSelect
@@ -4704,7 +4794,7 @@ function SettingsScreen({
       <div className="screen-column settings-modern-shell">
         <section className="settings-modern-content single">
           <SettingsSectionHeader title="Minha conta" description="Atualize seus dados de acesso." />
-          <ProfileEditor user={user} onSaved={onSaved} />
+          <ProfileEditor user={user} authUser={user} onSaved={onSaved} />
         </section>
       </div>
     );
@@ -4712,12 +4802,15 @@ function SettingsScreen({
 
   const sections = buildSettingsSections({ barbershop, professionals, services, users, user });
   const activeSection = sections.find((section) => section.id === tab) || sections[0];
+  const scheduleBookingSlug = barbershop?.publicSlug || clientSlugify(barbershop?.name || '') || barbershop?.id;
+  const scheduleBookingUrl = scheduleBookingSlug ? barberProUrl(`/agendar/${scheduleBookingSlug}`) : '';
   const activeContent = renderSettingsSection({
     tab,
     barbershop,
     users,
     professionals,
     services,
+    authUser: user,
     onSaved,
   });
 
@@ -4759,7 +4852,22 @@ function SettingsScreen({
           <ArrowLeft size={18} />
           Configurações
         </button>
-        <SettingsSectionHeader title={activeSection.label} description={activeSection.description} />
+        <SettingsSectionHeader
+          title={activeSection.label}
+          description={activeSection.description}
+          action={activeSection.id === 'schedule' && scheduleBookingUrl ? (
+            <button
+              type="button"
+              className="settings-view-booking-link"
+              onClick={() => window.open(scheduleBookingUrl, '_blank', 'noopener,noreferrer')}
+              aria-label="Visualizar link de agendamento"
+              title="Visualizar link de agendamento"
+            >
+              <Maximize2 size={16} />
+              <span>Visualizar link</span>
+            </button>
+          ) : null}
+        />
         {activeContent}
       </section>
     </div>
@@ -4840,11 +4948,11 @@ function buildSettingsSections({ barbershop, professionals, services, users, use
   ];
 }
 
-function renderSettingsSection({ tab, barbershop, users, professionals, services, onSaved }) {
+function renderSettingsSection({ tab, barbershop, users, professionals, services, authUser, onSaved }) {
   const ownerUser = users?.find((item) => item.role === 'owner') || users?.[0];
 
   if (tab === 'company') return <CompanyEditor barbershop={barbershop} onSaved={onSaved} />;
-  if (tab === 'account') return ownerUser ? <ProfileEditor user={ownerUser} onSaved={onSaved} /> : <div className="panel empty">Conta do dono não encontrada.</div>;
+  if (tab === 'account') return ownerUser ? <ProfileEditor user={ownerUser} authUser={authUser} onSaved={onSaved} /> : <div className="panel empty">Conta do dono não encontrada.</div>;
   if (tab === 'theme') return <ThemeEditor barbershop={barbershop} onSaved={onSaved} />;
   if (tab === 'team') {
     return (
@@ -4861,13 +4969,14 @@ function renderSettingsSection({ tab, barbershop, users, professionals, services
   return null;
 }
 
-function SettingsSectionHeader({ title, description }) {
+function SettingsSectionHeader({ title, description, action = null }) {
   return (
     <header className="settings-section-header">
       <div>
         <h2>{title}</h2>
         <p>{description}</p>
       </div>
+      {action}
     </header>
   );
 }
@@ -4910,29 +5019,111 @@ function LegalSettingsPanel({ barbershop }) {
     </div>
   );
 }
-function ProfileEditor({ user, onSaved }) {
+function ProfileEditor({ user, authUser, onSaved }) {
+  const targetUser = user || {};
+  const actingUser = authUser || targetUser;
   const [form, setForm] = useState({
-    name: user.name,
-    email: user.email,
+    name: targetUser.name || '',
+    email: targetUser.email || '',
+    currentPassword: '',
+    adminPassword: '',
     password: '',
+    confirmPassword: '',
   });
+  const editingUserIdRef = useRef(targetUser.id);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const issues = form.password ? getPasswordIssues(form.password) : [];
+  const isAdminEditingClient = actingUser?.role === 'admin' && actingUser.id !== targetUser.id;
+
+  useEffect(() => {
+    const changedUser = editingUserIdRef.current !== targetUser.id;
+    editingUserIdRef.current = targetUser.id;
+
+    setForm((current) => ({
+      name: targetUser.name || '',
+      email: targetUser.email || '',
+      currentPassword: changedUser ? '' : current.currentPassword,
+      adminPassword: changedUser ? '' : current.adminPassword,
+      password: changedUser ? '' : current.password,
+      confirmPassword: changedUser ? '' : current.confirmPassword,
+    }));
+
+    if (changedUser) {
+      setMessage('');
+      setError('');
+    }
+  }, [targetUser.id, targetUser.name, targetUser.email]);
 
   async function submit(event) {
     event.preventDefault();
     setMessage('');
-    if (issues.length > 0) {
-      setMessage('Complete os requisitos da senha.');
+    setError('');
+
+    const changingPassword = Boolean(form.password || form.confirmPassword || form.currentPassword || form.adminPassword);
+
+    if (changingPassword) {
+      if (!form.password) {
+        setError('Informe a nova senha.');
+        return;
+      }
+      if (issues.length > 0) {
+        setError('Complete os requisitos da senha.');
+        return;
+      }
+      if (form.password !== form.confirmPassword) {
+        setError('As senhas não conferem.');
+        return;
+      }
+      if (isAdminEditingClient && !form.adminPassword) {
+        setError('Informe sua senha de admin para alterar a senha do cliente.');
+        return;
+      }
+      if (!isAdminEditingClient && !form.currentPassword) {
+        setError('Informe sua senha atual para alterar a senha.');
+        return;
+      }
+    }
+
+    const payload = {
+      name: form.name,
+      email: form.email,
+      ...(changingPassword
+        ? {
+            currentPassword: form.currentPassword,
+            adminPassword: form.adminPassword,
+            password: form.password,
+            confirmPassword: form.confirmPassword,
+          }
+        : {}),
+    };
+
+    if (!targetUser.id) {
+      setError('Conta não encontrada. Recarregue o app e tente novamente.');
       return;
     }
-    await api.post(`/users/${user.id}`, form);
+
+    const response = await api.post('/users/' + targetUser.id, payload);
+    if (response.data?.error) {
+      setError(response.data.error);
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      currentPassword: '',
+      adminPassword: '',
+      password: '',
+      confirmPassword: '',
+    }));
     setMessage('Perfil atualizado.');
     onSaved();
   }
 
   return (
     <form className="panel stack-form" onSubmit={submit}>
+      <SectionTitle eyebrow="Dados da conta" title="Perfil do responsável" compact />
       <input
         value={form.name}
         onChange={(event) => setForm({ ...form, name: event.target.value })}
@@ -4942,19 +5133,59 @@ function ProfileEditor({ user, onSaved }) {
         value={form.email}
         onChange={(event) => setForm({ ...form, email: event.target.value })}
       />
-      <input
-        type="password"
-        placeholder="Nova senha"
-        value={form.password}
-        onChange={(event) => setForm({ ...form, password: event.target.value })}
-      />
-      {issues.length > 0 && <PasswordRules issues={issues} />}
-      {message && <Message tone={issues.length > 0 ? 'error' : 'success'}>{message}</Message>}
+      <div className={`password-collapse ${passwordOpen ? 'open' : ''}`}>
+        <button
+          type="button"
+          className="password-collapse-toggle"
+          onClick={() => setPasswordOpen((current) => !current)}
+          aria-expanded={passwordOpen}
+        >
+          <span>
+            <strong>Alterar senha</strong>
+            <small>{isAdminEditingClient ? 'Informe sua senha admin para liberar a troca.' : 'Informe sua senha atual antes de criar uma nova.'}</small>
+          </span>
+          <ChevronDown size={18} />
+        </button>
+
+        {passwordOpen && (
+          <div className="password-collapse-content">
+            {isAdminEditingClient ? (
+              <input
+                type="password"
+                placeholder="Senha do admin"
+                value={form.adminPassword}
+                onChange={(event) => setForm({ ...form, adminPassword: event.target.value })}
+              />
+            ) : (
+              <input
+                type="password"
+                placeholder="Senha atual"
+                value={form.currentPassword}
+                onChange={(event) => setForm({ ...form, currentPassword: event.target.value })}
+              />
+            )}
+            <input
+              type="password"
+              placeholder="Nova senha"
+              value={form.password}
+              onChange={(event) => setForm({ ...form, password: event.target.value })}
+            />
+            <input
+              type="password"
+              placeholder="Confirmar nova senha"
+              value={form.confirmPassword}
+              onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })}
+            />
+            {issues.length > 0 && <PasswordRules issues={issues} />}
+          </div>
+        )}
+      </div>
+      {error && <Message tone="error">{error}</Message>}
+      {message && <Message tone="success">{message}</Message>}
       <button>Salvar perfil</button>
     </form>
   );
 }
-
 function CompanyEditor({ barbershop, onSaved }) {
   const [form, setForm] = useState({
     name: barbershop?.name || '',
@@ -5189,12 +5420,32 @@ function ScheduleSettings({ barbershop, onSaved }) {
     scheduleWeeklyHours: normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop),
     scheduleSlotMinutes: barbershop?.scheduleSlotMinutes ?? 60,
   }));
+  const [bookingForm, setBookingForm] = useState(() => ({
+    bookingLogoUrl: barbershop?.bookingLogoUrl || barbershop?.logoUrl || '',
+    bookingMobileLogoUrl: barbershop?.bookingMobileLogoUrl || '',
+    bookingDisplayName: barbershop?.bookingDisplayName || barbershop?.name || '',
+    bookingSlogan: barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos',
+    bookingAccentColor: normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor),
+  }));
+  const [bookingIdentityError, setBookingIdentityError] = useState('');
+  const [bookingPlansError, setBookingPlansError] = useState('');
+  const [bookingPlanForm, setBookingPlanForm] = useState({ title: '', description: '', priceText: '' });
   const [blockedForm, setBlockedForm] = useState(defaultBlockedIntervalForm());
   const [showBlockedForm, setShowBlockedForm] = useState(false);
   const [showWeeklyHours, setShowWeeklyHours] = useState(false);
+  const [showBookingIdentity, setShowBookingIdentity] = useState(false);
+  const [showBookingPlans, setShowBookingPlans] = useState(false);
   const [lastEditedScheduleDay, setLastEditedScheduleDay] = useState('monday');
+  const previousScheduleShopIdRef = useRef(barbershop?.id || '');
   const blockedIntervals = normalizeScheduleBlockedIntervals(barbershop?.scheduleBlockedIntervals);
+  const bookingPlans = Array.isArray(barbershop?.bookingPlans) ? barbershop.bookingPlans.filter((plan) => plan?.title) : [];
   const normalizedCurrentWeeklyHours = normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop);
+  const bookingIdentityChanged =
+    bookingForm.bookingLogoUrl !== (barbershop?.bookingLogoUrl || barbershop?.logoUrl || '') ||
+    bookingForm.bookingMobileLogoUrl !== (barbershop?.bookingMobileLogoUrl || '') ||
+    bookingForm.bookingDisplayName !== (barbershop?.bookingDisplayName || barbershop?.name || '') ||
+    bookingForm.bookingSlogan !== (barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos') ||
+    bookingForm.bookingAccentColor !== normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor);
   const agendaChanged =
     JSON.stringify(form.scheduleWeeklyHours) !== JSON.stringify(normalizedCurrentWeeklyHours) ||
     Number(form.scheduleSlotMinutes) !== Number(barbershop?.scheduleSlotMinutes ?? 60);
@@ -5204,11 +5455,32 @@ function ScheduleSettings({ barbershop, onSaved }) {
   }));
 
   useEffect(() => {
+    const currentShopId = barbershop?.id || '';
+    const shopChanged = previousScheduleShopIdRef.current !== currentShopId;
+    previousScheduleShopIdRef.current = currentShopId;
+
     setForm({
       scheduleWeeklyHours: normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop),
       scheduleSlotMinutes: barbershop?.scheduleSlotMinutes ?? 60,
     });
-  }, [barbershop]);
+
+    if (shopChanged || !showBookingIdentity) {
+      setBookingForm({
+        bookingLogoUrl: barbershop?.bookingLogoUrl || barbershop?.logoUrl || '',
+        bookingMobileLogoUrl: barbershop?.bookingMobileLogoUrl || '',
+        bookingDisplayName: barbershop?.bookingDisplayName || barbershop?.name || '',
+        bookingSlogan: barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos',
+        bookingAccentColor: normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor),
+      });
+    }
+
+    if (shopChanged) {
+      setBookingPlanForm({ title: '', description: '', priceText: '' });
+    }
+
+    setBookingIdentityError('');
+    setBookingPlansError('');
+  }, [barbershop, showBookingIdentity]);
 
   async function saveAgenda(payload) {
     await api.post('/barbershop', payload);
@@ -5257,6 +5529,75 @@ function ScheduleSettings({ barbershop, onSaved }) {
     }));
   }
 
+  function handleBookingLogoFile(file, field = 'bookingLogoUrl') {
+    setBookingIdentityError('');
+
+    if (!file) return;
+
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      setBookingIdentityError('Use uma imagem PNG, JPG ou WebP.');
+      return;
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      setBookingIdentityError('Escolha uma imagem de até 3 MB para manter o app leve.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setBookingForm((current) => ({ ...current, [field]: String(reader.result || '') }));
+    };
+    reader.onerror = () => {
+      setBookingIdentityError('Não foi possível carregar essa imagem. Tente outra foto.');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function submitBookingIdentity(event) {
+    event.preventDefault();
+    await saveAgenda({
+      bookingLogoUrl: bookingForm.bookingLogoUrl.trim(),
+      bookingMobileLogoUrl: bookingForm.bookingMobileLogoUrl.trim(),
+      bookingDisplayName: bookingForm.bookingDisplayName.trim(),
+      bookingSlogan: bookingForm.bookingSlogan.trim(),
+      bookingAccentColor: normalizeHexColor(bookingForm.bookingAccentColor, publicBookingDefaultAccentColor),
+    });
+  }
+
+
+  async function submitBookingPlan(event) {
+    event.preventDefault();
+    setBookingPlansError('');
+
+    const title = bookingPlanForm.title.trim();
+    const description = bookingPlanForm.description.trim();
+    const priceText = bookingPlanForm.priceText.trim();
+
+    if (!title) {
+      setBookingPlansError('Informe o nome do plano ou promocao.');
+      return;
+    }
+
+    await saveAgenda({
+      bookingPlans: [
+        ...bookingPlans,
+        {
+          id: `plan-${Date.now()}`,
+          title,
+          description,
+          priceText,
+        },
+      ],
+    });
+    setBookingPlanForm({ title: '', description: '', priceText: '' });
+  }
+
+  async function removeBookingPlan(planId) {
+    await saveAgenda({
+      bookingPlans: bookingPlans.filter((plan) => plan.id !== planId),
+    });
+  }
   async function submit(event) {
     event.preventDefault();
     const scheduleWeeklyHours = normalizeScheduleWeeklyHours(form.scheduleWeeklyHours, barbershop);
@@ -5298,8 +5639,232 @@ function ScheduleSettings({ barbershop, onSaved }) {
     setShowWeeklyHours((current) => !current);
   }
 
+  function toggleBookingIdentity() {
+    setShowBookingIdentity((current) => !current);
+  }
+
+  function toggleBookingPlans() {
+    setShowBookingPlans((current) => !current);
+  }
+
   return (
     <div className="schedule-settings-redesign">
+      <section className={`schedule-config-card booking-identity-card ${showBookingIdentity ? 'expanded' : 'collapsed'}`}>
+        <div
+          className="schedule-config-card-header with-action schedule-toggle-header"
+          role="button"
+          tabIndex={0}
+          onClick={toggleBookingIdentity}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              toggleBookingIdentity();
+            }
+          }}
+        >
+          <span className="schedule-config-icon"><Store size={18} /></span>
+          <div>
+            <h3>Identidade do link</h3>
+            <p>
+              {showBookingIdentity
+                ? 'Edite foto, nome e slogan da pagina publica.'
+                : `${bookingForm.bookingDisplayName || barbershop?.name || 'Barbearia'} - ${bookingForm.bookingSlogan || 'Agende seu horario em poucos segundos'}`}
+            </p>
+          </div>
+          <span className="schedule-toggle-indicator">
+            {showBookingIdentity ? 'Ocultar' : 'Editar'}
+            <ChevronRight size={16} />
+          </span>
+        </div>
+
+        {showBookingIdentity && (
+          <form className="booking-identity-form" onSubmit={submitBookingIdentity}>
+            <div className="booking-identity-preview">
+              <div className="booking-identity-logo">
+                {bookingForm.bookingLogoUrl ? (
+                  <img src={bookingForm.bookingLogoUrl} alt="Logo do agendamento" />
+                ) : (
+                  <span>{initials(bookingForm.bookingDisplayName || barbershop?.name || 'Barbearia')}</span>
+                )}
+              </div>
+              <div>
+                <strong>{bookingForm.bookingDisplayName || barbershop?.name || 'Barbearia'}</strong>
+                <small>{bookingForm.bookingSlogan || 'Agende seu horario em poucos segundos'}</small>
+              </div>
+            </div>
+            <div className="booking-identity-fields">
+              <div className="booking-logo-picker">
+                <span>Imagem para PC</span>
+                <div className="booking-logo-picker-actions">
+                  <label className="booking-logo-upload">
+                    <Upload size={16} />
+                    Selecionar imagem
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(event) => handleBookingLogoFile(event.target.files?.[0], 'bookingLogoUrl')}
+                    />
+                  </label>
+                  {bookingForm.bookingLogoUrl && (
+                    <button
+                      type="button"
+                      className="booking-logo-remove"
+                      onClick={() => setBookingForm({ ...bookingForm, bookingLogoUrl: '' })}
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+                <small>Usada como imagem lateral no PC. PNG, JPG ou WebP ate 3 MB.</small>
+              </div>
+              <div className="booking-logo-picker">
+                <span>Imagem para mobile</span>
+                <div className="booking-logo-picker-actions">
+                  <label className="booking-logo-upload">
+                    <Upload size={16} />
+                    Selecionar imagem
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(event) => handleBookingLogoFile(event.target.files?.[0], 'bookingMobileLogoUrl')}
+                    />
+                  </label>
+                  {bookingForm.bookingMobileLogoUrl && (
+                    <button
+                      type="button"
+                      className="booking-logo-remove"
+                      onClick={() => setBookingForm({ ...bookingForm, bookingMobileLogoUrl: '' })}
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+                <small>Usada no topo do link no celular. Se ficar vazia, usa a imagem do PC.</small>
+              </div>
+              <label>
+                <span>Nome no agendamento</span>
+                <input
+                  value={bookingForm.bookingDisplayName}
+                  onChange={(event) => setBookingForm({ ...bookingForm, bookingDisplayName: event.target.value })}
+                  placeholder={barbershop?.name || 'Nome da barbearia'}
+                />
+              </label>
+              <label>
+                <span>Slogan</span>
+                <input
+                  value={bookingForm.bookingSlogan}
+                  onChange={(event) => setBookingForm({ ...bookingForm, bookingSlogan: event.target.value })}
+                  placeholder="Ex: Seu estilo, nossa assinatura"
+                />
+              </label>
+              <label className="booking-accent-picker">
+                <span>Cor de destaque</span>
+                <div className="booking-accent-control">
+                  <input
+                    type="color"
+                    value={bookingForm.bookingAccentColor}
+                    onChange={(event) => setBookingForm({ ...bookingForm, bookingAccentColor: event.target.value })}
+                    aria-label="Cor de destaque do link"
+                  />
+                  <strong>{bookingForm.bookingAccentColor}</strong>
+                  <button
+                    type="button"
+                    className="booking-accent-reset"
+                    onClick={() => setBookingForm({ ...bookingForm, bookingAccentColor: publicBookingDefaultAccentColor })}
+                    disabled={bookingForm.bookingAccentColor === publicBookingDefaultAccentColor}
+                  >
+                    Restaurar padrão
+                  </button>
+                </div>
+              </label>
+            </div>
+            {bookingIdentityError && <Message tone="error">{bookingIdentityError}</Message>}
+            {bookingIdentityChanged && (
+              <div className="schedule-save-row booking-identity-save">
+                <button type="submit" className="schedule-subtle-save">Salvar identidade</button>
+              </div>
+            )}
+          </form>
+        )}
+      </section>
+
+      <section className={`schedule-config-card booking-plans-card ${showBookingPlans ? 'expanded' : 'collapsed'}`}>
+        <div
+          className="schedule-config-card-header with-action schedule-toggle-header"
+          role="button"
+          tabIndex={0}
+          onClick={toggleBookingPlans}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              toggleBookingPlans();
+            }
+          }}
+        >
+          <span className="schedule-config-icon"><Tag size={18} /></span>
+          <div>
+            <h3>Planos e promocoes</h3>
+            <p>
+              {showBookingPlans
+                ? 'Cadastre os planos que podem aparecer no link publico.'
+                : bookingPlans.length > 0 ? `${bookingPlans.length} plano(s) cadastrado(s).` : 'Nenhum plano cadastrado.'}
+            </p>
+          </div>
+          <span className="schedule-toggle-indicator">
+            {showBookingPlans ? 'Ocultar' : 'Ver opcoes'}
+            <ChevronRight size={16} />
+          </span>
+        </div>
+
+        {showBookingPlans && (
+          <div className="booking-plans-editor">
+            <form className="booking-plan-form" onSubmit={submitBookingPlan}>
+              <label>
+                <span>Nome do plano</span>
+                <input
+                  value={bookingPlanForm.title}
+                  onChange={(event) => setBookingPlanForm({ ...bookingPlanForm, title: event.target.value })}
+                  placeholder="Ex: Plano mensal"
+                />
+              </label>
+              <label>
+                <span>Valor ou chamada</span>
+                <input
+                  value={bookingPlanForm.priceText}
+                  onChange={(event) => setBookingPlanForm({ ...bookingPlanForm, priceText: event.target.value })}
+                  placeholder="Ex: R$ 99,90/mês"
+                />
+              </label>
+              <label className="booking-plan-description-field">
+                <span>Descrição</span>
+                <input
+                  value={bookingPlanForm.description}
+                  onChange={(event) => setBookingPlanForm({ ...bookingPlanForm, description: event.target.value })}
+                  placeholder="Ex: 4 cortes por mês com horário preferencial"
+                />
+              </label>
+              <button type="submit" className="schedule-subtle-save">Adicionar plano</button>
+            </form>
+
+            {bookingPlansError && <Message tone="error">{bookingPlansError}</Message>}
+
+            {bookingPlans.length > 0 ? (
+              <div className="booking-plans-grid editable">
+                {bookingPlans.map((plan) => (
+                  <article key={plan.id || plan.title}>
+                    <span>{plan.priceText || 'Plano'}</span>
+                    <strong>{plan.title}</strong>
+                    {plan.description && <small>{plan.description}</small>}
+                    <button type="button" onClick={() => removeBookingPlan(plan.id)}>Remover</button>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="booking-plans-empty">Cadastre pelo menos um plano para esse botão aparecer no link do cliente.</p>
+            )}
+          </div>
+        )}
+      </section>
       <section className={`schedule-config-card schedule-default-card ${showWeeklyHours ? 'expanded' : 'collapsed'}`}>
         <div
           className="schedule-config-card-header with-action schedule-toggle-header"
@@ -5898,6 +6463,10 @@ function buildServiceDistribution(appointments) {
   }));
 }
 
+function normalizeHexColor(value, fallback = publicBookingDefaultAccentColor) {
+  const text = String(value || '').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(text) ? text.toLowerCase() : fallback;
+}
 function normalizePaymentSettings(settings = {}) {
   return paymentMethodOptions.reduce((acc, method) => {
     const current = settings?.[method.value] || {};
@@ -6578,6 +7147,26 @@ function getRevenueChartMaxCents(maxRevenueCents) {
 }
 
 createRoot(document.getElementById('root')).render(<AppErrorBoundary><App /></AppErrorBoundary>);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

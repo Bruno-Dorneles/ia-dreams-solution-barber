@@ -47,6 +47,10 @@ class AppController {
     return this.barberShopService.login(body);
   }
 
+  refreshSession(body) {
+    return this.barberShopService.refreshSession(body || {});
+  }
+
   register(body, authHeader) {
     const user = this.getAuthenticatedUser(authHeader, ['admin']);
     if (user.error) return user;
@@ -261,6 +265,9 @@ Controller()(AppController);
 
 Post('auth/login')(AppController.prototype, 'login', Object.getOwnPropertyDescriptor(AppController.prototype, 'login'));
 Body()(AppController.prototype, 'login', 0);
+
+Post('auth/refresh')(AppController.prototype, 'refreshSession', Object.getOwnPropertyDescriptor(AppController.prototype, 'refreshSession'));
+Body()(AppController.prototype, 'refreshSession', 0);
 
 Post('auth/register')(AppController.prototype, 'register', Object.getOwnPropertyDescriptor(AppController.prototype, 'register'));
 Body()(AppController.prototype, 'register', 0);

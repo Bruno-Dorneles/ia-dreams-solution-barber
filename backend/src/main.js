@@ -9,6 +9,8 @@ async function bootstrap() {
   await initializePersistentState();
 
   const app = await NestFactory.create(AppModule);
+  app.useBodyParser('json', { limit: '5mb' });
+  app.useBodyParser('urlencoded', { limit: '5mb', extended: true });
   app.use((request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('X-Frame-Options', 'DENY');
@@ -30,3 +32,6 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+
+
