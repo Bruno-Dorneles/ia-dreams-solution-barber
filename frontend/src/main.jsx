@@ -45,7 +45,6 @@ import {
 } from 'lucide-react';
 import barberproLoginHero from './assets/barberpro-login-hero.png';
 import barberproRegisterHero from './assets/barberpro-register-hero.png';
-import barberproDefaultLogo from './assets/barberpro-default-logo.svg';
 import { findLegalDocument, legalDocumentVersion, legalDocuments, legalDocumentVersions } from './legalDocuments.js';
 import './styles.css';
 
@@ -409,7 +408,8 @@ function PublicBookingPage({ slug }) {
   const selectedProfessional = professionals.find((item) => item.id === selectedProfessionalId);
   const selectedService = services.find((item) => item.id === selectedServiceId);
   const bookingLogoUrl = barbershop?.bookingLogoUrl || barbershop?.logoUrl || '';
-  const bookingMobileLogoUrl = barbershop?.bookingMobileLogoUrl || bookingLogoUrl;
+  const bookingMobileLogoUrl = barbershop?.bookingMobileLogoUrl || '';
+  const bookingProfileLogoUrl = barbershop?.bookingProfileLogoUrl || '';
   const bookingDisplayName = barbershop?.bookingDisplayName || barbershop?.name || 'Barbearia';
   const bookingSlogan = barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos';
   const bookingPlans = Array.isArray(barbershop?.bookingPlans) ? barbershop.bookingPlans.filter((plan) => plan?.title) : [];
@@ -535,12 +535,17 @@ function PublicBookingPage({ slug }) {
         </aside>
 
         <form className="public-booking-panel" onSubmit={submitBooking}>
-          <div className="public-booking-mobile-brand shop-cover">
-            <div className={`public-shop-cover-logo ${bookingMobileLogoUrl ? 'has-image' : 'no-logo'}`}>
-              {bookingMobileLogoUrl ? (
-                <img src={bookingMobileLogoUrl} alt={`Logo ${bookingDisplayName}`} />
+          <div className={`public-booking-mobile-brand shop-cover social-profile ${bookingMobileLogoUrl ? 'has-mobile-cover' : 'no-mobile-cover'}`}>
+            {bookingMobileLogoUrl ? (
+              <div className="public-shop-cover-logo has-image">
+                <img src={bookingMobileLogoUrl} alt={`Capa ${bookingDisplayName}`} />
+              </div>
+            ) : null}
+            <div className={`public-booking-profile-logo mobile ${bookingProfileLogoUrl ? 'has-image' : ''}`}>
+              {bookingProfileLogoUrl ? (
+                <img src={bookingProfileLogoUrl} alt={`Logo ${bookingDisplayName}`} />
               ) : (
-                <img className="public-shop-cover-default-image" src={barberproDefaultLogo} alt="BarberPro IA Dreams" />
+                <BarberProLogoMark />
               )}
             </div>
             <h1>{bookingDisplayName}</h1>
@@ -4860,11 +4865,11 @@ function SettingsScreen({
               type="button"
               className="settings-view-booking-link"
               onClick={() => window.open(scheduleBookingUrl, '_blank', 'noopener,noreferrer')}
-              aria-label="Visualizar link de agendamento"
-              title="Visualizar link de agendamento"
+              aria-label="Ver agenda"
+              title="Ver agenda"
             >
-              <Maximize2 size={16} />
-              <span>Visualizar link</span>
+              <CalendarClock size={17} />
+              <span>Ver agenda</span>
             </button>
           ) : null}
         />
@@ -5423,6 +5428,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
   const [bookingForm, setBookingForm] = useState(() => ({
     bookingLogoUrl: barbershop?.bookingLogoUrl || barbershop?.logoUrl || '',
     bookingMobileLogoUrl: barbershop?.bookingMobileLogoUrl || '',
+    bookingProfileLogoUrl: barbershop?.bookingProfileLogoUrl || '',
     bookingDisplayName: barbershop?.bookingDisplayName || barbershop?.name || '',
     bookingSlogan: barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos',
     bookingAccentColor: normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor),
@@ -5443,6 +5449,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
   const bookingIdentityChanged =
     bookingForm.bookingLogoUrl !== (barbershop?.bookingLogoUrl || barbershop?.logoUrl || '') ||
     bookingForm.bookingMobileLogoUrl !== (barbershop?.bookingMobileLogoUrl || '') ||
+    bookingForm.bookingProfileLogoUrl !== (barbershop?.bookingProfileLogoUrl || '') ||
     bookingForm.bookingDisplayName !== (barbershop?.bookingDisplayName || barbershop?.name || '') ||
     bookingForm.bookingSlogan !== (barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos') ||
     bookingForm.bookingAccentColor !== normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor);
@@ -5468,6 +5475,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
       setBookingForm({
         bookingLogoUrl: barbershop?.bookingLogoUrl || barbershop?.logoUrl || '',
         bookingMobileLogoUrl: barbershop?.bookingMobileLogoUrl || '',
+        bookingProfileLogoUrl: barbershop?.bookingProfileLogoUrl || '',
         bookingDisplayName: barbershop?.bookingDisplayName || barbershop?.name || '',
         bookingSlogan: barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos',
         bookingAccentColor: normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor),
@@ -5539,11 +5547,6 @@ function ScheduleSettings({ barbershop, onSaved }) {
       return;
     }
 
-    if (file.size > 3 * 1024 * 1024) {
-      setBookingIdentityError('Escolha uma imagem de até 3 MB para manter o app leve.');
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = () => {
       setBookingForm((current) => ({ ...current, [field]: String(reader.result || '') }));
@@ -5559,6 +5562,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
     await saveAgenda({
       bookingLogoUrl: bookingForm.bookingLogoUrl.trim(),
       bookingMobileLogoUrl: bookingForm.bookingMobileLogoUrl.trim(),
+      bookingProfileLogoUrl: bookingForm.bookingProfileLogoUrl.trim(),
       bookingDisplayName: bookingForm.bookingDisplayName.trim(),
       bookingSlogan: bookingForm.bookingSlogan.trim(),
       bookingAccentColor: normalizeHexColor(bookingForm.bookingAccentColor, publicBookingDefaultAccentColor),
@@ -5679,22 +5683,68 @@ function ScheduleSettings({ barbershop, onSaved }) {
 
         {showBookingIdentity && (
           <form className="booking-identity-form" onSubmit={submitBookingIdentity}>
-            <div className="booking-identity-preview">
-              <div className="booking-identity-logo">
-                {bookingForm.bookingLogoUrl ? (
-                  <img src={bookingForm.bookingLogoUrl} alt="Logo do agendamento" />
-                ) : (
-                  <span>{initials(bookingForm.bookingDisplayName || barbershop?.name || 'Barbearia')}</span>
-                )}
-              </div>
-              <div>
-                <strong>{bookingForm.bookingDisplayName || barbershop?.name || 'Barbearia'}</strong>
-                <small>{bookingForm.bookingSlogan || 'Agende seu horario em poucos segundos'}</small>
-              </div>
+            <div className="booking-identity-preview-comparison">
+              <article className="booking-preview-device web">
+                <span className="booking-preview-label">Versão web</span>
+                <div className="booking-preview-web-screen">
+                  <div
+                    className="booking-preview-web-cover"
+                    style={bookingForm.bookingLogoUrl ? { backgroundImage: `url("${bookingForm.bookingLogoUrl}")` } : undefined}
+                  >
+                    <div className="booking-preview-brand"><BarberProLogoMark /><strong>BarberPro</strong></div>
+                    <div className="booking-preview-web-copy">
+                      <strong>{bookingForm.bookingDisplayName || barbershop?.name || 'Barbearia'}</strong>
+                      <small>{bookingForm.bookingSlogan || 'Agende seu horario em poucos segundos'}</small>
+                    </div>
+                  </div>
+                  <div className="booking-preview-web-content" aria-hidden="true">
+                    <i /><i /><i className="wide" /><i /><i />
+                  </div>
+                </div>
+              </article>
+
+              <article className="booking-preview-device mobile">
+                <span className="booking-preview-label">Versão mobile</span>
+                <div className={`booking-preview-mobile-screen ${bookingForm.bookingMobileLogoUrl ? 'has-cover' : 'no-cover'}`}>
+                  {bookingForm.bookingMobileLogoUrl ? (
+                    <div className="booking-preview-mobile-cover" style={{ backgroundImage: `url("${bookingForm.bookingMobileLogoUrl}")` }} />
+                  ) : null}
+                  <div className="booking-preview-profile-logo">
+                    {bookingForm.bookingProfileLogoUrl ? (
+                      <img src={bookingForm.bookingProfileLogoUrl} alt="Logo da loja" />
+                    ) : (
+                      <BarberProLogoMark />
+                    )}
+                  </div>
+                  <strong>{bookingForm.bookingDisplayName || barbershop?.name || 'Barbearia'}</strong>
+                  <small>{bookingForm.bookingSlogan || 'Agende seu horario em poucos segundos'}</small>
+                  <div className="booking-preview-mobile-content" aria-hidden="true"><i /><i /><i /></div>
+                </div>
+              </article>
             </div>
             <div className="booking-identity-fields">
               <div className="booking-logo-picker">
-                <span>Imagem para PC</span>
+                <span>Logo da loja</span>
+                <div className="booking-logo-picker-actions">
+                  <label className="booking-logo-upload">
+                    <Upload size={16} />
+                    Selecionar imagem
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(event) => handleBookingLogoFile(event.target.files?.[0], 'bookingProfileLogoUrl')}
+                    />
+                  </label>
+                  {bookingForm.bookingProfileLogoUrl && (
+                    <button type="button" className="booking-logo-remove" onClick={() => setBookingForm({ ...bookingForm, bookingProfileLogoUrl: '' })}>
+                      Remover
+                    </button>
+                  )}
+                </div>
+                <small>Formato recomendado: imagem quadrada de 800 x 800 px. Outros tamanhos também são aceitos e serão enquadrados automaticamente.</small>
+              </div>
+              <div className="booking-logo-picker">
+                <span>Foto de capa para PC</span>
                 <div className="booking-logo-picker-actions">
                   <label className="booking-logo-upload">
                     <Upload size={16} />
@@ -5715,10 +5765,10 @@ function ScheduleSettings({ barbershop, onSaved }) {
                     </button>
                   )}
                 </div>
-                <small>Usada como imagem lateral no PC. PNG, JPG ou WebP ate 3 MB.</small>
+                <small>Formato recomendado: imagem vertical de 1200 x 1600 px. Outros tamanhos também são aceitos e serão ajustados ao espaço.</small>
               </div>
               <div className="booking-logo-picker">
-                <span>Imagem para mobile</span>
+                <span>Foto de capa para celular</span>
                 <div className="booking-logo-picker-actions">
                   <label className="booking-logo-upload">
                     <Upload size={16} />
@@ -5739,7 +5789,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
                     </button>
                   )}
                 </div>
-                <small>Usada no topo do link no celular. Se ficar vazia, usa a imagem do PC.</small>
+                <small>Formato recomendado: imagem horizontal de 1600 x 700 px. Outros tamanhos também são aceitos e serão ajustados ao espaço.</small>
               </div>
               <label>
                 <span>Nome no agendamento</span>
@@ -7147,51 +7197,3 @@ function getRevenueChartMaxCents(maxRevenueCents) {
 }
 
 createRoot(document.getElementById('root')).render(<AppErrorBoundary><App /></AppErrorBoundary>);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
