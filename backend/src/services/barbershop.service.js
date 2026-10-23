@@ -408,6 +408,7 @@ class BarberShopService {
       bookingSlogan: '',
       bookingPlans: [],
       bookingAccentColor: publicBookingDefaultAccentColor,
+      bookingConfirmationMode: 'manual',
       panelColor: '#ffffff',
       textColor: '#111827',
       accentColor: '#111827',
@@ -609,6 +610,7 @@ class BarberShopService {
         bookingSlogan: barbershop.bookingSlogan || 'Agende seu horário em poucos segundos',
         bookingPlans: normalizeBookingPlans(barbershop.bookingPlans),
         bookingAccentColor: normalizeHexColor(barbershop.bookingAccentColor, publicBookingDefaultAccentColor),
+        bookingConfirmationMode: barbershop.bookingConfirmationMode === 'automatic' ? 'automatic' : 'manual',
         publicSlug: barbershop.publicSlug || slugify(barbershop.name),
         scheduleStartHour: barbershop.scheduleStartHour ?? 8,
         scheduleEndHour: barbershop.scheduleEndHour ?? 18,
@@ -631,7 +633,11 @@ class BarberShopService {
           priceCents: item.priceCents || 0,
         })),
       schedules: state.schedules
-        .filter((item) => item.barbershopId === barbershop.id)
+        .filter(
+          (item) =>
+            item.barbershopId === barbershop.id &&
+            !['rejected', 'canceled'].includes(item.status),
+        )
         .map((item) => ({
           id: item.id,
           professionalId: item.professionalId,
@@ -684,7 +690,10 @@ class BarberShopService {
     }
 
     const isTaken = state.schedules.some(
-      (item) => item.professionalId === professional.id && item.startsAt === startsAt,
+      (item) =>
+        item.professionalId === professional.id &&
+        item.startsAt === startsAt &&
+        !['rejected', 'canceled'].includes(item.status),
     );
 
     if (!isScheduleSlotWithinBusinessHours(startsAt, page.barbershop)) {
@@ -695,6 +704,7 @@ class BarberShopService {
       return { error: 'Este horario acabou de ser ocupado. Escolha outro horario.' };
     }
 
+    const automaticConfirmation = page.barbershop.bookingConfirmationMode === 'automatic';
     const schedule = {
       id: `sch-${Date.now()}`,
       barbershopId: page.barbershop.id,
@@ -704,8 +714,11 @@ class BarberShopService {
       professionalId: professional.id,
       professionalName: professional.name,
       startsAt,
-      notes: 'Solicitado pela pagina publica',
-      status: 'pending',
+      notes: automaticConfirmation
+        ? 'Confirmado automaticamente pela pagina publica'
+        : 'Solicitado pela pagina publica',
+      status: automaticConfirmation ? 'confirmed' : 'pending',
+      confirmedAutomatically: automaticConfirmation,
       createdAt: new Date().toISOString(),
     };
 
@@ -714,7 +727,9 @@ class BarberShopService {
     schedulePersist();
 
     return {
-      message: 'Agendamento solicitado com sucesso.',
+      message: automaticConfirmation
+        ? 'Agendamento confirmado com sucesso.'
+        : 'Agendamento solicitado com sucesso.',
       schedule,
       barbershop: page.barbershop,
       service,
@@ -801,6 +816,9 @@ class BarberShopService {
       bookingSlogan: body.bookingSlogan !== undefined ? normalizeText(body.bookingSlogan, 160) : barbershop.bookingSlogan || '',
       bookingPlans: body.bookingPlans !== undefined ? normalizeBookingPlans(body.bookingPlans) : normalizeBookingPlans(barbershop.bookingPlans),
       bookingAccentColor: body.bookingAccentColor !== undefined ? normalizeHexColor(body.bookingAccentColor, publicBookingDefaultAccentColor) : normalizeHexColor(barbershop.bookingAccentColor, publicBookingDefaultAccentColor),
+      bookingConfirmationMode: body.bookingConfirmationMode !== undefined
+        ? (body.bookingConfirmationMode === 'automatic' ? 'automatic' : 'manual')
+        : (barbershop.bookingConfirmationMode === 'automatic' ? 'automatic' : 'manual'),
       paymentSettings: body.paymentSettings
         ? normalizePaymentSettings(body.paymentSettings)
         : normalizePaymentSettings(barbershop.paymentSettings),

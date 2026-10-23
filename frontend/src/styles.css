@@ -9460,7 +9460,7 @@ select option {
     -webkit-overflow-scrolling: touch;
     overflow-x: scroll !important;
     overflow-y: hidden !important;
-    touch-action: pan-x;
+    touch-action: pan-x pan-y;
   }
 
   .public-card-grid.professionals,
@@ -9508,7 +9508,7 @@ select option {
     scroll-snap-type: x proximity;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-x;
+    touch-action: pan-x pan-y;
   }
 
   .public-card-grid.professionals::-webkit-scrollbar,
@@ -9545,7 +9545,7 @@ select option {
   .public-card-grid.professionals,
   .public-card-grid.services {
     cursor: grab;
-    touch-action: pan-x !important;
+    touch-action: pan-x pan-y !important;
   }
 
   .public-card-grid.professionals button,
@@ -15093,6 +15093,74 @@ select option {
   font-size: 12px;
   margin: 0;
   text-align: center;
+}
+
+.booking-confirmation-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0 22px 22px;
+}
+
+.booking-confirmation-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+}
+
+.booking-confirmation-option.selected {
+  border-color: rgba(37, 99, 235, 0.78);
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.booking-confirmation-option input {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  accent-color: #2563eb;
+}
+
+.booking-confirmation-option span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.booking-confirmation-option strong {
+  color: #f8fafc;
+  font-size: 14px;
+}
+
+.booking-confirmation-option small {
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.booking-confirmation-save {
+  grid-column: 1 / -1;
+}
+
+.booking-confirmation-result {
+  display: grid;
+  gap: 4px;
+}
+
+.booking-confirmation-result strong,
+.booking-confirmation-result span {
+  color: inherit;
+}
+
+@media (max-width: 720px) {
+  .booking-confirmation-form {
+    grid-template-columns: 1fr;
+    padding: 0 14px 16px;
+  }
 }
 
 .booking-logo-remove:disabled,

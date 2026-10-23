@@ -323,6 +323,12 @@ function PublicBookingPage({ slug }) {
   const ignoreRailClickRef = useRef(false);
 
   function handleRailPointerDown(event) {
+    if (event.pointerType && event.pointerType !== 'mouse') {
+      railDragRef.current = { active: false, startX: 0, startLeft: 0, moved: false };
+      ignoreRailClickRef.current = false;
+      return;
+    }
+
     const rail = event.currentTarget;
     ignoreRailClickRef.current = false;
     railDragRef.current = {
@@ -414,6 +420,8 @@ function PublicBookingPage({ slug }) {
   const bookingSlogan = barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos';
   const bookingPlans = Array.isArray(barbershop?.bookingPlans) ? barbershop.bookingPlans.filter((plan) => plan?.title) : [];
   const bookingAccentColor = normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor);
+  const bookingConfirmationMode = barbershop?.bookingConfirmationMode === 'automatic' ? 'automatic' : 'manual';
+  const automaticConfirmation = bookingConfirmationMode === 'automatic';
   const currentDateKey = today();
   const currentTime = new Date();
   const currentTimeMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
@@ -480,16 +488,21 @@ function PublicBookingPage({ slug }) {
 
       if (response.data.error) {
         setError(response.data.error);
-        await loadPublicPage();
         return;
       }
 
       setResult(response.data);
+      setPage((current) => current ? {
+        ...current,
+        schedules: [
+          ...(current.schedules || []).filter((item) => item.id !== response.data.schedule?.id),
+          response.data.schedule,
+        ].filter(Boolean),
+      } : current);
       setSelectedTime('');
       notifyScheduleRequestCreated(response.data?.barbershop?.id || barbershop?.id);
-      await loadPublicPage();
-    } catch {
-      setError('Nao foi possivel solicitar o agendamento agora.');
+    } catch (requestError) {
+      setError(requestError?.response?.data?.error || 'Nao foi possivel solicitar o agendamento agora.');
     } finally {
       setSaving(false);
     }
@@ -708,22 +721,37 @@ function PublicBookingPage({ slug }) {
           </section>
 
           {error && <p className="public-booking-error">{error}</p>}
-          {result && <p className="public-booking-success">Solicitação enviada para a barbearia.</p>}
+          {result && (
+            <div className="public-booking-success booking-confirmation-result">
+              <strong>{result.schedule?.status === 'confirmed' ? 'Agendamento confirmado!' : 'Solicitação enviada!'}</strong>
+              <span>
+                {result.schedule?.status === 'confirmed'
+                  ? `Seu horário com ${result.schedule?.professionalName || selectedProfessional?.name || 'o profissional'} foi reservado com sucesso.`
+                  : 'A barbearia recebeu sua solicitação e fará a confirmação.'}
+              </span>
+            </div>
+          )}
 
           <button className="public-booking-submit" type="button" disabled={saving} onClick={submitBooking}>
             <CalendarPlus size={19} />
-            {saving ? 'Solicitando...' : 'Solicitar agendamento'}
+            {saving ? (automaticConfirmation ? 'Confirmando...' : 'Solicitando...') : (automaticConfirmation ? 'Confirmar agendamento' : 'Solicitar agendamento')}
           </button>
 
           <aside className="public-booking-summary">
-            <h2><span>5</span> {result ? 'Solicitado com sucesso' : 'Resumo do agendamento'}</h2>
+            <h2><span>5</span> {result ? (result.schedule?.status === 'confirmed' ? 'Confirmado com sucesso' : 'Solicitado com sucesso') : 'Resumo do agendamento'}</h2>
             <ul>
               <li><UserRound size={16} /> {selectedProfessional?.name || 'Profissional'}</li>
               <li><Scissors size={16} /> {selectedService?.name || 'Serviço'} {selectedService ? `- ${money(selectedService.priceCents)}` : ''}</li>
               <li><CalendarClock size={16} /> {formatDate(selectedDate)} {selectedTime || '--:--'}</li>
               <li><Phone size={16} /> {clientContact || 'WhatsApp para confirmação'}</li>
             </ul>
-            {result && <p>Em breve a barbearia entrará em contato para confirmar seu horário.</p>}
+            {result && (
+              <p>
+                {result.schedule?.status === 'confirmed'
+                  ? `Reserva confirmada com ${result.schedule?.professionalName || selectedProfessional?.name || 'o profissional'}.`
+                  : 'Em breve a barbearia entrará em contato para confirmar seu horário.'}
+              </p>
+            )}
           </aside>
         </form>
       </section>
@@ -2763,14 +2791,18 @@ function Workspace({ session, onLogout, onExitMaster }) {
     const whatsappWindow = schedule.clientContact ? window.open('about:blank', '_blank') : null;
     const accepted = answer === 'accepted';
 
-    await api.post('/schedules', {
-      barbershopId: user.barbershopId,
-      professionalId: schedule.professionalId,
-      startsAt: scheduleDateTimeKey(schedule.startsAt),
-      clientName: accepted ? schedule.clientName || '' : '',
-      clientContact: accepted ? schedule.clientContact || '' : '',
-      serviceName: accepted ? schedule.serviceName || '' : '',
-    });
+    if (accepted) {
+      await api.post('/schedules', {
+        barbershopId: user.barbershopId,
+        professionalId: schedule.professionalId,
+        startsAt: scheduleDateTimeKey(schedule.startsAt),
+        clientName: schedule.clientName || '',
+        clientContact: schedule.clientContact || '',
+        serviceName: schedule.serviceName || '',
+      });
+    } else {
+      await api.post(`/schedules/${schedule.id}/delete`);
+    }
 
     openWhatsAppMessage(
       schedule.clientContact,
@@ -2989,6 +3021,7 @@ function ScheduleRequestBox({ schedule, barbershop, onAccept, onReject, onClose 
         <div className="schedule-request-details">
           <span><CalendarClock size={16} /> {formatDate(date)} as {time}</span>
           <span><Scissors size={16} /> {schedule.serviceName || 'Servico'}</span>
+          <span><UserRound size={16} /> {schedule.professionalName || 'Profissional'}</span>
           <span><Phone size={16} /> {schedule.clientContact || 'Contato nao informado'}</span>
           <span><Store size={16} /> {barbershop?.name || 'Barbearia'}</span>
         </div>
@@ -5450,6 +5483,10 @@ function ScheduleSettings({ barbershop, onSaved }) {
   const [showWeeklyHours, setShowWeeklyHours] = useState(false);
   const [showBookingIdentity, setShowBookingIdentity] = useState(false);
   const [showBookingPlans, setShowBookingPlans] = useState(false);
+  const [showConfirmationMode, setShowConfirmationMode] = useState(false);
+  const [confirmationMode, setConfirmationMode] = useState(
+    barbershop?.bookingConfirmationMode === 'automatic' ? 'automatic' : 'manual',
+  );
   const bookingPlansAvailable = false;
   const [lastEditedScheduleDay, setLastEditedScheduleDay] = useState('monday');
   const previousScheduleShopIdRef = useRef(barbershop?.id || '');
@@ -5477,6 +5514,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
       scheduleWeeklyHours: normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop),
       scheduleSlotMinutes: barbershop?.scheduleSlotMinutes ?? 60,
     });
+    setConfirmationMode(barbershop?.bookingConfirmationMode === 'automatic' ? 'automatic' : 'manual');
 
     if (shopChanged || !showBookingIdentity) {
       setBookingForm({
@@ -5588,6 +5626,12 @@ function ScheduleSettings({ barbershop, onSaved }) {
       bookingSlogan: bookingForm.bookingSlogan.trim(),
       bookingAccentColor: normalizeHexColor(bookingForm.bookingAccentColor, publicBookingDefaultAccentColor),
     });
+  }
+
+  async function submitConfirmationMode(event) {
+    event.preventDefault();
+    await saveAgenda({ bookingConfirmationMode: confirmationMode });
+    setShowConfirmationMode(false);
   }
 
 
@@ -5928,6 +5972,70 @@ function ScheduleSettings({ barbershop, onSaved }) {
               <p className="booking-plans-empty">Cadastre pelo menos um plano para esse botão aparecer no link do cliente.</p>
             )}
           </div>
+        )}
+      </section>
+      <section className={`schedule-config-card booking-confirmation-card ${showConfirmationMode ? 'expanded' : 'collapsed'}`}>
+        <div
+          className="schedule-config-card-header with-action schedule-toggle-header"
+          role="button"
+          tabIndex={0}
+          onClick={() => setShowConfirmationMode((current) => !current)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              setShowConfirmationMode((current) => !current);
+            }
+          }}
+        >
+          <span className="schedule-config-icon"><Check size={18} /></span>
+          <div>
+            <h3>Confirmação de agendamentos</h3>
+            <p>
+              {confirmationMode === 'automatic'
+                ? 'Confirma imediatamente e reserva o horário.'
+                : 'Você aceita ou recusa cada solicitação recebida.'}
+            </p>
+          </div>
+          <span className="schedule-toggle-indicator">
+            {showConfirmationMode ? 'Ocultar' : 'Editar'}
+            <ChevronRight size={16} />
+          </span>
+        </div>
+
+        {showConfirmationMode && (
+          <form className="booking-confirmation-form" onSubmit={submitConfirmationMode}>
+            <label className={`booking-confirmation-option ${confirmationMode === 'manual' ? 'selected' : ''}`}>
+              <input
+                type="radio"
+                name="bookingConfirmationMode"
+                value="manual"
+                checked={confirmationMode === 'manual'}
+                onChange={() => setConfirmationMode('manual')}
+              />
+              <span>
+                <strong>Confirmação manual</strong>
+                <small>Receba a solicitação e escolha entre aceitar ou recusar.</small>
+              </span>
+            </label>
+            <label className={`booking-confirmation-option ${confirmationMode === 'automatic' ? 'selected' : ''}`}>
+              <input
+                type="radio"
+                name="bookingConfirmationMode"
+                value="automatic"
+                checked={confirmationMode === 'automatic'}
+                onChange={() => setConfirmationMode('automatic')}
+              />
+              <span>
+                <strong>Confirmação automática</strong>
+                <small>Confirme no ato da reserva, sem abrir o WhatsApp.</small>
+              </span>
+            </label>
+            {confirmationMode !== (barbershop?.bookingConfirmationMode === 'automatic' ? 'automatic' : 'manual') && (
+              <div className="schedule-save-row booking-confirmation-save">
+                <button type="submit" className="schedule-subtle-save">Salvar configuração</button>
+              </div>
+            )}
+          </form>
         )}
       </section>
       <section className={`schedule-config-card schedule-default-card ${showWeeklyHours ? 'expanded' : 'collapsed'}`}>
@@ -6753,10 +6861,29 @@ function buildAppNotifications({ barbershop, appointments, schedules }) {
     items.push({
       id: `schedule-${schedule.id}-${schedule.status}`,
       title: 'Novo agendamento solicitado',
-      description: `${schedule.clientName || 'Cliente'} pediu horário para ${formatDate(date)} às ${time}.`,
+      description: `${schedule.clientName || 'Cliente'} pediu horário com ${schedule.professionalName || 'o profissional'} para ${formatDate(date)} às ${time}.`,
       time: date === todayKey ? 'Hoje' : formatDate(date),
       screen: 'schedule',
       tone: 'info',
+      icon: <CalendarClock size={20} />,
+    });
+  });
+
+  const automaticSchedules = schedules
+    .filter((schedule) => schedule.status === 'confirmed' && schedule.confirmedAutomatically)
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+    .slice(0, 3);
+
+  automaticSchedules.forEach((schedule) => {
+    const key = scheduleDateTimeKey(schedule.startsAt);
+    const [date, time] = key.split('T');
+    items.push({
+      id: `schedule-${schedule.id}-automatic`,
+      title: 'Agendamento confirmado automaticamente',
+      description: `${schedule.clientName || 'Cliente'} agendou com ${schedule.professionalName || 'o profissional'} para ${formatDate(date)} às ${time}.`,
+      time: date === todayKey ? 'Hoje' : formatDate(date),
+      screen: 'schedule',
+      tone: 'success',
       icon: <CalendarClock size={20} />,
     });
   });
