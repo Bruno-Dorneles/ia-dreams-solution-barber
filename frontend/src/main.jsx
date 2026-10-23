@@ -2070,7 +2070,7 @@ const DESKTOP_NAV_ITEMS = [
 const SETTINGS_SIDEBAR_ITEMS = [
   { id: 'company', label: 'Empresa', icon: <Store size={17} /> },
   { id: 'account', label: 'Conta do dono', icon: <UserRound size={17} /> },
-  { id: 'theme', label: 'Aparência', icon: <Pencil size={17} /> },
+  { id: 'theme', label: 'Aparência', icon: <Pencil size={17} />, disabled: true },
   { id: 'team', label: 'Equipe', icon: <Users size={17} /> },
   { id: 'services', label: 'Serviços', icon: <Scissors size={17} /> },
   { id: 'payments', label: 'Métodos de pagamento', icon: <CreditCard size={17} /> },
@@ -2112,13 +2112,17 @@ function AppNavigation({ currentScreen, currentSettingsTab = 'company', settings
                   <button
                     key={section.id}
                     type="button"
-                    className={currentSettingsTab === section.id ? 'active' : ''}
-                    onClick={() => onNavigate('settings', section.id)}
-                    title={section.label}
-                    aria-label={section.label}
+                    className={`${currentSettingsTab === section.id ? 'active' : ''} ${section.disabled ? 'locked' : ''}`.trim()}
+                    onClick={() => {
+                      if (!section.disabled) onNavigate('settings', section.id);
+                    }}
+                    title={section.disabled ? `${section.label} - Disponível em breve` : section.label}
+                    aria-label={section.disabled ? `${section.label} - Disponível em breve` : section.label}
+                    disabled={section.disabled}
                   >
                     {section.icon}
                     <span className="nav-label">{section.label}</span>
+                    {section.disabled ? <span className="settings-nav-coming-soon">Em breve</span> : null}
                   </button>
                 ))}
                 <button
@@ -4786,11 +4790,11 @@ function SettingsScreen({
   onSaved,
 }) {
   const canManageSettings = user.role === 'owner' || user.role === 'admin';
-  const [tab, setTab] = useState(initialTab);
+  const [tab, setTab] = useState(initialTab === 'theme' ? 'company' : initialTab);
   const [mobileSectionOpen, setMobileSectionOpen] = useState(false);
 
   useEffect(() => {
-    setTab(initialTab);
+    setTab(initialTab === 'theme' ? 'company' : initialTab);
     setMobileSectionOpen(false);
   }, [initialTab]);
 
@@ -4806,11 +4810,12 @@ function SettingsScreen({
   }
 
   const sections = buildSettingsSections({ barbershop, professionals, services, users, user });
-  const activeSection = sections.find((section) => section.id === tab) || sections[0];
+  const selectedSection = sections.find((section) => section.id === tab);
+  const activeSection = selectedSection && !selectedSection.disabled ? selectedSection : sections[0];
   const scheduleBookingSlug = barbershop?.publicSlug || clientSlugify(barbershop?.name || '') || barbershop?.id;
   const scheduleBookingUrl = scheduleBookingSlug ? barberProUrl(`/agendar/${scheduleBookingSlug}`) : '';
   const activeContent = renderSettingsSection({
-    tab,
+    tab: activeSection.id,
     barbershop,
     users,
     professionals,
@@ -4826,8 +4831,10 @@ function SettingsScreen({
           <button
             key={section.id}
             type="button"
-            className="settings-mobile-card"
+            className={`settings-mobile-card ${section.disabled ? 'locked' : ''}`}
+            disabled={section.disabled}
             onClick={() => {
+              if (section.disabled) return;
               if (section.href) {
                 window.open(section.href, '_blank', 'noopener,noreferrer');
                 return;
@@ -4842,7 +4849,7 @@ function SettingsScreen({
               <small>{section.description}</small>
             </span>
             <em>{section.status}</em>
-            <ChevronRight size={18} />
+            {section.disabled ? <Lock size={17} /> : <ChevronRight size={18} />}
           </button>
         ))}
       </div>
@@ -4903,9 +4910,10 @@ function buildSettingsSections({ barbershop, professionals, services, users, use
     {
       id: 'theme',
       label: 'Aparência',
-      description: 'Logo e personalização visual.',
-      status: barbershop?.logoUrl ? 'Logo definida' : 'Padrão',
+      description: 'Personalização visual em desenvolvimento.',
+      status: 'Disponível em breve',
       icon: <Pencil size={20} />,
+      disabled: true,
     },
     {
       id: 'team',
@@ -5434,6 +5442,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
     bookingAccentColor: normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor),
   }));
   const [bookingIdentityError, setBookingIdentityError] = useState('');
+  const [bookingImageSaving, setBookingImageSaving] = useState('');
   const [bookingPlansError, setBookingPlansError] = useState('');
   const [bookingPlanForm, setBookingPlanForm] = useState({ title: '', description: '', priceText: '' });
   const [blockedForm, setBlockedForm] = useState(defaultBlockedIntervalForm());
@@ -5441,15 +5450,13 @@ function ScheduleSettings({ barbershop, onSaved }) {
   const [showWeeklyHours, setShowWeeklyHours] = useState(false);
   const [showBookingIdentity, setShowBookingIdentity] = useState(false);
   const [showBookingPlans, setShowBookingPlans] = useState(false);
+  const bookingPlansAvailable = false;
   const [lastEditedScheduleDay, setLastEditedScheduleDay] = useState('monday');
   const previousScheduleShopIdRef = useRef(barbershop?.id || '');
   const blockedIntervals = normalizeScheduleBlockedIntervals(barbershop?.scheduleBlockedIntervals);
   const bookingPlans = Array.isArray(barbershop?.bookingPlans) ? barbershop.bookingPlans.filter((plan) => plan?.title) : [];
   const normalizedCurrentWeeklyHours = normalizeScheduleWeeklyHours(barbershop?.scheduleWeeklyHours, barbershop);
   const bookingIdentityChanged =
-    bookingForm.bookingLogoUrl !== (barbershop?.bookingLogoUrl || barbershop?.logoUrl || '') ||
-    bookingForm.bookingMobileLogoUrl !== (barbershop?.bookingMobileLogoUrl || '') ||
-    bookingForm.bookingProfileLogoUrl !== (barbershop?.bookingProfileLogoUrl || '') ||
     bookingForm.bookingDisplayName !== (barbershop?.bookingDisplayName || barbershop?.name || '') ||
     bookingForm.bookingSlogan !== (barbershop?.bookingSlogan || 'Agende seu horário em poucos segundos') ||
     bookingForm.bookingAccentColor !== normalizeHexColor(barbershop?.bookingAccentColor, publicBookingDefaultAccentColor);
@@ -5537,6 +5544,22 @@ function ScheduleSettings({ barbershop, onSaved }) {
     }));
   }
 
+  async function persistBookingImage(field, value) {
+    const previousValue = bookingForm[field] || '';
+    setBookingIdentityError('');
+    setBookingImageSaving(field);
+    setBookingForm((current) => ({ ...current, [field]: value }));
+
+    try {
+      await saveAgenda({ [field]: value });
+    } catch {
+      setBookingForm((current) => ({ ...current, [field]: previousValue }));
+      setBookingIdentityError('Não foi possível salvar essa imagem. Tente novamente.');
+    } finally {
+      setBookingImageSaving('');
+    }
+  }
+
   function handleBookingLogoFile(file, field = 'bookingLogoUrl') {
     setBookingIdentityError('');
 
@@ -5549,7 +5572,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
 
     const reader = new FileReader();
     reader.onload = () => {
-      setBookingForm((current) => ({ ...current, [field]: String(reader.result || '') }));
+      void persistBookingImage(field, String(reader.result || ''));
     };
     reader.onerror = () => {
       setBookingIdentityError('Não foi possível carregar essa imagem. Tente outra foto.');
@@ -5560,9 +5583,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
   async function submitBookingIdentity(event) {
     event.preventDefault();
     await saveAgenda({
-      bookingLogoUrl: bookingForm.bookingLogoUrl.trim(),
-      bookingMobileLogoUrl: bookingForm.bookingMobileLogoUrl.trim(),
-      bookingProfileLogoUrl: bookingForm.bookingProfileLogoUrl.trim(),
+
       bookingDisplayName: bookingForm.bookingDisplayName.trim(),
       bookingSlogan: bookingForm.bookingSlogan.trim(),
       bookingAccentColor: normalizeHexColor(bookingForm.bookingAccentColor, publicBookingDefaultAccentColor),
@@ -5736,7 +5757,12 @@ function ScheduleSettings({ barbershop, onSaved }) {
                     />
                   </label>
                   {bookingForm.bookingProfileLogoUrl && (
-                    <button type="button" className="booking-logo-remove" onClick={() => setBookingForm({ ...bookingForm, bookingProfileLogoUrl: '' })}>
+                    <button
+                      type="button"
+                      className="booking-logo-remove"
+                      onClick={() => void persistBookingImage('bookingProfileLogoUrl', '')}
+                      disabled={bookingImageSaving === 'bookingProfileLogoUrl'}
+                    >
                       Remover
                     </button>
                   )}
@@ -5759,7 +5785,8 @@ function ScheduleSettings({ barbershop, onSaved }) {
                     <button
                       type="button"
                       className="booking-logo-remove"
-                      onClick={() => setBookingForm({ ...bookingForm, bookingLogoUrl: '' })}
+                      onClick={() => void persistBookingImage('bookingLogoUrl', '')}
+                      disabled={bookingImageSaving === 'bookingLogoUrl'}
                     >
                       Remover
                     </button>
@@ -5783,7 +5810,8 @@ function ScheduleSettings({ barbershop, onSaved }) {
                     <button
                       type="button"
                       className="booking-logo-remove"
-                      onClick={() => setBookingForm({ ...bookingForm, bookingMobileLogoUrl: '' })}
+                      onClick={() => void persistBookingImage('bookingMobileLogoUrl', '')}
+                      disabled={bookingImageSaving === 'bookingMobileLogoUrl'}
                     >
                       Remover
                     </button>
@@ -5828,6 +5856,7 @@ function ScheduleSettings({ barbershop, onSaved }) {
                 </div>
               </label>
             </div>
+            {bookingImageSaving && <p className="booking-image-save-status">Salvando imagem...</p>}
             {bookingIdentityError && <Message tone="error">{bookingIdentityError}</Message>}
             {bookingIdentityChanged && (
               <div className="schedule-save-row booking-identity-save">
@@ -5838,35 +5867,21 @@ function ScheduleSettings({ barbershop, onSaved }) {
         )}
       </section>
 
-      <section className={`schedule-config-card booking-plans-card ${showBookingPlans ? 'expanded' : 'collapsed'}`}>
-        <div
-          className="schedule-config-card-header with-action schedule-toggle-header"
-          role="button"
-          tabIndex={0}
-          onClick={toggleBookingPlans}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-              event.preventDefault();
-              toggleBookingPlans();
-            }
-          }}
-        >
+      <section className="schedule-config-card booking-plans-card locked">
+        <div className="schedule-config-card-header with-action schedule-locked-header" aria-disabled="true">
           <span className="schedule-config-icon"><Tag size={18} /></span>
           <div>
-            <h3>Planos e promocoes</h3>
-            <p>
-              {showBookingPlans
-                ? 'Cadastre os planos que podem aparecer no link publico.'
-                : bookingPlans.length > 0 ? `${bookingPlans.length} plano(s) cadastrado(s).` : 'Nenhum plano cadastrado.'}
-            </p>
+            <h3>Planos e promoções</h3>
+            <p>Este recurso está em desenvolvimento e será disponibilizado em uma próxima atualização.</p>
           </div>
-          <span className="schedule-toggle-indicator">
-            {showBookingPlans ? 'Ocultar' : 'Ver opcoes'}
-            <ChevronRight size={16} />
+          <span className="schedule-locked-indicator">
+            <Lock size={15} />
+            Disponível em breve
           </span>
         </div>
 
-        {showBookingPlans && (
+
+        {bookingPlansAvailable && showBookingPlans && (
           <div className="booking-plans-editor">
             <form className="booking-plan-form" onSubmit={submitBookingPlan}>
               <label>

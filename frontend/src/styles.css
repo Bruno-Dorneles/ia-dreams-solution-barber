@@ -15022,3 +15022,82 @@ select option {
   max-height: none;
   width: 100%;
 }
+/* Temporarily unavailable settings */
+.app-nav .nav-settings-submenu button.locked,
+.settings-mobile-card.locked {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.app-nav .nav-settings-submenu button.locked:hover,
+.settings-mobile-card.locked:hover,
+.settings-mobile-card.locked:active {
+  background: transparent;
+  border-color: transparent;
+  color: #8f96a3;
+  transform: none;
+}
+
+.settings-nav-coming-soon {
+  color: #aeb3bd;
+  font-size: 9px;
+  font-weight: 700;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.settings-mobile-card.locked em {
+  color: #aeb3bd;
+}
+
+.booking-plans-card.locked {
+  background: rgba(17, 18, 20, 0.72);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.booking-plans-card.locked .schedule-config-icon,
+.booking-plans-card.locked h3,
+.booking-plans-card.locked p {
+  opacity: 0.7;
+}
+
+.schedule-locked-indicator {
+  align-items: center;
+  color: #aeb3bd;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 7px;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .settings-mobile-card.locked {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .booking-plans-card.locked .schedule-locked-header {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .booking-plans-card.locked .schedule-locked-indicator {
+    grid-column: 1 / -1;
+    justify-self: end;
+    white-space: normal;
+  }
+}
+/* Automatic booking image persistence */
+.booking-image-save-status {
+  color: #aeb3bd;
+  font-size: 12px;
+  margin: 0;
+  text-align: center;
+}
+
+.booking-logo-remove:disabled,
+.booking-logo-upload:has(input:disabled) {
+  cursor: wait;
+  opacity: 0.55;
+  pointer-events: none;
+}

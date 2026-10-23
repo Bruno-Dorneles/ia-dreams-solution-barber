@@ -4,3 +4,5 @@ packages:
 allowBuilds:
   '@nestjs/core': true
   esbuild: true
+overrides:
+  multer: 2.4.0
